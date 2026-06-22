@@ -175,49 +175,100 @@ async function carregarRanking() {
 
 // ── Perfil ───────────────────────────────────────────────────────────────────
 const PLANO_LABEL = { mensal: "Mensal", trimestral: "Trimestral", semestral: "Semestral", anual: "Anual" };
-const STATUS_SUB_LABEL = {
-  ativa: "Ativa", expirada: "Expirada", inadimplente: "Inadimplente", cancelada: "Cancelada",
-};
-const STATUS_SUB_COR = {
-  ativa: "#4ab870", expirada: "#e0b040", inadimplente: "var(--cor-erro)", cancelada: "#888",
+const PLANO_MESES = { mensal: 30, trimestral: 90, semestral: 180, anual: 365 };
+const STATUS_SUB = {
+  ativa:        { cor: "#4ab870", icone: "✓", label: "Ativa" },
+  pausada:      { cor: "#e0a040", icone: "⏸", label: "Pausada" },
+  expirada:     { cor: "#e07040", icone: "✕", label: "Expirada" },
+  inadimplente: { cor: "#e74c3c", icone: "!", label: "Inadimplente" },
+  cancelada:    { cor: "#888",    icone: "–", label: "Cancelada" },
 };
 
 function fmtData(isoStr) {
   return new Date(isoStr).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
+function _subProgressPct(sub) {
+  const inicio  = new Date(sub.data_inicio_ciclo).getTime();
+  const fim     = new Date(sub.data_expiracao).getTime();
+  const agora   = Date.now();
+  return Math.max(0, Math.min(100, Math.round(((agora - inicio) / (fim - inicio)) * 100)));
+}
+
+function _diasRestantes(sub) {
+  return Math.ceil((new Date(sub.data_expiracao) - Date.now()) / 86400000);
+}
+
+function _subCardHtml(sub, pixPendente) {
+  const info    = STATUS_SUB[sub.status] || STATUS_SUB.cancelada;
+  const pct     = _subProgressPct(sub);
+  const dias    = _diasRestantes(sub);
+  const expira  = fmtData(sub.data_expiracao);
+  const podePausar  = sub.status === "ativa" && dias > 0;
+  const podeRenovar = ["expirada", "inadimplente", "cancelada"].includes(sub.status) || (sub.status === "ativa" && dias <= 7);
+
+  let retornoHtml = "";
+  if (sub.status === "pausada" && sub.data_retorno_prevista) {
+    retornoHtml = `<p class="sub-detalhe">Retorno previsto: ${fmtData(sub.data_retorno_prevista)}</p>`;
+  }
+
+  let pixHtml = "";
+  if (pixPendente?.pix_copia_e_cola) {
+    pixHtml = `
+      <div class="pix-box">
+        <p class="pix-label">⚡ Pagamento pendente — copie o PIX:</p>
+        <div class="pix-row">
+          <input id="pix-code-input" class="pix-code" readonly value="${pixPendente.pix_copia_e_cola}" />
+          <button class="btn btn-primario pix-copy-btn" onclick="copiarPixJogador()">Copiar</button>
+        </div>
+        ${pixPendente.payment_link ? `<a href="${pixPendente.payment_link}" target="_blank" class="pix-link">Abrir link de cobrança ↗</a>` : ""}
+      </div>`;
+  }
+
+  return `
+    <div class="sub-card sub-card--${sub.status}">
+      <div class="sub-card-header">
+        <span class="sub-status-dot" style="color:${info.cor}">${info.icone} ${info.label}</span>
+        <span class="sub-plano-label">${PLANO_LABEL[sub.plano] || sub.plano}</span>
+      </div>
+      <div class="sub-progress-wrap">
+        <div class="sub-progress-bar" style="width:${pct}%;background:${info.cor}"></div>
+      </div>
+      <div class="sub-datas">
+        <span>Início: ${fmtData(sub.data_inicio_ciclo)}</span>
+        <span>Vence: ${expira}</span>
+      </div>
+      <p class="sub-dias" style="color:${dias <= 7 ? "#e07040" : info.cor}">
+        ${dias > 0 ? `${dias} ${dias === 1 ? "dia restante" : "dias restantes"}` : "Vencida"}
+      </p>
+      ${retornoHtml}
+      ${pixHtml}
+      <div class="sub-acoes">
+        ${podePausar  ? `<button class="btn btn-secundario sub-btn" onclick="abrirPausaUI()">⏸ Solicitar Pausa</button>` : ""}
+        ${podeRenovar ? `<button class="btn btn-primario sub-btn"   onclick="abrirRenovarUI()">↺ Renovar</button>` : ""}
+      </div>
+    </div>`;
+}
+
 async function carregarPerfil() {
   const el = document.getElementById("perfil-info");
   el.innerHTML = "<p style='opacity:.5;font-size:.85rem'>Carregando…</p>";
   try {
-    const [p, sub] = await Promise.all([
+    const [p, sub, pixPendente] = await Promise.all([
       apiFetch("/auth/me"),
       apiFetch("/subscriptions/minha-ativa").catch(() => null),
+      apiFetch("/subscriptions/pix-pendente").catch(() => null),
     ]);
     if (!p) return;
 
     const nivel = p.nivel === "nao_classificado" ? "Não classificado" : `Nível ${p.nivel}`;
 
-    let subHtml = "";
-    if (sub) {
-      const corStatus = STATUS_SUB_COR[sub.status] || "#888";
-      const labelStatus = STATUS_SUB_LABEL[sub.status] || sub.status;
-      subHtml = `
-        <div class="perfil-linha">
-          <span class="perfil-label">Assinatura</span>
-          <span style="color:${corStatus};font-weight:600">${labelStatus} — ${PLANO_LABEL[sub.plano] || sub.plano}</span>
-        </div>
-        <div class="perfil-linha">
-          <span class="perfil-label">Vence em</span>
-          <span>${fmtData(sub.data_expiracao)}</span>
-        </div>`;
-    } else {
-      subHtml = `
-        <div class="perfil-linha">
-          <span class="perfil-label">Assinatura</span>
-          <span style="color:var(--cor-erro)">Sem assinatura ativa</span>
-        </div>`;
-    }
+    const subHtml = sub
+      ? _subCardHtml(sub, pixPendente)
+      : `<div class="sub-card sub-card--sem">
+           <p style="color:var(--cor-erro);font-weight:600;margin-bottom:.4rem">Sem assinatura ativa</p>
+           <p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Fale com o administrador para ativar sua assinatura.</p>
+         </div>`;
 
     el.innerHTML = `
       <div class="perfil-avatar-wrap">
@@ -231,9 +282,57 @@ async function carregarPerfil() {
       <div class="perfil-linha"><span class="perfil-label">Nível</span><span>${nivel}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Rating</span><span>${Math.round(p.rating_atual)}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Pontos (temporada)</span><span>${p.pontos_ranking_temporada_atual}</span></div>
-      <div class="perfil-linha"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
+      <div class="perfil-linha" style="border:none"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
+      <p class="card-titulo" style="margin-top:1rem;margin-bottom:.5rem">Minha Assinatura</p>
       ${subHtml}
+      <div id="sub-renovar-ui" style="display:none" class="sub-card">
+        <p style="font-weight:700;margin-bottom:.75rem">Renovar Assinatura</p>
+        <div class="campo">
+          <label>Plano</label>
+          <select id="renovar-plano">
+            <option value="mensal">Mensal — R$ <span id="p-mensal"></span></option>
+            <option value="trimestral">Trimestral</option>
+            <option value="semestral">Semestral</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+        <div id="renovar-pix-box" style="display:none" class="pix-box">
+          <p class="pix-label">⚡ PIX gerado — copie e pague:</p>
+          <div class="pix-row">
+            <input id="renovar-pix-input" class="pix-code" readonly />
+            <button class="btn btn-primario pix-copy-btn" onclick="copiarPixRenovar()">Copiar</button>
+          </div>
+        </div>
+        <p id="renovar-erro" class="erro" hidden></p>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn btn-secundario" style="flex:1" onclick="fecharRenovarUI()">Cancelar</button>
+          <button id="renovar-btn" class="btn btn-primario" style="flex:1" onclick="confirmarRenovar()">Gerar PIX</button>
+        </div>
+      </div>
+      <div id="sub-pausa-ui" style="display:none" class="sub-card">
+        <p style="font-weight:700;margin-bottom:.5rem">Solicitar Pausa</p>
+        <div class="campo">
+          <label>Motivo (opcional)</label>
+          <input type="text" id="pausa-motivo" placeholder="Ex: viagem, lesão…" />
+        </div>
+        <p id="pausa-erro" class="erro" hidden></p>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn btn-secundario" style="flex:1" onclick="fecharPausaUI()">Cancelar</button>
+          <button class="btn btn-primario" style="flex:1" onclick="confirmarPausa()">Enviar</button>
+        </div>
+      </div>
     `;
+
+    // Popula preços no select de renovação
+    apiFetch("/subscriptions/precos").then(precos => {
+      if (!precos) return;
+      document.getElementById("renovar-plano").innerHTML = [
+        ["mensal",      `Mensal — R$ ${precos.mensal.toFixed(2)}`],
+        ["trimestral",  `Trimestral — R$ ${precos.trimestral.toFixed(2)}`],
+        ["semestral",   `Semestral — R$ ${precos.semestral.toFixed(2)}`],
+        ["anual",       `Anual — R$ ${precos.anual.toFixed(2)}`],
+      ].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+    }).catch(() => {});
 
     document.getElementById("inp-foto-upload").addEventListener("change", async (e) => {
       const file = e.target.files[0];
@@ -241,12 +340,75 @@ async function carregarPerfil() {
       try {
         await uploadFoto(file);
         await Promise.all([carregarPerfil(), carregarRanking()]);
-      } catch (err) {
-        alert(err.message);
-      }
+      } catch (err) { alert(err.message); }
     });
   } catch {
     el.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar perfil.</p>";
+  }
+}
+
+function copiarPixJogador() {
+  const el = document.getElementById("pix-code-input");
+  if (el) navigator.clipboard.writeText(el.value).then(() => alert("PIX copiado!"));
+}
+function copiarPixRenovar() {
+  const el = document.getElementById("renovar-pix-input");
+  if (el) navigator.clipboard.writeText(el.value).then(() => alert("PIX copiado!"));
+}
+
+function abrirRenovarUI() {
+  document.getElementById("sub-pausa-ui").style.display = "none";
+  document.getElementById("sub-renovar-ui").style.display = "";
+  document.getElementById("renovar-pix-box").style.display = "none";
+  document.getElementById("renovar-erro").hidden = true;
+}
+function fecharRenovarUI() { document.getElementById("sub-renovar-ui").style.display = "none"; }
+
+async function confirmarRenovar() {
+  const btn = document.getElementById("renovar-btn");
+  const erroEl = document.getElementById("renovar-erro");
+  erroEl.hidden = true;
+  btn.disabled = true; btn.textContent = "Gerando…";
+  try {
+    const plano = document.getElementById("renovar-plano").value;
+    const res = await apiFetch("/subscriptions/renovar", {
+      method: "POST",
+      body: JSON.stringify({ plano, forma_pagamento: "pix_avista" }),
+    });
+    if (res?.pix_copia_e_cola) {
+      document.getElementById("renovar-pix-input").value = res.pix_copia_e_cola;
+      document.getElementById("renovar-pix-box").style.display = "";
+      btn.style.display = "none";
+    }
+  } catch (err) {
+    erroEl.textContent = err.message;
+    erroEl.hidden = false;
+  } finally {
+    btn.disabled = false; btn.textContent = "Gerar PIX";
+  }
+}
+
+function abrirPausaUI() {
+  document.getElementById("sub-renovar-ui").style.display = "none";
+  document.getElementById("sub-pausa-ui").style.display = "";
+  document.getElementById("pausa-erro").hidden = true;
+}
+function fecharPausaUI() { document.getElementById("sub-pausa-ui").style.display = "none"; }
+
+async function confirmarPausa() {
+  const erroEl = document.getElementById("pausa-erro");
+  erroEl.hidden = true;
+  try {
+    const motivo = document.getElementById("pausa-motivo").value;
+    await apiFetch("/subscriptions/solicitar-pausa", {
+      method: "POST",
+      body: JSON.stringify({ motivo: motivo || null }),
+    });
+    alert("Solicitação enviada! O administrador entrará em contato.");
+    fecharPausaUI();
+  } catch (err) {
+    erroEl.textContent = err.message;
+    erroEl.hidden = false;
   }
 }
 

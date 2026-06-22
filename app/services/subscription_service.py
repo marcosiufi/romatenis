@@ -30,6 +30,7 @@ from app.models.subscription import (
     Subscription,
 )
 from app.services.asaas_client import BILLING_TYPE_MAP, AsaasClient, AsaasError
+from app.services import email_service
 
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
 
@@ -121,6 +122,8 @@ class SubscriptionService:
             data_inicio_ciclo=now_br,
             data_expiracao=expiracao,
             gateway_subscription_id=cobranca["id"],
+            aviso_7d_enviado=False,
+            aviso_1d_enviado=False,
         )
         self.db.add(sub)
         await self.db.flush()
@@ -151,6 +154,106 @@ class SubscriptionService:
                 pass
 
         return result
+
+    async def renovar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento) -> "AssinaturaResult":
+        """Jogador renova sua própria assinatura (expirada ou expirando em ≤7 dias)."""
+        from app.core.config import settings as cfg
+
+        sub_ativa = await self._get_ativa(player.id)
+        if sub_ativa:
+            dias_restantes = (sub_ativa.data_expiracao - datetime.now(timezone.utc)).days
+            if dias_restantes > 7:
+                raise SubscriptionError("Você ainda tem mais de 7 dias de assinatura ativa.")
+
+        precos = {
+            PlanoAssinatura.MENSAL: cfg.PRECO_MENSAL,
+            PlanoAssinatura.TRIMESTRAL: cfg.PRECO_TRIMESTRAL,
+            PlanoAssinatura.SEMESTRAL: cfg.PRECO_SEMESTRAL,
+            PlanoAssinatura.ANUAL: cfg.PRECO_ANUAL,
+        }
+        valor_mensal = precos[plano]
+        return await self.criar_assinatura(player.id, plano, forma_pagamento, valor_mensal)
+
+    async def admin_atualizar_status(
+        self,
+        sub_id: int,
+        novo_status: "StatusAssinatura",
+        data_pausa: "datetime | None" = None,
+        data_retorno_prevista: "datetime | None" = None,
+        notas: "str | None" = None,
+    ) -> "Subscription":
+        sub = await self.db.get(Subscription, sub_id, options=[selectinload(Subscription.player)])
+        if not sub:
+            raise SubscriptionError("Assinatura não encontrada")
+
+        sub.status = novo_status
+        if notas is not None:
+            sub.notas = notas
+
+        if novo_status == StatusAssinatura.PAUSADA:
+            sub.data_pausa = data_pausa or datetime.now(FUSO_BR)
+            sub.data_retorno_prevista = data_retorno_prevista
+            await self.db.commit()
+            await self.db.refresh(sub)
+            data_ret_str = sub.data_retorno_prevista.strftime("%d/%m/%Y") if sub.data_retorno_prevista else None
+            await email_service.enviar_aviso_pausa(sub.player.nome, sub.player.email, data_ret_str)
+        else:
+            await self.db.commit()
+            await self.db.refresh(sub)
+
+        return sub
+
+    async def solicitar_pausa(self, player: Player, motivo: str | None) -> None:
+        """Registra o pedido de pausa — admin será notificado por e-mail."""
+        from app.core.config import settings as cfg
+        from app.services import email_service as em
+
+        sub = await self._get_ativa(player.id)
+        if not sub:
+            raise SubscriptionError("Nenhuma assinatura ativa para pausar.")
+
+        corpo = f"""
+        <p>O jogador <strong>{player.nome}</strong> ({player.email}) solicitou pausa na assinatura.</p>
+        <p><strong>Plano:</strong> {sub.plano.value} &nbsp; <strong>Vence:</strong> {sub.data_expiracao.strftime('%d/%m/%Y')}</p>
+        <p><strong>Motivo:</strong> {motivo or '(não informado)'}</p>
+        <p>Acesse o painel admin para aprovar a pausa.</p>"""
+
+        if cfg.SMTP_USER:
+            await em.send_email(
+                cfg.SMTP_USER,
+                f"⏸ Solicitação de pausa — {player.nome}",
+                em._html_base("Solicitação de Pausa", corpo),
+            )
+
+    async def get_pix_pendente(self, player: Player) -> "AssinaturaResult | None":
+        """Retorna o PIX de pagamento pendente mais recente do jogador."""
+        result = await self.db.execute(
+            select(Payment)
+            .join(Subscription)
+            .where(
+                Subscription.player_id == player.id,
+                Payment.status == StatusPagamento.PENDENTE,
+                Payment.gateway_id.is_not(None),
+            )
+            .order_by(Payment.id.desc())
+        )
+        payment = result.scalar_one_or_none()
+        if not payment or not payment.gateway_id:
+            return None
+
+        sub = await self.db.get(Subscription, payment.subscription_id)
+        res = AssinaturaResult(subscription=sub, payment=payment)
+        try:
+            cobranca = await self._asaas.get_cobranca(payment.gateway_id)
+            res.payment_link = cobranca.get("invoiceUrl") or cobranca.get("bankSlipUrl")
+            billing_type = BILLING_TYPE_MAP.get(sub.forma_pagamento.value, "")
+            if billing_type == "PIX":
+                qr = await self._asaas.get_pix_qrcode(payment.gateway_id)
+                res.pix_qrcode_base64 = qr.get("encodedImage")
+                res.pix_copia_e_cola = qr.get("payload")
+        except Exception:
+            pass
+        return res
 
     # ── Consultas ─────────────────────────────────────────────────────────────
 
@@ -221,6 +324,13 @@ class SubscriptionService:
         if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED") or asaas_status in ("RECEIVED", "CONFIRMED"):
             payment.status = StatusPagamento.PAGO
             payment.data_pagamento = datetime.now(timezone.utc)
+            if payment.subscription_id:
+                sub = await self.db.get(Subscription, payment.subscription_id, options=[selectinload(Subscription.player)])
+                if sub and sub.player:
+                    data_str = sub.data_expiracao.astimezone(FUSO_BR).strftime("%d/%m/%Y")
+                    await email_service.enviar_confirmacao_pagamento(
+                        sub.player.nome, sub.player.email, sub.plano.value, data_str
+                    )
 
         elif asaas_status == "OVERDUE":
             payment.status = StatusPagamento.FALHOU
@@ -252,6 +362,39 @@ class SubscriptionService:
         if subs:
             await self.db.commit()
         return len(subs)
+
+    async def enviar_avisos_vencimento(self) -> int:
+        """Envia e-mails de aviso para assinaturas que vencem em 7 ou 1 dia."""
+        from app.core.config import settings as cfg
+
+        agora = datetime.now(timezone.utc)
+        enviados = 0
+
+        for dias, campo in [(7, "aviso_7d_enviado"), (1, "aviso_1d_enviado")]:
+            limite_inf = agora + timedelta(days=dias - 1)
+            limite_sup = agora + timedelta(days=dias)
+            result = await self.db.execute(
+                select(Subscription)
+                .options(selectinload(Subscription.player))
+                .where(
+                    Subscription.status == StatusAssinatura.ATIVA,
+                    Subscription.data_expiracao >= limite_inf,
+                    Subscription.data_expiracao < limite_sup,
+                    getattr(Subscription, campo) == False,
+                )
+            )
+            for sub in result.scalars().all():
+                data_str = sub.data_expiracao.astimezone(FUSO_BR).strftime("%d/%m/%Y")
+                link = f"{cfg.DOMAIN}/"
+                await email_service.enviar_aviso_vencimento(
+                    sub.player.nome, sub.player.email, sub.plano.value, dias, data_str, link
+                )
+                setattr(sub, campo, True)
+                enviados += 1
+
+        if enviados:
+            await self.db.commit()
+        return enviados
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -306,6 +306,7 @@
     <button data-tab="jogadores" onclick="switchTab('jogadores')">Jogadores</button>
     <button data-tab="partidas" onclick="switchTab('partidas')">Partidas</button>
     <button data-tab="temporada" onclick="switchTab('temporada')">Temporada</button>
+    <button data-tab="assinaturas" onclick="switchTab('assinaturas')">Assinaturas</button>
     <button data-tab="matchmaking" onclick="switchTab('matchmaking')">Matchmaking</button>
   </nav>
 
@@ -376,6 +377,43 @@
       <div id="seasons-lista"></div>
       <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap">
         <button class="btn-xs sec" onclick="recalcularClassificacao()">↺ Recalcular Classificação</button>
+      </div>
+    </section>
+
+    <!-- Assinaturas -->
+    <section id="sec-assinaturas" class="admin-section">
+      <div class="stat-grid" style="margin-bottom:1rem">
+        <div class="stat-card"><div class="valor" id="sub-st-ativas">–</div><div class="lbl">Ativas</div></div>
+        <div class="stat-card"><div class="valor" id="sub-st-pausadas">–</div><div class="lbl">Pausadas</div></div>
+        <div class="stat-card"><div class="valor" id="sub-st-expiradas">–</div><div class="lbl">Expiradas</div></div>
+        <div class="stat-card"><div class="valor" id="sub-st-7d" style="color:#e67e22">–</div><div class="lbl">Vencem em 7 dias</div></div>
+      </div>
+      <div class="section-header">
+        <h2>Assinaturas</h2>
+        <div style="display:flex;gap:0.4rem">
+          <button class="btn-xs primary" onclick="abrirModalNovaAssinatura()">+ Nova</button>
+          <button class="btn-xs sec" onclick="loadAssinaturas()">↺</button>
+        </div>
+      </div>
+      <div class="filtro-bar">
+        <select id="filtro-sub-status" onchange="filtrarAssinaturas()">
+          <option value="">Todos os status</option>
+          <option value="ativa">Ativa</option>
+          <option value="pausada">Pausada</option>
+          <option value="expirada">Expirada</option>
+          <option value="inadimplente">Inadimplente</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+        <input type="text" id="filtro-sub-nome" placeholder="Buscar por jogador…" oninput="filtrarAssinaturas()" style="flex:1;min-width:120px">
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>Jogador</th><th>Plano</th><th>Status</th>
+            <th>Início</th><th>Vencimento</th><th>Valor</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tbody-assinaturas"></tbody>
+        </table>
       </div>
     </section>
 
@@ -549,6 +587,100 @@
         <button type="submit" class="btn-xs primary">Criar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ── Modal Nova Assinatura ── -->
+<div id="modal-assinatura" class="modal-overlay">
+  <div class="modal">
+    <h2>Nova Assinatura</h2>
+    <form id="form-assinatura" onsubmit="salvarAssinatura(event)">
+      <div class="form-row">
+        <label>Jogador</label>
+        <select id="sub-player-id" required></select>
+      </div>
+      <div class="form-row">
+        <label>Plano</label>
+        <select id="sub-plano" onchange="atualizarPrecoSub()">
+          <option value="mensal">Mensal</option>
+          <option value="trimestral">Trimestral</option>
+          <option value="semestral">Semestral</option>
+          <option value="anual">Anual</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Forma de Pagamento</label>
+        <select id="sub-forma">
+          <option value="pix_avista">PIX à vista</option>
+          <option value="boleto_avista">Boleto à vista</option>
+          <option value="cartao_parcelado">Cartão parcelado</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Valor Mensal (R$)</label>
+        <input type="number" id="sub-valor-mensal" step="0.01" min="1" required>
+      </div>
+      <div id="sub-pix-result" style="display:none;margin-top:0.75rem">
+        <p style="font-size:0.8rem;color:var(--clr-text-muted);margin-bottom:0.4rem">PIX Copia-e-Cola:</p>
+        <div style="display:flex;gap:0.4rem;align-items:flex-start">
+          <textarea id="sub-pix-code" readonly style="flex:1;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:0.35rem;color:var(--clr-text);font-size:0.72rem;padding:0.4rem;resize:none;height:60px;font-family:monospace"></textarea>
+          <button type="button" class="btn-xs primary" onclick="copiarPix('sub-pix-code')">Copiar</button>
+        </div>
+      </div>
+      <div id="sub-err" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-xs sec" onclick="fecharModalAssinatura()">Fechar</button>
+        <button type="submit" id="sub-btn-salvar" class="btn-xs primary">Criar e Gerar PIX</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal Status Assinatura ── -->
+<div id="modal-sub-status" class="modal-overlay">
+  <div class="modal">
+    <h2>Alterar Status</h2>
+    <input type="hidden" id="sub-status-id">
+    <div class="form-row">
+      <label>Novo Status</label>
+      <select id="sub-novo-status" onchange="togglePausaFields()">
+        <option value="ativa">Ativa</option>
+        <option value="pausada">Pausada</option>
+        <option value="inadimplente">Inadimplente</option>
+        <option value="cancelada">Cancelada</option>
+        <option value="expirada">Expirada</option>
+      </select>
+    </div>
+    <div id="pausa-fields" style="display:none">
+      <div class="form-row">
+        <label>Data da Pausa</label>
+        <input type="date" id="sub-data-pausa">
+      </div>
+      <div class="form-row">
+        <label>Retorno Previsto</label>
+        <input type="date" id="sub-data-retorno">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notas (opcional)</label>
+      <input type="text" id="sub-notas" placeholder="Ex: Viagem, lesão, etc.">
+    </div>
+    <div id="sub-status-err" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn-xs sec" onclick="fecharModalSubStatus()">Cancelar</button>
+      <button type="button" class="btn-xs primary" onclick="confirmarSubStatus()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Ver PIX ── -->
+<div id="modal-ver-pix" class="modal-overlay">
+  <div class="modal">
+    <h2>Cobrança Pendente</h2>
+    <div id="ver-pix-body"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn-xs sec" onclick="document.getElementById('modal-ver-pix').classList.remove('open')">Fechar</button>
+    </div>
   </div>
 </div>
 

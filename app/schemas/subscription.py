@@ -13,6 +13,22 @@ class SubscriptionCreate(BaseModel):
     parcelas: int = Field(default=1, ge=1, le=12)
 
 
+class SubscriptionRenovar(BaseModel):
+    plano: PlanoAssinatura
+    forma_pagamento: FormaPagamento = FormaPagamento.PIX_AVISTA
+
+
+class SubscriptionAdminUpdate(BaseModel):
+    status: StatusAssinatura
+    data_pausa: datetime | None = None
+    data_retorno_prevista: datetime | None = None
+    notas: str | None = None
+
+
+class PausaRequest(BaseModel):
+    motivo: str | None = None
+
+
 class SubscriptionOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -27,12 +43,22 @@ class SubscriptionOut(BaseModel):
     status: StatusAssinatura
     data_inicio_ciclo: datetime
     data_expiracao: datetime
+    data_pausa: datetime | None = None
+    data_retorno_prevista: datetime | None = None
     gateway_subscription_id: str | None
+    notas: str | None = None
 
 
 class SubscriptionCreateOut(SubscriptionOut):
-    """Retornado apenas na criação — inclui dados de pagamento Asaas."""
+    """Retornado na criação e renovação — inclui dados de pagamento Asaas."""
 
     payment_link: str | None = None
     pix_qrcode_base64: str | None = None
     pix_copia_e_cola: str | None = None
+
+
+class SubscriptionAdminOut(SubscriptionOut):
+    """Retornado no admin — inclui dados do jogador."""
+
+    player_nome: str | None = None
+    player_email: str | None = None

@@ -4,7 +4,15 @@ from app.core.auth import get_current_admin, get_current_player
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.player import Player
-from app.schemas.subscription import SubscriptionCreate, SubscriptionCreateOut, SubscriptionOut
+from app.schemas.subscription import (
+    PausaRequest,
+    SubscriptionAdminOut,
+    SubscriptionAdminUpdate,
+    SubscriptionCreate,
+    SubscriptionCreateOut,
+    SubscriptionOut,
+    SubscriptionRenovar,
+)
 from app.services.subscription_service import SubscriptionError, SubscriptionService
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
@@ -36,12 +44,35 @@ async def criar(
     return out
 
 
-@router.get("", response_model=list[SubscriptionOut])
+@router.get("", response_model=list[SubscriptionAdminOut])
 async def listar_todas(
     _admin: Player = Depends(get_current_admin),
     svc: SubscriptionService = Depends(_svc),
 ):
-    return await svc.listar_todas()
+    subs = await svc.listar_todas()
+    result = []
+    for s in subs:
+        out = SubscriptionAdminOut.model_validate(s)
+        if s.player:
+            out.player_nome = s.player.nome
+            out.player_email = s.player.email
+        result.append(out)
+    return result
+
+
+@router.patch("/{sub_id}/status", response_model=SubscriptionOut)
+async def admin_atualizar_status(
+    sub_id: int,
+    body: SubscriptionAdminUpdate,
+    _admin: Player = Depends(get_current_admin),
+    svc: SubscriptionService = Depends(_svc),
+):
+    try:
+        return await svc.admin_atualizar_status(
+            sub_id, body.status, body.data_pausa, body.data_retorno_prevista, body.notas
+        )
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
 
 
 @router.post("/{sub_id}/antecipar", response_model=SubscriptionOut)
@@ -65,6 +96,18 @@ async def verificar_expiracoes(
     return {"expiradas": n}
 
 
+# ── Preços padrão (público, usado pelo frontend) ───────────────────────────────
+
+@router.get("/precos")
+async def precos():
+    return {
+        "mensal": settings.PRECO_MENSAL,
+        "trimestral": settings.PRECO_TRIMESTRAL,
+        "semestral": settings.PRECO_SEMESTRAL,
+        "anual": settings.PRECO_ANUAL,
+    }
+
+
 # ── Player ────────────────────────────────────────────────────────────────────
 
 @router.get("/minhas", response_model=list[SubscriptionOut])
@@ -81,6 +124,52 @@ async def minha_ativa(
     svc: SubscriptionService = Depends(_svc),
 ):
     return await svc.minha_ativa(player)
+
+
+@router.post("/renovar", response_model=SubscriptionCreateOut)
+async def renovar(
+    body: SubscriptionRenovar,
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    try:
+        res = await svc.renovar(player, body.plano, body.forma_pagamento)
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
+
+    out = SubscriptionCreateOut.model_validate(res.subscription)
+    out.payment_link = res.payment_link
+    out.pix_qrcode_base64 = res.pix_qrcode_base64
+    out.pix_copia_e_cola = res.pix_copia_e_cola
+    return out
+
+
+@router.post("/solicitar-pausa")
+async def solicitar_pausa(
+    body: PausaRequest,
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    try:
+        await svc.solicitar_pausa(player, body.motivo)
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
+    return {"ok": True, "msg": "Solicitação enviada. O admin entrará em contato."}
+
+
+@router.get("/pix-pendente", response_model=SubscriptionCreateOut | None)
+async def pix_pendente(
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    res = await svc.get_pix_pendente(player)
+    if not res:
+        return None
+    out = SubscriptionCreateOut.model_validate(res.subscription)
+    out.payment_link = res.payment_link
+    out.pix_qrcode_base64 = res.pix_qrcode_base64
+    out.pix_copia_e_cola = res.pix_copia_e_cola
+    return out
 
 
 # ── Webhook Asaas (público, validado por token) ───────────────────────────────

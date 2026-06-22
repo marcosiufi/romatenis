@@ -22,6 +22,7 @@ class FormaPagamento(str, enum.Enum):
 
 class StatusAssinatura(str, enum.Enum):
     ATIVA = "ativa"
+    PAUSADA = "pausada"
     EXPIRADA = "expirada"
     INADIMPLENTE = "inadimplente"
     CANCELADA = "cancelada"
@@ -46,8 +47,13 @@ class Subscription(Base):
     )
     data_inicio_ciclo: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_expiracao: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    data_pausa: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    data_retorno_prevista: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     gateway_subscription_id: Mapped[str | None] = mapped_column(nullable=True)
+    notas: Mapped[str | None] = mapped_column(nullable=True)
+    aviso_7d_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    aviso_1d_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     player: Mapped["Player"] = relationship(back_populates="subscriptions")
     payments: Mapped[list["Payment"]] = relationship(back_populates="subscription")

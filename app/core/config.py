@@ -11,17 +11,30 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    DOMAIN: str = "https://romatenis.com.br"
+
     ASAAS_API_KEY: str = ""
     ASAAS_BASE_URL: str = "https://sandbox.asaas.com/api/v3"
-    ASAAS_WEBHOOK_TOKEN: str = ""  # token configurado no painel Asaas → Integrações → Webhooks
+    ASAAS_WEBHOOK_TOKEN: str = ""
+
+    # Preços padrão por plano (R$) — sobrescrevíveis pelo admin na criação
+    PRECO_MENSAL: float = 89.90
+    PRECO_TRIMESTRAL: float = 239.90
+    PRECO_SEMESTRAL: float = 449.90
+    PRECO_ANUAL: float = 839.90
+
+    # SMTP para notificações por e-mail
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
 
     WHATSAPP_TOKEN: str = ""
     WHATSAPP_PHONE_NUMBER_ID: str = ""
     WHATSAPP_VERIFY_TOKEN: str = ""
 
-    # N8N — orquestrador de mensagens WhatsApp
-    N8N_EVENTS_WEBHOOK_URL: str = ""   # URL do webhook N8N que recebe todos os eventos
-    N8N_SECRET: str = ""               # Segredo compartilhado para N8N → backend
+    N8N_EVENTS_WEBHOOK_URL: str = ""
+    N8N_SECRET: str = ""
 
 
 settings = Settings()

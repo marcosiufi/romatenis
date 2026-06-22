@@ -150,11 +150,12 @@ function switchTab(tab) {
   document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'))
   document.getElementById(`sec-${tab}`).classList.add('active')
   switch (tab) {
-    case 'dashboard':   loadDashboard(); break
-    case 'jogadores':   loadPlayers(); break
-    case 'partidas':    loadMatches(); break
-    case 'temporada':   loadSeasons(); break
-    case 'matchmaking': loadInvitations(); break
+    case 'dashboard':    loadDashboard(); break
+    case 'jogadores':    loadPlayers(); break
+    case 'partidas':     loadMatches(); break
+    case 'temporada':    loadSeasons(); break
+    case 'assinaturas':  loadAssinaturas(); break
+    case 'matchmaking':  loadInvitations(); break
   }
 }
 
@@ -619,6 +620,225 @@ function renderInvitations(lista) {
       </tr>
     `
   }).join('')
+}
+
+// ── Assinaturas ───────────────────────────────────────────────────────────────
+
+let _subs = []
+let _precos = { mensal: 89.90, trimestral: 239.90, semestral: 449.90, anual: 839.90 }
+
+const SUB_STATUS_MAP = {
+  ativa:        ['b-ativa',     'Ativa'],
+  pausada:      ['b-pendente',  'Pausada'],
+  expirada:     ['b-expirado',  'Expirada'],
+  inadimplente: ['b-falhou',    'Inadimplente'],
+  cancelada:    ['b-cancelado', 'Cancelada'],
+}
+const PLANO_LABEL = { mensal: 'Mensal', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' }
+
+function subBadge(status) {
+  const [cls, lbl] = SUB_STATUS_MAP[status] || ['bnc', status]
+  return `<span class="badge ${cls}">${lbl}</span>`
+}
+
+function diasRestantes(iso) {
+  const diff = Math.ceil((new Date(iso) - Date.now()) / 86400000)
+  if (diff < 0)  return `<span style="color:#e74c3c">${Math.abs(diff)}d atrás</span>`
+  if (diff <= 7) return `<span style="color:#e67e22">${diff}d</span>`
+  return `<span style="color:#27ae60">${diff}d</span>`
+}
+
+async function loadAssinaturas() {
+  try {
+    _precos = await api('/subscriptions/precos').catch(() => _precos)
+    _subs   = await api('/subscriptions')
+    renderAssinaturas(_subs)
+    atualizarStatsSubs(_subs)
+  } catch (err) {
+    toast('Erro ao carregar assinaturas: ' + err.message, true)
+  }
+}
+
+function atualizarStatsSubs(list) {
+  const hoje = Date.now()
+  const em7d = new Date(hoje + 7 * 86400000)
+  document.getElementById('sub-st-ativas').textContent    = list.filter(s => s.status === 'ativa').length
+  document.getElementById('sub-st-pausadas').textContent  = list.filter(s => s.status === 'pausada').length
+  document.getElementById('sub-st-expiradas').textContent = list.filter(s => s.status === 'expirada').length
+  document.getElementById('sub-st-7d').textContent        = list.filter(s =>
+    s.status === 'ativa' && new Date(s.data_expiracao) <= em7d && new Date(s.data_expiracao) > hoje
+  ).length
+}
+
+function filtrarAssinaturas() {
+  const statusFiltro = document.getElementById('filtro-sub-status').value
+  const nomeFiltro   = document.getElementById('filtro-sub-nome').value.toLowerCase()
+  const filtrados = _subs.filter(s =>
+    (!statusFiltro || s.status === statusFiltro) &&
+    (!nomeFiltro   || (s.player_nome || '').toLowerCase().includes(nomeFiltro))
+  )
+  renderAssinaturas(filtrados)
+}
+
+function renderAssinaturas(list) {
+  const tbody = document.getElementById('tbody-assinaturas')
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma assinatura encontrada</td></tr>'
+    return
+  }
+  tbody.innerHTML = list.map(s => `
+    <tr>
+      <td>
+        <strong>${escHtml(s.player_nome || '–')}</strong>
+        <div style="font-size:0.72rem;color:var(--clr-text-muted)">${escHtml(s.player_email || '')}</div>
+      </td>
+      <td>${PLANO_LABEL[s.plano] || s.plano}</td>
+      <td>${subBadge(s.status)}${s.status === 'pausada' && s.data_retorno_prevista
+        ? `<div style="font-size:0.68rem;color:var(--clr-text-muted);margin-top:2px">retorno: ${fmtD(s.data_retorno_prevista)}</div>` : ''}</td>
+      <td>${fmtD(s.data_inicio_ciclo)}</td>
+      <td>${fmtD(s.data_expiracao)}<br>${diasRestantes(s.data_expiracao)}</td>
+      <td>R$ ${Number(s.valor_total_ciclo).toFixed(2)}</td>
+      <td>
+        <button class="btn-xs sec" onclick="abrirModalSubStatus(${s.id}, '${s.status}')">Status</button>
+        ${s.gateway_subscription_id
+          ? `<button class="btn-xs primary" onclick="verPixSub(${s.id}, '${s.gateway_subscription_id}')">PIX</button>`
+          : ''}
+      </td>
+    </tr>`).join('')
+}
+
+// ── Modal Nova Assinatura ─────────────────────────────────────────────────────
+
+async function abrirModalNovaAssinatura() {
+  // popula select de jogadores
+  const sel = document.getElementById('sub-player-id')
+  if (!_players.length) await loadPlayers()
+  sel.innerHTML = _players.map(p =>
+    `<option value="${p.id}">${escHtml(p.nome)}</option>`).join('')
+
+  document.getElementById('sub-pix-result').style.display = 'none'
+  document.getElementById('sub-btn-salvar').style.display = ''
+  showErr('sub-err', '')
+  atualizarPrecoSub()
+  document.getElementById('modal-assinatura').classList.add('open')
+}
+
+function fecharModalAssinatura() {
+  document.getElementById('modal-assinatura').classList.remove('open')
+  document.getElementById('form-assinatura').reset()
+  document.getElementById('sub-pix-result').style.display = 'none'
+}
+
+function atualizarPrecoSub() {
+  const plano = document.getElementById('sub-plano').value
+  document.getElementById('sub-valor-mensal').value = _precos[plano] ?? ''
+}
+
+async function salvarAssinatura(e) {
+  e.preventDefault()
+  showErr('sub-err', '')
+  const btn = document.getElementById('sub-btn-salvar')
+  btn.disabled = true; btn.textContent = 'Gerando…'
+  try {
+    const body = {
+      player_id:     parseInt(document.getElementById('sub-player-id').value),
+      plano:         document.getElementById('sub-plano').value,
+      forma_pagamento: document.getElementById('sub-forma').value,
+      valor_mensal:  parseFloat(document.getElementById('sub-valor-mensal').value),
+      parcelas:      1,
+    }
+    const res = await api('/subscriptions', { method: 'POST', body: JSON.stringify(body) })
+    toast('✅ Assinatura criada!')
+    btn.style.display = 'none'
+    if (res.pix_copia_e_cola) {
+      document.getElementById('sub-pix-code').value = res.pix_copia_e_cola
+      document.getElementById('sub-pix-result').style.display = ''
+    } else if (res.payment_link) {
+      document.getElementById('sub-pix-code').value = res.payment_link
+      document.getElementById('sub-pix-result').style.display = ''
+    }
+    await loadAssinaturas()
+  } catch (err) {
+    showErr('sub-err', err.message)
+  } finally {
+    btn.disabled = false; btn.textContent = 'Criar e Gerar PIX'
+  }
+}
+
+// ── Modal Status ──────────────────────────────────────────────────────────────
+
+function abrirModalSubStatus(id, statusAtual) {
+  document.getElementById('sub-status-id').value = id
+  document.getElementById('sub-novo-status').value = statusAtual
+  document.getElementById('sub-notas').value = ''
+  showErr('sub-status-err', '')
+  togglePausaFields()
+  document.getElementById('modal-sub-status').classList.add('open')
+}
+
+function fecharModalSubStatus() {
+  document.getElementById('modal-sub-status').classList.remove('open')
+}
+
+function togglePausaFields() {
+  const isPausa = document.getElementById('sub-novo-status').value === 'pausada'
+  document.getElementById('pausa-fields').style.display = isPausa ? '' : 'none'
+}
+
+async function confirmarSubStatus() {
+  showErr('sub-status-err', '')
+  const id     = document.getElementById('sub-status-id').value
+  const status = document.getElementById('sub-novo-status').value
+  const pausa  = document.getElementById('sub-data-pausa').value
+  const retorno= document.getElementById('sub-data-retorno').value
+  const notas  = document.getElementById('sub-notas').value
+  try {
+    await api(`/subscriptions/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status,
+        data_pausa: pausa || null,
+        data_retorno_prevista: retorno || null,
+        notas: notas || null,
+      }),
+    })
+    toast('✅ Status atualizado')
+    fecharModalSubStatus()
+    await loadAssinaturas()
+  } catch (err) {
+    showErr('sub-status-err', err.message)
+  }
+}
+
+// ── Ver PIX ───────────────────────────────────────────────────────────────────
+
+async function verPixSub(subId, gatewayId) {
+  const body = document.getElementById('ver-pix-body')
+  body.innerHTML = '<p style="color:var(--clr-text-muted);font-size:0.85rem">Buscando…</p>'
+  document.getElementById('modal-ver-pix').classList.add('open')
+  try {
+    const res = await api('/subscriptions/pix-pendente')
+    if (res && res.pix_copia_e_cola) {
+      body.innerHTML = `
+        <p style="font-size:0.82rem;color:var(--clr-text-muted);margin-bottom:0.5rem">Copia-e-cola PIX:</p>
+        <div style="display:flex;gap:0.4rem;align-items:flex-start">
+          <textarea id="ver-pix-code" readonly style="flex:1;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:0.35rem;color:var(--clr-text);font-size:0.72rem;padding:0.4rem;resize:none;height:60px;font-family:monospace">${escHtml(res.pix_copia_e_cola)}</textarea>
+          <button class="btn-xs primary" onclick="copiarPix('ver-pix-code')">Copiar</button>
+        </div>
+        ${res.payment_link ? `<p style="margin-top:0.5rem;font-size:0.8rem"><a href="${escHtml(res.payment_link)}" target="_blank" style="color:var(--clr-accent)">Abrir link de cobrança ↗</a></p>` : ''}
+      `
+    } else {
+      body.innerHTML = '<p style="color:var(--clr-text-muted);font-size:0.85rem">Nenhum PIX pendente encontrado para este jogador.</p>'
+    }
+  } catch (err) {
+    body.innerHTML = `<p style="color:#e74c3c;font-size:0.85rem">${escHtml(err.message)}</p>`
+  }
+}
+
+function copiarPix(inputId) {
+  const el = document.getElementById(inputId)
+  if (!el) return
+  navigator.clipboard.writeText(el.value).then(() => toast('✅ PIX copiado!'))
 }
 
 // ── Security util ─────────────────────────────────────────────────────────────
