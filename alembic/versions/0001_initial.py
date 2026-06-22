@@ -38,7 +38,7 @@ _ENUMS = [
 
 
 def _e(name: str) -> sa.Enum:
-    return sa.Enum(name=name)
+    return sa.Enum(name=name, create_type=False)
 
 
 def upgrade() -> None:
