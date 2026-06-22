@@ -147,7 +147,7 @@ body {
 .nav-bottom a.ativo,
 .nav-bottom a:hover { opacity: 1; color: var(--cor-terracota); }
 
-.nav-bottom a span.icone { font-size: 1.3rem; }
+.nav-bottom a svg.nav-icon { width: 22px; height: 22px; flex-shrink: 0; }
 
 /* ── Conteúdo principal ── */
 main {

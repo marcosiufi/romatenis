@@ -294,7 +294,7 @@ class BookingService:
             )
 
         if not await self._tem_assinatura_ativa(player.id):
-            raise BookingError("Assinatura ativa necessária para reservar no ranking")
+            raise BookingError("Assinatura inativa")
 
         esperado = 1 if tipo == TipoPartida.SIMPLES else 2
         if len(lado_a) != esperado or len(lado_b) != esperado:
