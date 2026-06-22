@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class MetodoPagamento(str, enum.Enum):
@@ -32,9 +32,9 @@ class Payment(Base):
     )
 
     valor: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    metodo: Mapped[MetodoPagamento] = mapped_column(Enum(MetodoPagamento), nullable=False)
+    metodo: Mapped[MetodoPagamento] = mapped_column(pg_enum(MetodoPagamento), nullable=False)
     status: Mapped[StatusPagamento] = mapped_column(
-        Enum(StatusPagamento), nullable=False, default=StatusPagamento.PENDENTE
+        pg_enum(StatusPagamento), nullable=False, default=StatusPagamento.PENDENTE
     )
 
     gateway_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class NivelJogador(str, enum.Enum):
@@ -27,7 +27,7 @@ class Player(Base):
 
     rating_atual: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
     nivel: Mapped[NivelJogador] = mapped_column(
-        Enum(NivelJogador), nullable=False, default=NivelJogador.NAO_CLASSIFICADO
+        pg_enum(NivelJogador), nullable=False, default=NivelJogador.NAO_CLASSIFICADO
     )
     partidas_computadas_rating: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontos_ranking_temporada_atual: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

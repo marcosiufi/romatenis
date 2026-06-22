@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class PlanoAssinatura(str, enum.Enum):
@@ -33,16 +33,16 @@ class Subscription(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
 
-    plano: Mapped[PlanoAssinatura] = mapped_column(Enum(PlanoAssinatura), nullable=False)
+    plano: Mapped[PlanoAssinatura] = mapped_column(pg_enum(PlanoAssinatura), nullable=False)
     valor_mensal: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     valor_total_ciclo: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
 
-    forma_pagamento: Mapped[FormaPagamento] = mapped_column(Enum(FormaPagamento), nullable=False)
+    forma_pagamento: Mapped[FormaPagamento] = mapped_column(pg_enum(FormaPagamento), nullable=False)
     parcelas: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     antecipacao_solicitada: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     status: Mapped[StatusAssinatura] = mapped_column(
-        Enum(StatusAssinatura), nullable=False, default=StatusAssinatura.ATIVA
+        pg_enum(StatusAssinatura), nullable=False, default=StatusAssinatura.ATIVA
     )
     data_inicio_ciclo: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_expiracao: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

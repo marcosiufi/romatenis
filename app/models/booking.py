@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class TipoReserva(str, enum.Enum):
@@ -24,9 +24,9 @@ class Booking(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     data_hora_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_hora_fim: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    tipo: Mapped[TipoReserva] = mapped_column(Enum(TipoReserva), nullable=False)
+    tipo: Mapped[TipoReserva] = mapped_column(pg_enum(TipoReserva), nullable=False)
     status: Mapped[StatusReserva] = mapped_column(
-        Enum(StatusReserva), nullable=False, default=StatusReserva.CONFIRMADA
+        pg_enum(StatusReserva), nullable=False, default=StatusReserva.CONFIRMADA
     )
 
     # Player do ranking responsável pela reserva (nullable para locações avulsas externas)

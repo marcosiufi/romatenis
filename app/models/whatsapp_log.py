@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class TipoMensagem(str, enum.Enum):
@@ -28,9 +28,9 @@ class WhatsAppMessageLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
-    tipo: Mapped[TipoMensagem] = mapped_column(Enum(TipoMensagem), nullable=False)
+    tipo: Mapped[TipoMensagem] = mapped_column(pg_enum(TipoMensagem), nullable=False)
     status_envio: Mapped[StatusEnvio] = mapped_column(
-        Enum(StatusEnvio), nullable=False, default=StatusEnvio.PENDENTE
+        pg_enum(StatusEnvio), nullable=False, default=StatusEnvio.PENDENTE
     )
     # ID retornado pela Meta Cloud API
     wamid: Mapped[str | None] = mapped_column(String(255), nullable=True)

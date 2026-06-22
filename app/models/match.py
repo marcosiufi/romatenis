@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, JSON, String
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class TipoPartida(str, enum.Enum):
@@ -28,9 +28,9 @@ class Match(Base):
     __tablename__ = "matches"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tipo: Mapped[TipoPartida] = mapped_column(Enum(TipoPartida), nullable=False)
+    tipo: Mapped[TipoPartida] = mapped_column(pg_enum(TipoPartida), nullable=False)
     status: Mapped[StatusPartida] = mapped_column(
-        Enum(StatusPartida), nullable=False, default=StatusPartida.AGENDADO
+        pg_enum(StatusPartida), nullable=False, default=StatusPartida.AGENDADO
     )
     data_hora: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duracao_minutos: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -56,7 +56,7 @@ class MatchParticipant(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), nullable=False)
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
-    lado: Mapped[LadoPartida] = mapped_column(Enum(LadoPartida), nullable=False)
+    lado: Mapped[LadoPartida] = mapped_column(pg_enum(LadoPartida), nullable=False)
 
     rating_antes: Mapped[float | None] = mapped_column(Float, nullable=True)
     rating_depois: Mapped[float | None] = mapped_column(Float, nullable=True)

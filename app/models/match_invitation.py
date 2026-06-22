@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 from app.models.match import TipoPartida
 
 
@@ -30,11 +30,11 @@ class MatchInvitation(Base):
     __tablename__ = "match_invitations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tipo: Mapped[TipoPartida] = mapped_column(Enum(TipoPartida), nullable=False)
+    tipo: Mapped[TipoPartida] = mapped_column(pg_enum(TipoPartida), nullable=False)
     slot_data_hora: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     status: Mapped[StatusRodadaMatchmaking] = mapped_column(
-        Enum(StatusRodadaMatchmaking),
+        pg_enum(StatusRodadaMatchmaking),
         nullable=False,
         default=StatusRodadaMatchmaking.AGUARDANDO,
     )
@@ -70,7 +70,7 @@ class MatchInvitationPlayer(Base):
     lado_proposto: Mapped[str] = mapped_column(String(1), nullable=False)  # "A" ou "B"
 
     status: Mapped[StatusConvite] = mapped_column(
-        Enum(StatusConvite), nullable=False, default=StatusConvite.PENDENTE
+        pg_enum(StatusConvite), nullable=False, default=StatusConvite.PENDENTE
     )
     respondido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

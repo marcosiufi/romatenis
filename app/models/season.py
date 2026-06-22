@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Integer, JSON
+from sqlalchemy import DateTime, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base, pg_enum
 
 
 class StatusTemporada(str, enum.Enum):
@@ -19,7 +19,7 @@ class Season(Base):
     data_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_fim: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[StatusTemporada] = mapped_column(
-        Enum(StatusTemporada), nullable=False, default=StatusTemporada.ATIVA
+        pg_enum(StatusTemporada), nullable=False, default=StatusTemporada.ATIVA
     )
     # Snapshot do ranking no momento do encerramento: [{player_id, nome, pontos, posicao}]
     ranking_final: Mapped[dict | None] = mapped_column(JSON, nullable=True)
