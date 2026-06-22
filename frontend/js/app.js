@@ -43,7 +43,10 @@ async function apiFetch(path, options = {}) {
     }
   }
 
-  if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Erro ${res.status}`);
+  }
   return res.json();
 }
 
