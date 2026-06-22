@@ -8,6 +8,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 
 revision: str = "0001"
 down_revision: Union[str, None] = None
@@ -37,8 +38,8 @@ _ENUMS = [
 ]
 
 
-def _e(name: str) -> sa.Enum:
-    return sa.Enum(name=name, create_type=False)
+def _e(name: str) -> PgEnum:
+    return PgEnum(name=name, create_type=False)
 
 
 def upgrade() -> None:
