@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from app.core.config import settings
 from app.core.database import Base
 import app.models  # noqa: F401 — importa todos os modelos para o Alembic detectar as tabelas
 
@@ -11,6 +12,12 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+
+# Usa DATABASE_URL do .env (converte asyncpg → psycopg2 para migrações síncronas)
+_sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2").replace(
+    "asyncpg://", "psycopg2://"
+)
+config.set_main_option("sqlalchemy.url", _sync_url)
 
 
 def run_migrations_offline() -> None:
