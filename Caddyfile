@@ -1,0 +1,18 @@
+# Caddy gera certificados Let's Encrypt automaticamente.
+# Pré-requisito: {$DOMAIN} apontando para este servidor no DNS.
+
+{$DOMAIN} {
+    reverse_proxy api:8000
+    encode gzip zstd
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}
+
+n8n.{$DOMAIN} {
+    reverse_proxy n8n:5678
+    encode gzip zstd
+}

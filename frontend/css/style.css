@@ -1,0 +1,360 @@
+/* Garante que o atributo hidden sempre funcione, independente de regras de display */
+[hidden] { display: none !important; }
+
+/* Paleta: tons terracota, verde escuro, branco — inspirada em torneios de saibro */
+:root {
+  --cor-terracota: #c0622a;
+  --cor-terracota-escuro: #9b4d1e;
+  --cor-verde: #1a3320;
+  --cor-verde-claro: #2d5a3d;
+  --cor-branco: #f5f0ea;
+  --cor-texto: #1c1c1c;
+  --cor-texto-suave: #9ab;
+  --cor-borda: rgba(255,255,255,0.12);
+  --cor-erro: #e87;
+
+  --fonte-titulo: "Segoe UI", system-ui, sans-serif;
+  --fonte-corpo: "Segoe UI", system-ui, sans-serif;
+
+  --raio: 8px;
+  --sombra: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--fonte-corpo);
+  background-color: var(--cor-verde);
+  color: var(--cor-branco);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Login ── */
+.login-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+}
+
+.login-box {
+  background: var(--cor-verde-claro);
+  border-radius: 12px;
+  padding: 2rem 1.75rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--sombra);
+}
+
+.login-titulo {
+  font-family: var(--fonte-titulo);
+  font-size: 1.5rem;
+  color: var(--cor-terracota);
+  text-align: center;
+  margin-bottom: .25rem;
+}
+
+.login-sub {
+  text-align: center;
+  font-size: .85rem;
+  opacity: .65;
+  margin-bottom: 1.5rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  margin-bottom: 1rem;
+}
+
+.campo label {
+  font-size: .8rem;
+  font-weight: 600;
+  opacity: .8;
+}
+
+.campo input {
+  background: rgba(255,255,255,.08);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  padding: .6rem .8rem;
+  color: var(--cor-branco);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.campo input:focus {
+  border-color: var(--cor-terracota);
+}
+
+.campo input::placeholder { opacity: .35; }
+
+.erro {
+  color: var(--cor-erro);
+  font-size: .8rem;
+  margin-top: -.25rem;
+  margin-bottom: .5rem;
+}
+
+/* ── Header ── */
+.app-header {
+  background-color: var(--cor-verde-claro);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--sombra);
+}
+
+.app-header h1 {
+  font-family: var(--fonte-titulo);
+  font-size: 1.25rem;
+  color: var(--cor-terracota);
+  letter-spacing: 0.04em;
+}
+
+/* ── Nav bottom ── */
+.nav-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--cor-verde-claro);
+  display: flex;
+  border-top: 1px solid var(--cor-borda);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-bottom a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: .65rem .25rem;
+  text-decoration: none;
+  color: var(--cor-branco);
+  font-size: .7rem;
+  gap: .2rem;
+  opacity: .6;
+  transition: opacity .15s;
+}
+
+.nav-bottom a.ativo,
+.nav-bottom a:hover { opacity: 1; color: var(--cor-terracota); }
+
+.nav-bottom a span.icone { font-size: 1.3rem; }
+
+/* ── Conteúdo principal ── */
+main {
+  flex: 1;
+  padding: 1rem 1.25rem 5rem;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── Cards ── */
+.card {
+  background-color: var(--cor-verde-claro);
+  border-radius: var(--raio);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--sombra);
+}
+
+.card-titulo {
+  font-family: var(--fonte-titulo);
+  font-size: 1rem;
+  color: var(--cor-terracota);
+  margin-bottom: .75rem;
+}
+
+/* ── Botões ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .6rem 1.25rem;
+  border: none;
+  border-radius: var(--raio);
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter .15s;
+}
+
+.btn:hover { filter: brightness(1.1); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primario { background-color: var(--cor-terracota); color: #fff; }
+.btn-secundario { background: transparent; color: var(--cor-branco); border: 1px solid var(--cor-borda); }
+
+/* ── Ranking list ── */
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+.ranking-item:last-child { border-bottom: none; }
+
+.ranking-pos {
+  font-family: var(--fonte-titulo);
+  font-size: 1.1rem;
+  width: 2rem;
+  text-align: center;
+  color: var(--cor-terracota);
+}
+
+.nivel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  font-size: .75rem;
+  font-weight: 700;
+  background-color: var(--cor-terracota);
+  color: #fff;
+}
+
+.ranking-pts {
+  font-size: .8rem;
+  opacity: .65;
+  white-space: nowrap;
+}
+
+/* ── Telas (SPA) ── */
+.tela { display: none; }
+.tela.ativa { display: block; }
+
+/* ── Perfil ── */
+.perfil-linha {
+  display: flex;
+  justify-content: space-between;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--cor-borda);
+  font-size: .9rem;
+}
+.perfil-linha:last-child { border-bottom: none; }
+.perfil-label { opacity: .65; }
+
+/* ── Agendamento ── */
+.radio-group { display: flex; gap: 1.25rem; }
+.radio-opt {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .9rem; cursor: pointer;
+}
+.radio-opt input { accent-color: var(--cor-terracota); width: 1rem; height: 1rem; }
+
+select {
+  background: rgba(255,255,255,.08);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  padding: .6rem .8rem;
+  color: var(--cor-branco);
+  font-size: .9rem;
+  width: 100%;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+select:focus { border-color: var(--cor-terracota); }
+select option { background: #1a3320; }
+
+/* ── Slots ── */
+.slot-item {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--cor-borda);
+  font-size: .85rem;
+}
+.slot-item:last-child { border-bottom: none; }
+.slot-livre { cursor: pointer; border-radius: 6px; padding-left: .3rem; padding-right: .3rem; }
+.slot-livre:hover { background: rgba(255,255,255,.06); }
+.slot-hora { font-weight: 700; font-variant-numeric: tabular-nums; }
+.slot-label { font-size: .75rem; padding: .15rem .5rem; border-radius: 20px; white-space: nowrap; }
+.label-ranking         { background: rgba(192,98,42,.25); color: #e8905a; }
+.label-ultima-hora     { background: rgba(220,160,30,.2);  color: #e0b040; }
+.label-ocupado         { background: rgba(255,255,255,.06); color: #666; }
+.label-indisponivel    { background: rgba(255,255,255,.04); color: #555; }
+.slot-motivo { font-size: .72rem; opacity: .5; grid-column: 2 / -1; margin-top: -.3rem; }
+.slot-indisponivel { opacity: .45; cursor: default; }
+
+/* ── Partidas ── */
+.partida-card {
+  border-radius: 6px;
+  padding: .7rem .75rem;
+  margin-bottom: .5rem;
+  border-left: 3px solid transparent;
+  background: rgba(255,255,255,.04);
+}
+.partida-card:last-child { margin-bottom: 0; }
+.partida-card.agendada          { border-left-color: var(--cor-terracota); }
+.partida-card.aguardando-placar { border-left-color: #e0b040; }
+.partida-card.realizado         { border-left-color: #4ab870; opacity: .85; }
+.partida-card.cancelado         { opacity: .45; }
+
+.partida-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .35rem;
+}
+.partida-data { font-size: .75rem; opacity: .6; }
+
+.partida-status {
+  font-size: .68rem;
+  padding: .12rem .45rem;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.status-agendado   { background: rgba(192,98,42,.2);  color: #e8905a; }
+.status-aguardando { background: rgba(220,160,30,.2); color: #e0b040; }
+.status-realizado  { background: rgba(60,160,100,.2); color: #4ab870; }
+.status-wo         { background: rgba(200,80,80,.2);  color: #e08080; }
+.status-cancelado  { background: rgba(255,255,255,.05); color: #666; }
+
+.partida-jogadores {
+  font-size: .85rem;
+  text-align: center;
+  margin: .2rem 0;
+}
+.partida-placar {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  margin: .2rem 0;
+}
+.partida-tipo {
+  font-size: .7rem;
+  opacity: .45;
+  text-align: center;
+  margin-top: .15rem;
+}
+
+/* ── Form placar ── */
+.placar-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.placar-sep {
+  font-size: 1.4rem;
+  padding-bottom: .5rem;
+  opacity: .5;
+  text-align: center;
+}

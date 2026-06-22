@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#c0622a" />
+  <title>Ranking de Tênis</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ── Tela de Login (exibida antes de autenticar) ── -->
+  <div id="tela-login" class="login-wrapper">
+    <div class="login-box">
+      <h1 class="login-titulo">Ranking de Tênis</h1>
+      <p class="login-sub">Entre para ver seu ranking e agendar partidas.</p>
+
+      <form id="form-login" autocomplete="on">
+        <div class="campo">
+          <label for="inp-email">E-mail</label>
+          <input id="inp-email" type="email" name="email" autocomplete="email"
+                 placeholder="seu@email.com" required />
+        </div>
+        <div class="campo">
+          <label for="inp-senha">Senha</label>
+          <input id="inp-senha" type="password" name="password" autocomplete="current-password"
+                 placeholder="••••••••" required />
+        </div>
+        <p id="login-erro" class="erro" hidden></p>
+        <button type="submit" class="btn btn-primario" style="width:100%; margin-top:.5rem">
+          Entrar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── App (exibido após autenticar) ── -->
+  <div id="app" hidden>
+    <header class="app-header">
+      <h1>Ranking de Tênis</h1>
+      <button id="btn-logout" class="btn btn-secundario" style="font-size:.75rem;padding:.3rem .7rem">
+        Sair
+      </button>
+    </header>
+
+    <main>
+      <!-- Tela: Ranking -->
+      <section id="tela-ranking" class="tela ativa">
+        <div class="card">
+          <p class="card-titulo">Classificação da temporada</p>
+          <div id="lista-ranking"></div>
+        </div>
+      </section>
+
+      <!-- Tela: Agendar -->
+      <section id="tela-agendar" class="tela">
+        <div class="card">
+          <p class="card-titulo">Buscar horários</p>
+
+          <div class="campo">
+            <label for="inp-data-jogo">Data</label>
+            <input id="inp-data-jogo" type="date" />
+          </div>
+
+          <div class="campo">
+            <label>Modalidade</label>
+            <div class="radio-group">
+              <label class="radio-opt">
+                <input type="radio" name="tipo-jogo" value="simples" checked /> Simples
+              </label>
+              <label class="radio-opt">
+                <input type="radio" name="tipo-jogo" value="duplas" /> Duplas
+              </label>
+            </div>
+          </div>
+
+          <button id="btn-buscar-slots" class="btn btn-primario" style="width:100%">
+            Ver horários disponíveis
+          </button>
+        </div>
+
+        <!-- Lista de slots -->
+        <div id="slots-container" hidden>
+          <div class="card">
+            <p class="card-titulo">Horários disponíveis</p>
+            <div id="lista-slots"></div>
+          </div>
+        </div>
+
+        <!-- Formulário de confirmação (aparece ao clicar num slot) -->
+        <div id="form-reserva" hidden>
+          <div class="card">
+            <p class="card-titulo">Confirmar reserva</p>
+            <p id="reserva-slot-info" style="font-size:.9rem;margin-bottom:.75rem;opacity:.8"></p>
+
+            <div class="campo">
+              <label>Adversário</label>
+              <select id="sel-adversario"></select>
+            </div>
+            <div id="campo-parceiro" hidden class="campo">
+              <label>Seu parceiro (duplas)</label>
+              <select id="sel-parceiro"></select>
+            </div>
+            <div id="campo-adversario2" hidden class="campo">
+              <label>2º adversário (duplas)</label>
+              <select id="sel-adversario2"></select>
+            </div>
+
+            <p id="reserva-erro" class="erro" hidden></p>
+
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+              <button id="btn-cancelar-reserva" class="btn btn-secundario" style="flex:1">Voltar</button>
+              <button id="btn-confirmar-reserva" class="btn btn-primario" style="flex:1">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tela: Minhas partidas -->
+      <section id="tela-partidas" class="tela">
+        <div id="partidas-lista"></div>
+
+        <!-- Formulário de placar (aparece ao clicar em "Lançar placar") -->
+        <div id="form-placar" hidden>
+          <div class="card">
+            <p class="card-titulo">Lançar placar</p>
+            <p id="placar-match-info" style="font-size:.85rem;margin-bottom:.75rem;opacity:.75"></p>
+
+            <div class="placar-grid">
+              <div class="campo">
+                <label id="label-games-a">Lado A</label>
+                <input id="inp-games-a" type="number" min="0" max="9" value="0" />
+              </div>
+              <span class="placar-sep">×</span>
+              <div class="campo">
+                <label id="label-games-b">Lado B</label>
+                <input id="inp-games-b" type="number" min="0" max="9" value="0" />
+              </div>
+            </div>
+
+            <div id="campo-tiebreak" hidden>
+              <p style="font-size:.78rem;opacity:.6;margin-bottom:.4rem;text-align:center">
+                Tiebreak (pontos)
+              </p>
+              <div class="placar-grid">
+                <div class="campo">
+                  <label>Lado A</label>
+                  <input id="inp-tb-a" type="number" min="0" value="0" />
+                </div>
+                <span class="placar-sep">×</span>
+                <div class="campo">
+                  <label>Lado B</label>
+                  <input id="inp-tb-b" type="number" min="0" value="0" />
+                </div>
+              </div>
+            </div>
+
+            <p id="placar-erro" class="erro" hidden></p>
+
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+              <button id="btn-cancelar-placar" class="btn btn-secundario" style="flex:1">Cancelar</button>
+              <button id="btn-submeter-placar" class="btn btn-primario" style="flex:1">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tela: Meu perfil -->
+      <section id="tela-perfil" class="tela">
+        <div class="card">
+          <p class="card-titulo">Meu perfil</p>
+          <div id="perfil-info"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="nav-bottom">
+      <a href="#" data-tela="tela-ranking">
+        <span class="icone">🏆</span>
+        Ranking
+      </a>
+      <a href="#" data-tela="tela-agendar">
+        <span class="icone">📅</span>
+        Agendar
+      </a>
+      <a href="#" data-tela="tela-partidas">
+        <span class="icone">🎾</span>
+        Partidas
+      </a>
+      <a href="#" data-tela="tela-perfil">
+        <span class="icone">👤</span>
+        Perfil
+      </a>
+    </nav>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

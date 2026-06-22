@@ -1,0 +1,25 @@
+# Nunca incluir no build Docker:
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+*.egg-info
+.venv
+venv
+
+# Volumes locais
+pg_data
+n8n_data
+caddy_data
+caddy_config
+
+# Docs e scripts que não fazem parte do runtime
+*.md

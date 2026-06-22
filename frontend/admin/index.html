@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Quadra de Tênis</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-header {
+      background: var(--clr-surface);
+      border-bottom: 1px solid var(--clr-border);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .admin-header h1 { font-size: 1rem; font-weight: 700; color: var(--clr-accent); }
+
+    .admin-nav {
+      background: var(--clr-surface);
+      border-bottom: 1px solid var(--clr-border);
+      display: flex;
+      overflow-x: auto;
+      padding: 0 0.25rem;
+      scrollbar-width: none;
+    }
+    .admin-nav::-webkit-scrollbar { display: none; }
+    .admin-nav button {
+      padding: 0.7rem 0.9rem;
+      border: none;
+      background: transparent;
+      color: var(--clr-text-muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .admin-nav button.active { color: var(--clr-accent); border-bottom-color: var(--clr-accent); }
+
+    .admin-section { display: none; padding: 1rem; max-width: 960px; margin: 0 auto; }
+    .admin-section.active { display: block; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    @media (min-width: 600px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .stat-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 0.5rem;
+      padding: 1rem 0.75rem;
+      text-align: center;
+    }
+    .stat-card .valor { font-size: 1.9rem; font-weight: 700; color: var(--clr-accent); }
+    .stat-card .lbl { font-size: 0.72rem; color: var(--clr-text-muted); margin-top: 0.2rem; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .section-header h2 { font-size: 1rem; font-weight: 700; }
+
+    .admin-table-wrap { overflow-x: auto; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    .admin-table th {
+      text-align: left;
+      padding: 0.45rem 0.6rem;
+      background: var(--clr-surface);
+      border-bottom: 2px solid var(--clr-border);
+      color: var(--clr-text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .admin-table td {
+      padding: 0.45rem 0.6rem;
+      border-bottom: 1px solid var(--clr-border);
+      vertical-align: middle;
+    }
+    .admin-table tr:hover td { background: rgba(127,127,127,0.04); }
+
+    .btn-xs {
+      font-size: 0.72rem;
+      padding: 0.22rem 0.55rem;
+      border-radius: 0.25rem;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .btn-xs + .btn-xs { margin-left: 0.25rem; }
+    .btn-xs.primary { background: var(--clr-accent); color: white; }
+    .btn-xs.danger  { background: #e74c3c; color: white; }
+    .btn-xs.warn    { background: #e67e22; color: white; }
+    .btn-xs.sec     { background: var(--clr-border); color: var(--clr-text); }
+
+    .badge { font-size: 0.66rem; padding: 0.12rem 0.35rem; border-radius: 0.2rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+    .ba { background: #27ae60; color: #fff; }
+    .bb { background: #2980b9; color: #fff; }
+    .bc { background: #e67e22; color: #fff; }
+    .bd { background: #7f8c8d; color: #fff; }
+    .bnc { background: var(--clr-border); color: var(--clr-text-muted); }
+    .b-agendado { background: #3498db; color: #fff; }
+    .b-realizado { background: #27ae60; color: #fff; }
+    .b-wo { background: #e74c3c; color: #fff; }
+    .b-cancelado { background: #95a5a6; color: #fff; }
+    .b-ativa { background: #27ae60; color: #fff; }
+    .b-encerrada { background: #95a5a6; color: #fff; }
+    .b-pendente { background: #f39c12; color: #fff; }
+    .b-confirmado { background: #27ae60; color: #fff; }
+    .b-recusado { background: #e74c3c; color: #fff; }
+    .b-expirado { background: #95a5a6; color: #fff; }
+    .b-falhou { background: #e74c3c; color: #fff; }
+
+    .filtro-bar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .filtro-bar select, .filtro-bar input[type=text] {
+      padding: 0.35rem 0.5rem;
+      border: 1px solid var(--clr-border);
+      border-radius: 0.35rem;
+      font-size: 0.82rem;
+      background: var(--clr-surface);
+      color: var(--clr-text);
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--clr-bg);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 440px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .modal h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+
+    .form-row { margin-bottom: 0.7rem; }
+    .form-row label { display: block; font-size: 0.78rem; color: var(--clr-text-muted); margin-bottom: 0.25rem; }
+    .form-row input, .form-row select {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border: 1px solid var(--clr-border);
+      border-radius: 0.375rem;
+      font-size: 0.88rem;
+      background: var(--clr-surface);
+      color: var(--clr-text);
+      box-sizing: border-box;
+    }
+    .form-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; cursor: pointer; }
+    .form-check input[type=checkbox] { width: auto; cursor: pointer; }
+
+    .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--clr-border); }
+
+    .season-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .season-card.ativa { border-left: 4px solid #27ae60; }
+    .season-card.encerrada { border-left: 4px solid #95a5a6; }
+    .season-card .s-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .season-card .s-title { font-weight: 700; font-size: 0.9rem; }
+    .season-card .s-dates { font-size: 0.78rem; color: var(--clr-text-muted); }
+    .ranking-top { font-size: 0.8rem; color: var(--clr-text-muted); margin-top: 0.5rem; }
+    .ranking-top ol { margin: 0.3rem 0 0; padding-left: 1.25rem; }
+    .ranking-top li { padding: 0.1rem 0; }
+
+    .mm-result {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .mm-result.show { display: block; }
+    .mm-result .mm-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.15rem 0; }
+    .mm-result .mm-val { font-weight: 700; color: var(--clr-accent); }
+
+    .empty { text-align: center; color: var(--clr-text-muted); padding: 2rem 1rem; font-size: 0.85rem; }
+
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: #1a1a1a;
+      color: white;
+      padding: 0.55rem 1.1rem;
+      border-radius: 2rem;
+      font-size: 0.83rem;
+      z-index: 300;
+      opacity: 0;
+      transition: opacity 0.25s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+    #toast.err { background: #c0392b; }
+
+    .dash-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 500px) { .dash-extra { grid-template-columns: 1fr; } }
+    .dash-card { background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: 0.5rem; padding: 1rem; }
+    .dash-card .dc-label { font-size: 0.75rem; color: var(--clr-text-muted); margin-bottom: 0.25rem; }
+    .dash-card .dc-val { font-size: 1rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="tela-login" class="login-tela">
+  <div class="login-card">
+    <div class="logo">🎾</div>
+    <h1>Painel Administrativo</h1>
+    <div id="login-erro" class="erro-msg" style="display:none"></div>
+    <form id="form-login">
+      <div class="campo">
+        <label>E-mail</label>
+        <input id="inp-email" type="email" autocomplete="email" placeholder="admin@exemplo.com" required>
+      </div>
+      <div class="campo">
+        <label>Senha</label>
+        <input id="inp-senha" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-primary">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="admin-app" style="display:none">
+  <header class="admin-header">
+    <h1>🎾 Admin</h1>
+    <div style="display:flex;align-items:center;gap:0.75rem">
+      <span id="admin-nome" style="font-size:0.82rem;color:var(--clr-text-muted)"></span>
+      <button class="btn-xs sec" onclick="logout()">Sair</button>
+    </div>
+  </header>
+
+  <nav class="admin-nav" id="admin-nav">
+    <button class="active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+    <button data-tab="jogadores" onclick="switchTab('jogadores')">Jogadores</button>
+    <button data-tab="partidas" onclick="switchTab('partidas')">Partidas</button>
+    <button data-tab="temporada" onclick="switchTab('temporada')">Temporada</button>
+    <button data-tab="matchmaking" onclick="switchTab('matchmaking')">Matchmaking</button>
+  </nav>
+
+  <main>
+    <!-- Dashboard -->
+    <section id="sec-dashboard" class="admin-section active">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="valor" id="st-jogadores">–</div><div class="lbl">Jogadores</div></div>
+        <div class="stat-card"><div class="valor" id="st-subs">–</div><div class="lbl">Assinaturas Ativas</div></div>
+        <div class="stat-card"><div class="valor" id="st-sem-placar">–</div><div class="lbl">Sem Placar</div></div>
+        <div class="stat-card"><div class="valor" id="st-hoje">–</div><div class="lbl">Reservas Hoje</div></div>
+      </div>
+      <div class="dash-extra" id="dash-extra"></div>
+    </section>
+
+    <!-- Jogadores -->
+    <section id="sec-jogadores" class="admin-section">
+      <div class="section-header">
+        <h2>Jogadores</h2>
+        <button class="btn-xs primary" onclick="abrirModalJogador()">+ Criar</button>
+      </div>
+      <div class="filtro-bar">
+        <input type="text" id="busca-jogador" placeholder="Buscar por nome..." oninput="filtrarJogadores()">
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>Nome</th><th>E-mail</th><th>Nível</th>
+            <th>Rating</th><th>Pontos</th><th>Convites</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tbody-jogadores"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Partidas -->
+    <section id="sec-partidas" class="admin-section">
+      <div class="section-header">
+        <h2>Partidas</h2>
+        <button class="btn-xs sec" onclick="loadMatches()">↺</button>
+      </div>
+      <div class="filtro-bar">
+        <select id="filtro-status" onchange="filtrarPartidas()">
+          <option value="">Todos</option>
+          <option value="agendado">Agendado</option>
+          <option value="realizado">Realizado</option>
+          <option value="wo">W.O.</option>
+          <option value="cancelado_sem_placar">Cancelado</option>
+        </select>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>ID</th><th>Data/Hora</th><th>Tipo</th>
+            <th>Lado A</th><th>Lado B</th><th>Status</th><th>Placar</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tbody-partidas"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Temporada -->
+    <section id="sec-temporada" class="admin-section">
+      <div class="section-header">
+        <h2>Temporadas</h2>
+        <button class="btn-xs primary" onclick="abrirModalTemporada()">+ Nova</button>
+      </div>
+      <div id="seasons-lista"></div>
+      <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+        <button class="btn-xs sec" onclick="recalcularClassificacao()">↺ Recalcular Classificação</button>
+      </div>
+    </section>
+
+    <!-- Matchmaking -->
+    <section id="sec-matchmaking" class="admin-section">
+      <div class="section-header"><h2>Matchmaking</h2></div>
+      <div class="card" style="margin-bottom:1rem">
+        <h3 style="font-size:0.88rem;font-weight:700;margin-bottom:0.75rem">Executar</h3>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-row" style="margin:0">
+            <label style="font-size:0.78rem;color:var(--clr-text-muted);display:block;margin-bottom:0.25rem">Data</label>
+            <input type="date" id="mm-data" style="padding:0.4rem 0.5rem;border:1px solid var(--clr-border);border-radius:0.35rem;background:var(--clr-surface);color:var(--clr-text);font-size:0.85rem">
+          </div>
+          <div class="form-row" style="margin:0">
+            <label style="font-size:0.78rem;color:var(--clr-text-muted);display:block;margin-bottom:0.25rem">Tipo</label>
+            <select id="mm-tipo" style="padding:0.4rem 0.5rem;border:1px solid var(--clr-border);border-radius:0.35rem;background:var(--clr-surface);color:var(--clr-text);font-size:0.85rem">
+              <option value="simples">Simples</option>
+              <option value="duplas">Duplas</option>
+            </select>
+          </div>
+          <button class="btn-xs primary" style="margin-bottom:0.1rem" onclick="executarMatchmaking()">Executar</button>
+        </div>
+      </div>
+      <div id="mm-resultado" class="mm-result"></div>
+      <div class="section-header" style="margin-top:0.5rem">
+        <h3 style="font-size:0.88rem;font-weight:700">Convites Recentes</h3>
+        <button class="btn-xs sec" onclick="loadInvitations()">↺</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>Slot</th><th>Tipo</th><th>Status</th><th>Jogadores</th><th>Expira</th>
+          </tr></thead>
+          <tbody id="tbody-convites"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ── Modal Jogador ── -->
+<div id="modal-jogador" class="modal-overlay">
+  <div class="modal">
+    <h2 id="modal-jogador-titulo">Criar Jogador</h2>
+    <form id="form-jogador" onsubmit="salvarJogador(event)">
+      <input type="hidden" id="jog-id">
+      <div class="form-row">
+        <label>Nome</label>
+        <input type="text" id="jog-nome" required>
+      </div>
+      <div class="form-row">
+        <label>E-mail</label>
+        <input type="email" id="jog-email" required>
+      </div>
+      <div class="form-row">
+        <label>Telefone</label>
+        <input type="tel" id="jog-telefone" placeholder="(11) 99999-9999" required>
+      </div>
+      <div class="form-row" id="row-senha">
+        <label>Senha <span style="color:var(--clr-text-muted)">(obrigatória ao criar)</span></label>
+        <input type="password" id="jog-senha" autocomplete="new-password">
+      </div>
+      <div class="form-row" id="row-nivel" style="display:none">
+        <label>Nível</label>
+        <select id="jog-nivel">
+          <option value="nao_classificado">Não Classificado</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-check">
+          <input type="checkbox" id="jog-convites">
+          Aceita convites do sistema
+        </label>
+      </div>
+      <div class="form-row" id="row-is-admin" style="display:none">
+        <label class="form-check">
+          <input type="checkbox" id="jog-is-admin">
+          Administrador
+        </label>
+      </div>
+      <div id="jog-erro" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-xs sec" onclick="fecharModalJogador()">Cancelar</button>
+        <button type="submit" class="btn-xs primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal Placar ── -->
+<div id="modal-placar" class="modal-overlay">
+  <div class="modal">
+    <h2>Lançar Placar</h2>
+    <p id="placar-info" style="font-size:0.82rem;color:var(--clr-text-muted);margin-bottom:1rem"></p>
+    <form id="form-placar-admin" onsubmit="submitPlacar(event)">
+      <input type="hidden" id="placar-match-id">
+      <div style="display:grid;grid-template-columns:1fr 1.5rem 1fr;gap:0.5rem;align-items:end;margin-bottom:0.75rem">
+        <div class="form-row" style="margin:0">
+          <label id="lbl-a">Games Lado A</label>
+          <input type="number" id="adm-ga" min="0" max="9" required>
+        </div>
+        <div style="text-align:center;padding-bottom:0.5rem;font-weight:700;color:var(--clr-text-muted)">×</div>
+        <div class="form-row" style="margin:0">
+          <label id="lbl-b">Games Lado B</label>
+          <input type="number" id="adm-gb" min="0" max="9" required>
+        </div>
+      </div>
+      <div id="row-tb" style="display:none;margin-bottom:0.75rem">
+        <p style="font-size:0.78rem;color:var(--clr-text-muted);margin-bottom:0.5rem">Tiebreak (8-8):</p>
+        <div style="display:grid;grid-template-columns:1fr 1.5rem 1fr;gap:0.5rem;align-items:end">
+          <div class="form-row" style="margin:0">
+            <label>TB Lado A</label>
+            <input type="number" id="adm-ta" min="0">
+          </div>
+          <div style="text-align:center;padding-bottom:0.5rem;font-weight:700;color:var(--clr-text-muted)">×</div>
+          <div class="form-row" style="margin:0">
+            <label>TB Lado B</label>
+            <input type="number" id="adm-tb" min="0">
+          </div>
+        </div>
+      </div>
+      <div id="placar-erro" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-xs sec" onclick="fecharModalPlacar()">Cancelar</button>
+        <button type="submit" class="btn-xs primary">Confirmar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Modal W.O. ── -->
+<div id="modal-wo" class="modal-overlay">
+  <div class="modal">
+    <h2>Registrar W.O.</h2>
+    <p id="wo-info" style="font-size:0.82rem;color:var(--clr-text-muted);margin-bottom:1rem"></p>
+    <input type="hidden" id="wo-match-id">
+    <p style="font-size:0.88rem;margin-bottom:1rem">Qual lado deu W.O. (perdeu por abandono)?</p>
+    <div style="display:flex;gap:0.75rem">
+      <button class="btn-xs danger" style="flex:1;padding:0.6rem" onclick="confirmarWO('A')">Lado A perdeu</button>
+      <button class="btn-xs danger" style="flex:1;padding:0.6rem" onclick="confirmarWO('B')">Lado B perdeu</button>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-xs sec" onclick="fecharModalWO()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Nova Temporada ── -->
+<div id="modal-temporada" class="modal-overlay">
+  <div class="modal">
+    <h2>Nova Temporada</h2>
+    <form id="form-temporada" onsubmit="criarTemporada(event)">
+      <div class="form-row">
+        <label>Data de Início</label>
+        <input type="date" id="temp-inicio" required>
+      </div>
+      <div class="form-row">
+        <label>Data de Fim</label>
+        <input type="date" id="temp-fim" required>
+      </div>
+      <div id="temp-erro" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-xs sec" onclick="fecharModalTemporada()">Cancelar</button>
+        <button type="submit" class="btn-xs primary">Criar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/admin/js/admin.js"></script>
+</body>
+</html>

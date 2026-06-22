@@ -1,0 +1,27 @@
+# Ambiente Python
+__pycache__/
+*.py[cod]
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Variáveis de ambiente — NUNCA commitar o .env real
+.env
+
+# Alembic (gerados automaticamente)
+alembic/versions/__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (caso mapeados localmente)
+pg_data/
+n8n_data/
