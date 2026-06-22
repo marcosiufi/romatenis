@@ -226,6 +226,39 @@ main {
   color: #fff;
 }
 
+/* ── Avatar ── */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--cor-terracota);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .7rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-lg { width: 80px; height: 80px; font-size: 1.4rem; }
+
+.perfil-avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 0 1.25rem;
+}
+.btn-foto {
+  font-size: .78rem;
+  color: var(--cor-terracota);
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .ranking-pts {
   font-size: .8rem;
   opacity: .65;

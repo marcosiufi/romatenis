@@ -34,6 +34,8 @@ class Player(Base):
 
     aceita_convites_sistema: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # ID do cliente no Asaas (preenchido na primeira cobrança)
     asaas_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

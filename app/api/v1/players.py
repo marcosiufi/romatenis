@@ -1,6 +1,7 @@
+import os
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +9,10 @@ from app.core.auth import get_current_admin, get_current_player, hash_password
 from app.core.database import get_db
 from app.models.player import Player
 from app.schemas.player import PlayerCreate, PlayerOut, PlayerUpdate
+
+_UPLOAD_DIR = "/app/uploads/avatars"
+_ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 
 router = APIRouter(prefix="/players", tags=["players"])
 
@@ -46,6 +51,34 @@ async def create_player(
 
 @router.get("/me", response_model=PlayerOut)
 async def get_me(player: Annotated[Player, Depends(get_current_player)]):
+    return player
+
+
+@router.put("/me/foto", response_model=PlayerOut)
+async def upload_foto(
+    foto: Annotated[UploadFile, File(...)],
+    player: Annotated[Player, Depends(get_current_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    ext = os.path.splitext(foto.filename or "")[1].lower()
+    if ext not in _ALLOWED_EXTS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Formato inválido. Use JPG, PNG ou WebP.",
+        )
+    content = await foto.read()
+    if len(content) > _MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Arquivo muito grande. Máximo 5 MB.",
+        )
+    os.makedirs(_UPLOAD_DIR, exist_ok=True)
+    filename = f"{player.id}{ext}"
+    with open(os.path.join(_UPLOAD_DIR, filename), "wb") as f:
+        f.write(content)
+    player.foto_url = f"/uploads/avatars/{filename}"
+    await db.commit()
+    await db.refresh(player)
     return player
 
 

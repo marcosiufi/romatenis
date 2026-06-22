@@ -26,6 +26,7 @@ class PlayerOut(PlayerBase):
     model_config = {"from_attributes": True}
 
     id: int
+    foto_url: str | None = None
     rating_atual: float
     nivel: NivelJogador
     partidas_computadas_rating: int

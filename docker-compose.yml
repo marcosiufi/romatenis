@@ -25,6 +25,8 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+    volumes:
+      - ./uploads:/app/uploads
     restart: unless-stopped
 
   # ── Caddy (HTTPS automático via Let's Encrypt) ───────────────────────────────

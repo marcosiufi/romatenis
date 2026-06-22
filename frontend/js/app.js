@@ -122,6 +122,32 @@ document.getElementById("btn-logout").addEventListener("click", () => {
   showLogin();
 });
 
+// ── Avatar helper ─────────────────────────────────────────────────────────────
+function avatarHtml(jogador, extraClass = "") {
+  const iniciais = jogador.nome.trim().split(/\s+/).filter(Boolean)
+    .slice(0, 2).map(n => n[0].toUpperCase()).join("");
+  if (jogador.foto_url) {
+    return `<div class="avatar${extraClass}"><img src="${jogador.foto_url}" alt="${jogador.nome}" loading="lazy" /></div>`;
+  }
+  return `<div class="avatar${extraClass}">${iniciais}</div>`;
+}
+
+// ── Upload de foto ────────────────────────────────────────────────────────────
+async function uploadFoto(file) {
+  const fd = new FormData();
+  fd.append("foto", file);
+  const res = await fetch(`${API}/players/me/foto`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${Auth.getAccess()}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Erro ao enviar foto");
+  }
+  return res.json();
+}
+
 // ── Ranking ──────────────────────────────────────────────────────────────────
 async function carregarRanking() {
   const lista = document.getElementById("lista-ranking");
@@ -137,7 +163,7 @@ async function carregarRanking() {
       .map((j, i) => `
         <div class="ranking-item">
           <span class="ranking-pos">${i + 1}</span>
-          <span class="nivel-badge">${j.nivel === "nao_classificado" ? "?" : j.nivel}</span>
+          ${avatarHtml(j)}
           <span style="flex:1">${j.nome}</span>
           <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
         </div>`)
@@ -194,6 +220,11 @@ async function carregarPerfil() {
     }
 
     el.innerHTML = `
+      <div class="perfil-avatar-wrap">
+        ${avatarHtml(p, " avatar-lg")}
+        <label class="btn-foto" for="inp-foto-upload">Alterar foto</label>
+        <input id="inp-foto-upload" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
+      </div>
       <div class="perfil-linha"><span class="perfil-label">Nome</span><span>${p.nome}</span></div>
       <div class="perfil-linha"><span class="perfil-label">E-mail</span><span>${p.email}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Telefone</span><span>${p.telefone}</span></div>
@@ -203,6 +234,17 @@ async function carregarPerfil() {
       <div class="perfil-linha"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
       ${subHtml}
     `;
+
+    document.getElementById("inp-foto-upload").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        await uploadFoto(file);
+        await Promise.all([carregarPerfil(), carregarRanking()]);
+      } catch (err) {
+        alert(err.message);
+      }
+    });
   } catch {
     el.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar perfil.</p>";
   }
