@@ -16,7 +16,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # IF NOT EXISTS requer PostgreSQL 9.3+ e é idempotente
-    op.execute("ALTER TYPE tipo_mensagem ADD VALUE IF NOT EXISTS 'convite_matchmaking'")
+    op.execute("ALTER TYPE tipomensagem ADD VALUE IF NOT EXISTS 'convite_matchmaking'")
 
 
 def downgrade() -> None:
