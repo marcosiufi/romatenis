@@ -186,7 +186,7 @@ class AutentiqueClient:
                         **(
                             {
                                 "phone": _normalizar_telefone(telefone),
-                                "delivery_method": "WHATSAPP",
+                                "delivery_method": "DELIVERY_METHOD_WHATSAPP",
                             }
                             if telefone
                             else {"email": email}
