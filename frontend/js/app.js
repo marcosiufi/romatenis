@@ -262,7 +262,7 @@ function _subCardHtml(sub, pixPendente) {
       ${pixHtml}
       <div class="sub-acoes">
         ${podePausar  ? `<button class="btn btn-secundario sub-btn" onclick="abrirPausaUI()">⏸ Solicitar Pausa</button>` : ""}
-        ${podeRenovar ? `<button class="btn btn-primario sub-btn"   onclick="abrirRenovarUI()">↺ Renovar</button>` : ""}
+        ${podeRenovar ? `<button class="btn btn-primario sub-btn"   onclick="abrirRenovarUI('Renovar Assinatura')">↺ Renovar</button>` : ""}
       </div>
     </div>`;
 }
@@ -283,8 +283,9 @@ async function carregarPerfil() {
     const subHtml = sub
       ? _subCardHtml(sub, pixPendente)
       : `<div class="sub-card sub-card--sem">
-           <p style="color:var(--cor-erro);font-weight:600;margin-bottom:.4rem">Sem assinatura ativa</p>
-           <p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Fale com o administrador para ativar sua assinatura.</p>
+           <p style="font-weight:600;margin-bottom:.4rem">Sem assinatura ativa</p>
+           <p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Contrate um plano para ter acesso ao ranking e agendamentos.</p>
+           <button class="btn btn-primario" style="width:100%" onclick="abrirRenovarUI()">Contratar Plano</button>
          </div>`;
 
     const contratoHtml = !p.contrato_assinado
@@ -298,7 +299,7 @@ async function carregarPerfil() {
                    style="font-size:.8rem;color:var(--cor-terracota);font-weight:600">
                    Abrir contrato para assinar →
                 </a>`
-             : `<p style="font-size:.78rem;opacity:.6">Aguarde o administrador enviar o contrato por e-mail.</p>`
+             : `<p style="font-size:.78rem;opacity:.6">O contrato foi enviado via WhatsApp para assinatura.</p>`
            }
          </div>`
       : "";
@@ -324,7 +325,7 @@ async function carregarPerfil() {
       <p class="card-titulo" style="margin-top:1rem;margin-bottom:.5rem">Minha Assinatura</p>
       ${subHtml}
       <div id="sub-renovar-ui" style="display:none" class="sub-card">
-        <p style="font-weight:700;margin-bottom:.75rem">Renovar Assinatura</p>
+        <p id="renovar-titulo" style="font-weight:700;margin-bottom:.75rem">Contratar / Renovar Plano</p>
         <div class="campo">
           <label>Plano</label>
           <select id="renovar-plano" onchange="atualizarFormasPagamento()">
@@ -347,6 +348,13 @@ async function carregarPerfil() {
             <input id="renovar-pix-input" class="pix-code" readonly />
             <button class="btn btn-primario pix-copy-btn" onclick="copiarPixRenovar()">Copiar</button>
           </div>
+        </div>
+        <div id="renovar-link-box" style="display:none" class="pix-box">
+          <p class="pix-label">💳 Pagamento gerado:</p>
+          <a id="renovar-link-anchor" href="#" target="_blank" rel="noopener"
+             style="font-size:.85rem;color:var(--cor-terracota);font-weight:600;display:block;margin-top:.25rem">
+            Abrir link de pagamento →
+          </a>
         </div>
         <p id="renovar-erro" class="erro" hidden></p>
         <div style="display:flex;gap:.5rem;margin-top:.5rem">
@@ -405,11 +413,14 @@ function atualizarFormasPagamento() {
   // PIX disponível para todos os planos com 5% de desconto
 }
 
-function abrirRenovarUI() {
+function abrirRenovarUI(titulo) {
   document.getElementById("sub-pausa-ui").style.display = "none";
   document.getElementById("sub-renovar-ui").style.display = "";
   document.getElementById("renovar-pix-box").style.display = "none";
+  document.getElementById("renovar-link-box").style.display = "none";
   document.getElementById("renovar-erro").hidden = true;
+  document.getElementById("renovar-btn").style.display = "";
+  document.getElementById("renovar-titulo").textContent = titulo || "Contratar / Renovar Plano";
   atualizarFormasPagamento();
 }
 function fecharRenovarUI() { document.getElementById("sub-renovar-ui").style.display = "none"; }
@@ -430,12 +441,19 @@ async function confirmarRenovar() {
       document.getElementById("renovar-pix-input").value = res.pix_copia_e_cola;
       document.getElementById("renovar-pix-box").style.display = "";
       btn.style.display = "none";
+    } else if (res?.payment_link) {
+      document.getElementById("renovar-link-anchor").href = res.payment_link;
+      document.getElementById("renovar-link-box").style.display = "";
+      btn.style.display = "none";
+    } else {
+      fecharRenovarUI();
+      await carregarPerfil();
     }
   } catch (err) {
     erroEl.textContent = err.message;
     erroEl.hidden = false;
   } finally {
-    btn.disabled = false; btn.textContent = "Gerar PIX";
+    btn.disabled = false; btn.textContent = "Confirmar";
   }
 }
 
