@@ -11,7 +11,7 @@ Fluxo:
   4. Webhook POST /api/v1/autentique/webhook marca contrato como assinado.
 """
 
-import base64
+import json
 import logging
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -26,9 +26,10 @@ logger = logging.getLogger(__name__)
 _AUTENTIQUE_URL = "https://api.autentique.com.br/v2/graphql"
 _FUSO_BR = ZoneInfo("America/Sao_Paulo")
 
+# Autentique requer multipart upload (GraphQL multipart spec) — file: Upload!
 _MUTATION = """
-mutation CriarDocumento($document: DocumentInput!, $signers: [SignerInput!]!) {
-  createDocument(document: $document, signers: $signers) {
+mutation CriarDocumento($file: Upload!, $document: DocumentInput!, $signers: [SignerInput!]!) {
+  createDocument(file: $file, document: $document, signers: $signers) {
     id
     name
     signatures {
@@ -139,12 +140,6 @@ class AutentiqueClient:
     def __init__(self) -> None:
         self._api_key = settings.AUTENTIQUE_API_KEY
 
-    def _headers(self) -> dict:
-        return {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-        }
-
     async def enviar_contrato(
         self,
         nome: str,
@@ -152,7 +147,7 @@ class AutentiqueClient:
         cpf: str | None = None,
     ) -> tuple[str, str | None]:
         """
-        Gera o PDF do contrato e cria o documento no Autentique.
+        Gera o PDF do contrato e cria o documento no Autentique via multipart upload.
         Retorna (document_id, link_assinatura).
         Lança AutentiqueError em caso de falha.
         """
@@ -161,16 +156,16 @@ class AutentiqueClient:
 
         data_str = datetime.now(_FUSO_BR).strftime("%d/%m/%Y")
         pdf_bytes = _gerar_pdf(nome, email, cpf, data_str)
-        pdf_b64 = base64.b64encode(pdf_bytes).decode()
 
-        payload = {
+        # GraphQL multipart request spec: file como Upload!
+        operations = json.dumps({
             "query": _MUTATION,
             "variables": {
+                "file": None,
                 "document": {
-                    "name": f"Termo de Adesão - {nome}",
-                    "content_base64": pdf_b64,
+                    "name": f"Termo de Adesao - {nome}",
                     "message": (
-                        "Olá! Acesse o link abaixo para assinar seu Termo de Adesão da Roma Tênis "
+                        "Ola! Acesse o link abaixo para assinar seu Termo de Adesao da Roma Tenis "
                         "e ativar sua conta no ranking."
                     ),
                     "remind_interval": 3,
@@ -183,10 +178,20 @@ class AutentiqueClient:
                     }
                 ],
             },
+        })
+
+        multipart = {
+            "operations": (None, operations, "application/json"),
+            "map": (None, '{"0": ["variables.file"]}', "application/json"),
+            "0": ("contrato.pdf", pdf_bytes, "application/pdf"),
         }
 
-        async with httpx.AsyncClient(timeout=20.0) as c:
-            r = await c.post(_AUTENTIQUE_URL, json=payload, headers=self._headers())
+        async with httpx.AsyncClient(timeout=30.0) as c:
+            r = await c.post(
+                _AUTENTIQUE_URL,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                files=multipart,
+            )
 
         if not r.is_success:
             raise AutentiqueError(f"Autentique HTTP {r.status_code}: {r.text[:300]}")
