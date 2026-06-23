@@ -16,9 +16,11 @@ class NivelJogador(str, enum.Enum):
 
 
 class StatusJogador(str, enum.Enum):
-    ATIVO = "ativo"
-    INATIVO = "inativo"
-    SUSPENSO = "suspenso"
+    ATIVO = "ativo"            # pagamento + contrato + plano vigente
+    ASSINATURA = "assinatura"  # aguardando assinatura do contrato
+    PAGAMENTO = "pagamento"    # aguardando confirmação do pagamento
+    RENOVACAO = "renovacao"    # plano expirado, dentro dos 7 dias para renovar
+    INATIVO = "inativo"        # totalmente inativo
 
 
 class Player(Base):

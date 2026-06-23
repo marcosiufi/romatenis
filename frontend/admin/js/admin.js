@@ -220,11 +220,13 @@ function _nomeExibicao(p) {
 
 function _statusBadge(status) {
   const map = {
-    ativo:    '<span class="badge ba" style="background:#2a6e3a">ativo</span>',
-    inativo:  '<span class="badge ba" style="background:#7a4a18">inativo</span>',
-    suspenso: '<span class="badge ba" style="background:#5a1a1a">suspenso</span>',
+    ativo:      '<span class="badge ba" style="background:#2a6e3a">ATIVO</span>',
+    assinatura: '<span class="badge ba" style="background:#7a5c00">ASSINATURA</span>',
+    pagamento:  '<span class="badge ba" style="background:#1a3d6e">PAGAMENTO</span>',
+    renovacao:  '<span class="badge ba" style="background:#7a3c00">RENOVAÇÃO</span>',
+    inativo:    '<span class="badge ba" style="background:#555">INATIVO</span>',
   }
-  return map[status] || status
+  return map[status] || `<span class="badge ba" style="background:#555">${status || 'N/D'}</span>`
 }
 
 function _contratoBadge(p) {
@@ -814,11 +816,17 @@ function fecharModalAssinatura() {
 
 function atualizarPrecoSub() {
   const plano = document.getElementById('sub-plano').value
-  const forma = document.getElementById('sub-forma').value
+  const formaEl = document.getElementById('sub-forma')
   const p = _precos[plano]
   if (!p || typeof p !== 'object') return
+
+  // PIX só disponível para mensal
+  const pixOpt = formaEl.querySelector('option[value="pix_avista"]')
+  if (pixOpt) pixOpt.disabled = plano !== 'mensal'
+  if (plano !== 'mensal' && formaEl.value === 'pix_avista') formaEl.value = 'cartao_parcelado'
+
+  const isPix = formaEl.value === 'pix_avista'
   document.getElementById('sub-valor-mensal').value = p.valor_mensal ?? ''
-  const isPix = forma === 'pix_avista'
   const parcelas = isPix ? 1 : (p.parcelas ?? 1)
   const total = p.valor_total ?? (p.valor_mensal * parcelas)
   const info = parcelas > 1

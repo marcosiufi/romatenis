@@ -81,6 +81,23 @@ async def autentique_webhook(
 
         player.contrato_assinado = True
         player.contrato_assinado_em = datetime.now(timezone.utc)
+
+        # Se pagamento já confirmado → ATIVO; senão → PAGAMENTO
+        from app.models.payment import Payment, StatusPagamento
+        from app.models.subscription import Subscription
+        pay_result = await db.execute(
+            select(Payment)
+            .join(Subscription, Payment.subscription_id == Subscription.id)
+            .where(
+                Subscription.player_id == player.id,
+                Payment.status == StatusPagamento.PAGO,
+            )
+        )
+        if pay_result.scalar_one_or_none():
+            player.status = "ativo"
+        else:
+            player.status = "pagamento"
+
         await db.commit()
 
         logger.info("Contrato assinado: player_id=%s nome=%s", player.id, player.nome)

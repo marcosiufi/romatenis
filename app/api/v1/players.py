@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -28,17 +28,11 @@ async def list_players(
     apenas_ativos=true: só retorna ATIVO (usado para seleção de convites).
     Padrão: ATIVO + INATIVO dentro de 7 dias (aparecem com badge no ranking).
     """
-    sete_dias_atras = datetime.now(timezone.utc) - timedelta(days=7)
     if apenas_ativos:
         cond = Player.status == StatusJogador.ATIVO.value
     else:
-        cond = or_(
-            Player.status == StatusJogador.ATIVO.value,
-            and_(
-                Player.status == StatusJogador.INATIVO.value,
-                Player.data_inativacao >= sete_dias_atras,
-            ),
-        )
+        # Ranking: ATIVO + RENOVACAO (período de 7 dias para renovar)
+        cond = Player.status.in_([StatusJogador.ATIVO.value, StatusJogador.RENOVACAO.value])
     result = await db.execute(
         select(Player).where(cond).order_by(Player.pontos_ranking_temporada_atual.desc())
     )

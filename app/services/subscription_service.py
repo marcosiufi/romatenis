@@ -1,21 +1,25 @@
 """
 Ciclo de vida de assinaturas e integração Asaas.
 
-Fluxo de criação (feito pelo admin):
-  1. Busca/cria cliente Asaas com dados do jogador.
-  2. Cria cobrança Asaas (PIX / boleto / cartão parcelado).
-  3. Salva Subscription + Payment no banco com status otimista ATIVA/PENDENTE.
-  4. Retorna AssinaturaResult com link de pagamento e QR Pix.
+Fluxo de criação:
+  1. Valida método de pagamento (non-mensal → só cartão; PIX só no mensal).
+  2. Busca/cria cliente Asaas.
+  3. Cria cobrança Asaas.
+  4. Auto-envia contrato via Autentique (se ainda não assinado).
+  5. Define status do jogador: ASSINATURA ou PAGAMENTO.
 
 Fluxo de confirmação (webhook Asaas → POST /subscriptions/webhook):
-  - PAYMENT_RECEIVED / PAYMENT_CONFIRMED → Payment PAGO.
+  - PAYMENT_RECEIVED / PAYMENT_CONFIRMED → Payment PAGO → player ATIVO (se contrato ok).
   - PAYMENT_OVERDUE → Payment FALHOU, Subscription INADIMPLENTE.
   - PAYMENT_REFUNDED → Payment ESTORNADO, Subscription CANCELADA.
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -88,6 +92,12 @@ class SubscriptionService:
         player = await self.db.get(Player, player_id)
         if not player:
             raise SubscriptionError("Jogador não encontrado")
+
+        # Validação de método de pagamento
+        if forma_pagamento == FormaPagamento.BOLETO_AVISTA:
+            raise SubscriptionError("Boleto não está disponível. Use PIX (mensal) ou Cartão de Crédito.")
+        if plano != PlanoAssinatura.MENSAL and forma_pagamento == FormaPagamento.PIX_AVISTA:
+            raise SubscriptionError("PIX está disponível apenas para o plano mensal. Planos trimestrais, semestrais e anuais aceitam apenas Cartão de Crédito.")
 
         if await self._get_ativa(player_id):
             raise SubscriptionError("Jogador já possui assinatura ativa")
@@ -171,6 +181,29 @@ class SubscriptionService:
             except Exception:
                 pass
 
+        # Auto-envio de contrato e atualização de status
+        now_utc = datetime.now(timezone.utc)
+        if not player.contrato_assinado:
+            from app.services.autentique_client import AutentiqueClient, AutentiqueError
+            client = AutentiqueClient()
+            try:
+                doc_id, link = await client.enviar_contrato(
+                    nome=player.nome,
+                    email=player.email,
+                    cpf=player.cpf,
+                    telefone=player.telefone,
+                )
+                player.contrato_autentique_id = doc_id
+                player.contrato_link_assinatura = link
+                player.contrato_enviado_em = now_utc
+                player.contrato_assinado = False
+            except AutentiqueError as e:
+                logger.error("Erro ao enviar contrato automático: %s", e)
+            player.status = StatusJogador.ASSINATURA.value
+        else:
+            player.status = StatusJogador.PAGAMENTO.value
+
+        await self.db.commit()
         return result
 
     async def renovar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento) -> "AssinaturaResult":
@@ -349,6 +382,11 @@ class SubscriptionService:
             if payment.subscription_id:
                 sub = await self.db.get(Subscription, payment.subscription_id, options=[selectinload(Subscription.player)])
                 if sub and sub.player:
+                    # Atualiza status do jogador conforme contrato
+                    if sub.player.contrato_assinado:
+                        sub.player.status = StatusJogador.ATIVO.value
+                    else:
+                        sub.player.status = StatusJogador.PAGAMENTO.value
                     data_str = sub.data_expiracao.astimezone(FUSO_BR).strftime("%d/%m/%Y")
                     await email_service.enviar_confirmacao_pagamento(
                         sub.player.nome, sub.player.email, sub.plano.value, data_str
@@ -371,7 +409,7 @@ class SubscriptionService:
         await self.db.commit()
 
     async def verificar_expiracoes(self) -> int:
-        """Marca assinaturas ATIVA com data_expiracao vencida como EXPIRADA e inativa o jogador."""
+        """Marca assinaturas vencidas como EXPIRADA e coloca jogador em RENOVACAO (7 dias para renovar)."""
         agora = datetime.now(timezone.utc)
         result = await self.db.execute(
             select(Subscription)
@@ -386,11 +424,27 @@ class SubscriptionService:
             sub.status = StatusAssinatura.EXPIRADA
             player = sub.player
             if player and player.status == StatusJogador.ATIVO.value:
-                player.status = StatusJogador.INATIVO.value
-                player.data_inativacao = agora
+                player.status = StatusJogador.RENOVACAO.value
+                player.data_inativacao = agora  # início do período de 7 dias
         if subs:
             await self.db.commit()
         return len(subs)
+
+    async def expirar_renovacao(self) -> int:
+        """Move para INATIVO jogadores em RENOVACAO há mais de 7 dias."""
+        sete_dias_atras = datetime.now(timezone.utc) - timedelta(days=7)
+        result = await self.db.execute(
+            select(Player).where(
+                Player.status == StatusJogador.RENOVACAO.value,
+                Player.data_inativacao <= sete_dias_atras,
+            )
+        )
+        players = list(result.scalars().all())
+        for p in players:
+            p.status = StatusJogador.INATIVO.value
+        if players:
+            await self.db.commit()
+        return len(players)
 
     async def resetar_nivel_inativos(self) -> int:
         """Zera nivel de jogadores inativos há mais de 90 dias."""

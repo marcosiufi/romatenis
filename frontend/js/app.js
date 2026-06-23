@@ -327,11 +327,18 @@ async function carregarPerfil() {
         <p style="font-weight:700;margin-bottom:.75rem">Renovar Assinatura</p>
         <div class="campo">
           <label>Plano</label>
-          <select id="renovar-plano">
-            <option value="mensal">Mensal — R$ <span id="p-mensal"></span></option>
+          <select id="renovar-plano" onchange="atualizarFormasPagamento()">
+            <option value="mensal">Mensal</option>
             <option value="trimestral">Trimestral</option>
             <option value="semestral">Semestral</option>
             <option value="anual">Anual</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Forma de Pagamento</label>
+          <select id="renovar-forma">
+            <option value="pix_avista">PIX à vista</option>
+            <option value="cartao_parcelado">Cartão de Crédito</option>
           </select>
         </div>
         <div id="renovar-pix-box" style="display:none" class="pix-box">
@@ -344,7 +351,7 @@ async function carregarPerfil() {
         <p id="renovar-erro" class="erro" hidden></p>
         <div style="display:flex;gap:.5rem;margin-top:.5rem">
           <button class="btn btn-secundario" style="flex:1" onclick="fecharRenovarUI()">Cancelar</button>
-          <button id="renovar-btn" class="btn btn-primario" style="flex:1" onclick="confirmarRenovar()">Gerar PIX</button>
+          <button id="renovar-btn" class="btn btn-primario" style="flex:1" onclick="confirmarRenovar()">Confirmar</button>
         </div>
       </div>
       <div id="sub-pausa-ui" style="display:none" class="sub-card">
@@ -365,10 +372,10 @@ async function carregarPerfil() {
     apiFetch("/subscriptions/precos").then(precos => {
       if (!precos) return;
       document.getElementById("renovar-plano").innerHTML = [
-        ["mensal",      `Mensal — R$ ${precos.mensal.toFixed(2)}`],
-        ["trimestral",  `Trimestral — R$ ${precos.trimestral.toFixed(2)}`],
-        ["semestral",   `Semestral — R$ ${precos.semestral.toFixed(2)}`],
-        ["anual",       `Anual — R$ ${precos.anual.toFixed(2)}`],
+        ["mensal",      `Mensal — R$ ${precos.mensal?.valor_total?.toFixed(2) ?? ""}`],
+        ["trimestral",  `Trimestral — R$ ${precos.trimestral?.valor_total?.toFixed(2) ?? ""}`],
+        ["semestral",   `Semestral — R$ ${precos.semestral?.valor_total?.toFixed(2) ?? ""}`],
+        ["anual",       `Anual — R$ ${precos.anual?.valor_total?.toFixed(2) ?? ""}`],
       ].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
     }).catch(() => {});
 
@@ -394,11 +401,22 @@ function copiarPixRenovar() {
   if (el) navigator.clipboard.writeText(el.value).then(() => alert("PIX copiado!"));
 }
 
+function atualizarFormasPagamento() {
+  const plano = document.getElementById("renovar-plano").value;
+  const formaEl = document.getElementById("renovar-forma");
+  const pixOpt = formaEl.querySelector('option[value="pix_avista"]');
+  if (pixOpt) {
+    pixOpt.disabled = plano !== "mensal";
+    if (plano !== "mensal" && formaEl.value === "pix_avista") formaEl.value = "cartao_parcelado";
+  }
+}
+
 function abrirRenovarUI() {
   document.getElementById("sub-pausa-ui").style.display = "none";
   document.getElementById("sub-renovar-ui").style.display = "";
   document.getElementById("renovar-pix-box").style.display = "none";
   document.getElementById("renovar-erro").hidden = true;
+  atualizarFormasPagamento();
 }
 function fecharRenovarUI() { document.getElementById("sub-renovar-ui").style.display = "none"; }
 
@@ -409,9 +427,10 @@ async function confirmarRenovar() {
   btn.disabled = true; btn.textContent = "Gerando…";
   try {
     const plano = document.getElementById("renovar-plano").value;
+    const forma_pagamento = document.getElementById("renovar-forma").value;
     const res = await apiFetch("/subscriptions/renovar", {
       method: "POST",
-      body: JSON.stringify({ plano, forma_pagamento: "pix_avista" }),
+      body: JSON.stringify({ plano, forma_pagamento }),
     });
     if (res?.pix_copia_e_cola) {
       document.getElementById("renovar-pix-input").value = res.pix_copia_e_cola;
