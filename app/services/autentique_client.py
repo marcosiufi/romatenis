@@ -168,13 +168,12 @@ class AutentiqueClient:
                         "Ola! Acesse o link abaixo para assinar seu Termo de Adesao da Roma Tenis "
                         "e ativar sua conta no ranking."
                     ),
-                    "reminder": 3,
                 },
                 "signers": [
                     {
                         "name": nome,
                         "email": email,
-                        "action": {"name": "SIGN"},
+                        "action": "SIGN",
                     }
                 ],
             },
