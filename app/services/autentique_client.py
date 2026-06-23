@@ -51,11 +51,11 @@ class AutentiqueError(Exception):
 
 
 def _normalizar_telefone(telefone: str) -> str:
-    """Remove formatação e garante prefixo 55 (Brasil)."""
+    """Remove formatação, garante prefixo 55 e adiciona + para E.164."""
     digits = re.sub(r"\D", "", telefone)
     if not digits.startswith("55"):
         digits = "55" + digits
-    return digits
+    return "+" + digits
 
 
 def _gerar_pdf(nome: str, email: str, cpf: str | None, data_str: str) -> bytes:
@@ -182,9 +182,15 @@ class AutentiqueClient:
                 "signers": [
                     {
                         "name": nome,
-                        "email": email,
-                        **({"phone": _normalizar_telefone(telefone)} if telefone else {}),
                         "action": "SIGN",
+                        **(
+                            {
+                                "phone": _normalizar_telefone(telefone),
+                                "delivery_method": "whatsapp",
+                            }
+                            if telefone
+                            else {"email": email}
+                        ),
                     }
                 ],
             },
