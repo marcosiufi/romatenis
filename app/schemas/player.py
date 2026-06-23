@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr
 
@@ -13,6 +13,19 @@ class PlayerBase(BaseModel):
 
 class PlayerCreate(PlayerBase):
     senha: str
+    # Dados pessoais
+    cpf: str | None = None
+    data_nascimento: date | None = None
+    apelido: str | None = None
+    # Endereço
+    rua: str | None = None
+    numero: str | None = None
+    complemento: str | None = None
+    bairro: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+    pais: str | None = "Brasil"
+    cep: str | None = None
 
 
 class PlayerUpdate(BaseModel):
@@ -20,6 +33,19 @@ class PlayerUpdate(BaseModel):
     telefone: str | None = None
     email: EmailStr | None = None
     aceita_convites_sistema: bool | None = None
+    # Dados pessoais
+    cpf: str | None = None
+    data_nascimento: date | None = None
+    apelido: str | None = None
+    # Endereço
+    rua: str | None = None
+    numero: str | None = None
+    complemento: str | None = None
+    bairro: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+    pais: str | None = None
+    cep: str | None = None
 
 
 class PlayerOut(PlayerBase):
@@ -34,6 +60,19 @@ class PlayerOut(PlayerBase):
     aceita_convites_sistema: bool
     is_admin: bool
     data_cadastro: datetime
+    # Dados pessoais
+    cpf: str | None = None
+    data_nascimento: date | None = None
+    apelido: str | None = None
+    # Endereço
+    rua: str | None = None
+    numero: str | None = None
+    complemento: str | None = None
+    bairro: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+    pais: str | None = None
+    cep: str | None = None
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

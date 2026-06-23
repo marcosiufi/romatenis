@@ -204,8 +204,17 @@ async function loadPlayers() {
 
 function filtrarJogadores() {
   const q = document.getElementById('busca-jogador').value.toLowerCase()
-  const lista = q ? _players.filter(p => p.nome.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)) : _players
+  const lista = q ? _players.filter(p =>
+    p.nome.toLowerCase().includes(q) ||
+    p.email.toLowerCase().includes(q) ||
+    (p.apelido || '').toLowerCase().includes(q) ||
+    (p.cpf || '').includes(q)
+  ) : _players
   renderJogadores(lista)
+}
+
+function _nomeExibicao(p) {
+  return p.apelido ? `${p.apelido} <span style="opacity:.55;font-size:.75em">(${escHtml(p.nome)})</span>` : escHtml(p.nome)
 }
 
 function renderJogadores(lista) {
@@ -216,7 +225,7 @@ function renderJogadores(lista) {
   }
   tb.innerHTML = lista.map(p => `
     <tr>
-      <td>${escHtml(p.nome)}${p.is_admin ? ' <span class="badge ba">admin</span>' : ''}</td>
+      <td>${_nomeExibicao(p)}${p.is_admin ? ' <span class="badge ba">admin</span>' : ''}</td>
       <td style="color:var(--clr-text-muted)">${escHtml(p.email)}</td>
       <td>${nivelBadge(p.nivel)}</td>
       <td>${p.rating_atual.toFixed(0)}</td>
@@ -227,14 +236,18 @@ function renderJogadores(lista) {
   `).join('')
 }
 
+function _setVal(id, val) { document.getElementById(id).value = val || '' }
+
 function abrirModalJogador(playerId = null) {
   document.getElementById('modal-jogador-titulo').textContent = playerId ? 'Editar Jogador' : 'Criar Jogador'
   document.getElementById('jog-id').value = playerId || ''
-  document.getElementById('jog-nome').value = ''
-  document.getElementById('jog-email').value = ''
-  document.getElementById('jog-telefone').value = ''
-  document.getElementById('jog-senha').value = ''
-  document.getElementById('jog-convites').checked = false
+  // Limpa todos os campos
+  ['jog-nome','jog-apelido','jog-email','jog-telefone','jog-senha',
+   'jog-cpf','jog-nascimento','jog-rua','jog-numero','jog-complemento',
+   'jog-bairro','jog-cidade','jog-cep'].forEach(id => _setVal(id, ''))
+  document.getElementById('jog-estado').value = ''
+  document.getElementById('jog-pais').value = 'Brasil'
+  document.getElementById('jog-convites').checked = true
   document.getElementById('jog-is-admin').checked = false
   document.getElementById('row-nivel').style.display = playerId ? '' : 'none'
   document.getElementById('row-is-admin').style.display = playerId ? '' : 'none'
@@ -244,9 +257,20 @@ function abrirModalJogador(playerId = null) {
   if (playerId) {
     const p = _players.find(x => x.id === playerId)
     if (p) {
-      document.getElementById('jog-nome').value = p.nome
-      document.getElementById('jog-email').value = p.email
-      document.getElementById('jog-telefone').value = p.telefone
+      _setVal('jog-nome', p.nome)
+      _setVal('jog-apelido', p.apelido)
+      _setVal('jog-email', p.email)
+      _setVal('jog-telefone', p.telefone)
+      _setVal('jog-cpf', p.cpf)
+      _setVal('jog-nascimento', p.data_nascimento)
+      _setVal('jog-rua', p.rua)
+      _setVal('jog-numero', p.numero)
+      _setVal('jog-complemento', p.complemento)
+      _setVal('jog-bairro', p.bairro)
+      _setVal('jog-cidade', p.cidade)
+      _setVal('jog-cep', p.cep)
+      document.getElementById('jog-estado').value = p.estado || ''
+      document.getElementById('jog-pais').value = p.pais || 'Brasil'
       document.getElementById('jog-convites').checked = p.aceita_convites_sistema
       document.getElementById('jog-is-admin').checked = p.is_admin
       document.getElementById('jog-nivel').value = p.nivel
@@ -259,6 +283,26 @@ function fecharModalJogador() {
   document.getElementById('modal-jogador').classList.remove('open')
 }
 
+function _coletarDadosJogador() {
+  return {
+    nome:        document.getElementById('jog-nome').value,
+    apelido:     document.getElementById('jog-apelido').value || null,
+    email:       document.getElementById('jog-email').value,
+    telefone:    document.getElementById('jog-telefone').value,
+    cpf:         document.getElementById('jog-cpf').value || null,
+    data_nascimento: document.getElementById('jog-nascimento').value || null,
+    rua:         document.getElementById('jog-rua').value || null,
+    numero:      document.getElementById('jog-numero').value || null,
+    complemento: document.getElementById('jog-complemento').value || null,
+    bairro:      document.getElementById('jog-bairro').value || null,
+    cidade:      document.getElementById('jog-cidade').value || null,
+    estado:      document.getElementById('jog-estado').value || null,
+    pais:        document.getElementById('jog-pais').value || 'Brasil',
+    cep:         document.getElementById('jog-cep').value || null,
+    aceita_convites_sistema: document.getElementById('jog-convites').checked,
+  }
+}
+
 async function salvarJogador(e) {
   e.preventDefault()
   showErr('jog-erro', '')
@@ -268,28 +312,17 @@ async function salvarJogador(e) {
 
   try {
     if (id) {
-      // Editar via admin endpoint (suporta nivel + is_admin)
       const body = {
-        nome: document.getElementById('jog-nome').value,
-        email: document.getElementById('jog-email').value,
-        telefone: document.getElementById('jog-telefone').value,
-        aceita_convites_sistema: document.getElementById('jog-convites').checked,
-        nivel: document.getElementById('jog-nivel').value,
+        ..._coletarDadosJogador(),
+        nivel:    document.getElementById('jog-nivel').value,
         is_admin: document.getElementById('jog-is-admin').checked,
       }
       await api(`/admin/players/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
       toast('Jogador atualizado')
     } else {
-      // Criar
       const senha = document.getElementById('jog-senha').value
       if (!senha) { showErr('jog-erro', 'Senha obrigatória ao criar jogador'); return }
-      const body = {
-        nome: document.getElementById('jog-nome').value,
-        email: document.getElementById('jog-email').value,
-        telefone: document.getElementById('jog-telefone').value,
-        senha,
-      }
-      await api('/players', { method: 'POST', body: JSON.stringify(body) })
+      await api('/players', { method: 'POST', body: JSON.stringify({ ..._coletarDadosJogador(), senha }) })
       toast('Jogador criado')
     }
     fecharModalJogador()

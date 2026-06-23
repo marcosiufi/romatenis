@@ -29,7 +29,14 @@ def _cliente() -> httpx.AsyncClient:
 
 
 class AsaasClient:
-    async def get_or_create_customer(self, nome: str, email: str, telefone: str) -> str:
+    async def get_or_create_customer(
+        self,
+        nome: str,
+        email: str,
+        telefone: str,
+        cpf: str | None = None,
+        data_nascimento: str | None = None,
+    ) -> str:
         """Retorna o ID de cliente Asaas, criando-o se ainda não existir."""
         async with _cliente() as c:
             r = await c.get("/customers", params={"email": email})
@@ -38,14 +45,17 @@ class AsaasClient:
             if data:
                 return data[0]["id"]
 
-            r = await c.post(
-                "/customers",
-                json={
-                    "name": nome,
-                    "email": email,
-                    "mobilePhone": _limpar_fone(telefone),
-                },
-            )
+            payload: dict = {
+                "name": nome,
+                "email": email,
+                "mobilePhone": _limpar_fone(telefone),
+            }
+            if cpf:
+                payload["cpfCnpj"] = _limpar_cpf(cpf)
+            if data_nascimento:
+                payload["birthDate"] = data_nascimento
+
+            r = await c.post("/customers", json=payload)
             if not r.is_success:
                 raise AsaasError(f"Asaas /customers {r.status_code}: {r.text}")
             return r.json()["id"]
@@ -98,3 +108,7 @@ class AsaasClient:
 
 def _limpar_fone(telefone: str) -> str:
     return "".join(c for c in telefone if c.isdigit())
+
+
+def _limpar_cpf(cpf: str) -> str:
+    return "".join(c for c in cpf if c.isdigit())

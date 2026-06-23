@@ -164,13 +164,30 @@ async function carregarRanking() {
         <div class="ranking-item">
           <span class="ranking-pos">${i + 1}</span>
           ${avatarHtml(j)}
-          <span style="flex:1">${j.nome}</span>
+          <span style="flex:1">${j.apelido || j.nome}</span>
           <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
         </div>`)
       .join("");
   } catch {
     lista.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar ranking.</p>";
   }
+}
+
+// ── Endereço helpers ─────────────────────────────────────────────────────────
+function _temEndereco(p) {
+  return !!(p.rua || p.cidade || p.bairro || p.cep);
+}
+
+function _enderecoHtml(p) {
+  if (!_temEndereco(p)) return "";
+  const linha1 = [p.rua, p.numero, p.complemento].filter(Boolean).join(", ");
+  const linha2 = [p.bairro, p.cidade, p.estado].filter(Boolean).join(" — ");
+  const linha3 = [p.cep, p.pais].filter(Boolean).join(" · ");
+  return `
+    <p class="perfil-secao-label">Endereço</p>
+    ${linha1 ? `<div class="perfil-linha"><span class="perfil-label">Logradouro</span><span>${linha1}</span></div>` : ""}
+    ${linha2 ? `<div class="perfil-linha"><span class="perfil-label">Bairro / Cidade</span><span>${linha2}</span></div>` : ""}
+    ${linha3 ? `<div class="perfil-linha" style="border:none"><span class="perfil-label">CEP / País</span><span>${linha3}</span></div>` : ""}`;
 }
 
 // ── Perfil ───────────────────────────────────────────────────────────────────
@@ -277,12 +294,16 @@ async function carregarPerfil() {
         <input id="inp-foto-upload" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
       </div>
       <div class="perfil-linha"><span class="perfil-label">Nome</span><span>${p.nome}</span></div>
+      ${p.apelido ? `<div class="perfil-linha"><span class="perfil-label">Apelido</span><span>${p.apelido}</span></div>` : ""}
       <div class="perfil-linha"><span class="perfil-label">E-mail</span><span>${p.email}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Telefone</span><span>${p.telefone}</span></div>
+      ${p.cpf ? `<div class="perfil-linha"><span class="perfil-label">CPF</span><span>${p.cpf}</span></div>` : ""}
+      ${p.data_nascimento ? `<div class="perfil-linha"><span class="perfil-label">Nascimento</span><span>${fmtData(p.data_nascimento + "T12:00:00")}</span></div>` : ""}
       <div class="perfil-linha"><span class="perfil-label">Nível</span><span>${nivel}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Rating</span><span>${Math.round(p.rating_atual)}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Pontos (temporada)</span><span>${p.pontos_ranking_temporada_atual}</span></div>
-      <div class="perfil-linha" style="border:none"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
+      <div class="perfil-linha" style="${_temEndereco(p) ? '' : 'border:none'}"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
+      ${_enderecoHtml(p)}
       <p class="card-titulo" style="margin-top:1rem;margin-bottom:.5rem">Minha Assinatura</p>
       ${subHtml}
       <div id="sub-renovar-ui" style="display:none" class="sub-card">

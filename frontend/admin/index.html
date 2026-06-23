@@ -219,6 +219,10 @@
     .form-check input[type=checkbox] { width: auto; cursor: pointer; }
 
     .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--clr-border); }
+    .modal-lg { max-width: 680px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.75rem; }
+    @media (max-width: 520px) { .form-grid-2 { grid-template-columns: 1fr; } }
+    .form-section-label { font-size: 0.72rem; font-weight: 700; color: var(--clr-accent); text-transform: uppercase; letter-spacing: .06em; margin: 1rem 0 0.4rem; border-bottom: 1px solid var(--clr-border); padding-bottom: 0.25rem; }
 
     .season-card {
       background: var(--clr-surface);
@@ -473,48 +477,116 @@
 
 <!-- ── Modal Jogador ── -->
 <div id="modal-jogador" class="modal-overlay">
-  <div class="modal">
+  <div class="modal modal-lg">
     <h2 id="modal-jogador-titulo">Criar Jogador</h2>
     <form id="form-jogador" onsubmit="salvarJogador(event)">
       <input type="hidden" id="jog-id">
-      <div class="form-row">
-        <label>Nome</label>
-        <input type="text" id="jog-nome" required>
+
+      <p class="form-section-label">Acesso</p>
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>Nome completo *</label>
+          <input type="text" id="jog-nome" required>
+        </div>
+        <div class="form-row">
+          <label>Apelido <span style="color:var(--clr-text-muted)">(exibido no ranking)</span></label>
+          <input type="text" id="jog-apelido" placeholder="Ex: Marco">
+        </div>
+        <div class="form-row">
+          <label>E-mail *</label>
+          <input type="email" id="jog-email" required>
+        </div>
+        <div class="form-row">
+          <label>Telefone *</label>
+          <input type="tel" id="jog-telefone" placeholder="(11) 99999-9999" required>
+        </div>
+        <div class="form-row" id="row-senha">
+          <label>Senha <span style="color:var(--clr-text-muted)">(obrigatória ao criar)</span></label>
+          <input type="password" id="jog-senha" autocomplete="new-password">
+        </div>
       </div>
-      <div class="form-row">
-        <label>E-mail</label>
-        <input type="email" id="jog-email" required>
+
+      <p class="form-section-label">Dados Pessoais</p>
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>CPF</label>
+          <input type="text" id="jog-cpf" placeholder="000.000.000-00" maxlength="14">
+        </div>
+        <div class="form-row">
+          <label>Data de Nascimento</label>
+          <input type="date" id="jog-nascimento">
+        </div>
       </div>
-      <div class="form-row">
-        <label>Telefone</label>
-        <input type="tel" id="jog-telefone" placeholder="(11) 99999-9999" required>
+
+      <p class="form-section-label">Endereço</p>
+      <div class="form-grid-2">
+        <div class="form-row" style="grid-column:1/-1">
+          <label>Rua / Logradouro</label>
+          <input type="text" id="jog-rua" placeholder="Rua das Flores">
+        </div>
+        <div class="form-row">
+          <label>Número</label>
+          <input type="text" id="jog-numero" placeholder="123">
+        </div>
+        <div class="form-row">
+          <label>Complemento</label>
+          <input type="text" id="jog-complemento" placeholder="Apto 4B">
+        </div>
+        <div class="form-row">
+          <label>Bairro</label>
+          <input type="text" id="jog-bairro">
+        </div>
+        <div class="form-row">
+          <label>CEP</label>
+          <input type="text" id="jog-cep" placeholder="00000-000" maxlength="9">
+        </div>
+        <div class="form-row">
+          <label>Cidade</label>
+          <input type="text" id="jog-cidade">
+        </div>
+        <div class="form-row">
+          <label>Estado (UF)</label>
+          <select id="jog-estado">
+            <option value="">—</option>
+            <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
+            <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+            <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+            <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
+            <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+            <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+            <option selected>SP</option><option>SE</option><option>TO</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>País</label>
+          <input type="text" id="jog-pais" value="Brasil">
+        </div>
       </div>
-      <div class="form-row" id="row-senha">
-        <label>Senha <span style="color:var(--clr-text-muted)">(obrigatória ao criar)</span></label>
-        <input type="password" id="jog-senha" autocomplete="new-password">
+
+      <p class="form-section-label">Configurações</p>
+      <div class="form-grid-2">
+        <div class="form-row" id="row-nivel" style="display:none">
+          <label>Nível</label>
+          <select id="jog-nivel">
+            <option value="nao_classificado">Não Classificado</option>
+            <option value="A">A</option><option value="B">B</option>
+            <option value="C">C</option><option value="D">D</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-check">
+            <input type="checkbox" id="jog-convites" checked>
+            Aceita convites do sistema
+          </label>
+        </div>
+        <div class="form-row" id="row-is-admin" style="display:none">
+          <label class="form-check">
+            <input type="checkbox" id="jog-is-admin">
+            Administrador
+          </label>
+        </div>
       </div>
-      <div class="form-row" id="row-nivel" style="display:none">
-        <label>Nível</label>
-        <select id="jog-nivel">
-          <option value="nao_classificado">Não Classificado</option>
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-          <option value="D">D</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="form-check">
-          <input type="checkbox" id="jog-convites">
-          Aceita convites do sistema
-        </label>
-      </div>
-      <div class="form-row" id="row-is-admin" style="display:none">
-        <label class="form-check">
-          <input type="checkbox" id="jog-is-admin">
-          Administrador
-        </label>
-      </div>
+
       <div id="jog-erro" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
       <div class="modal-footer">
         <button type="button" class="btn-xs sec" onclick="fecharModalJogador()">Cancelar</button>

@@ -109,6 +109,19 @@ class AdminPlayerPatch(BaseModel):
     aceita_convites_sistema: bool | None = None
     nivel: NivelJogador | None = None
     is_admin: bool | None = None
+    # Dados pessoais
+    cpf: str | None = None
+    data_nascimento: date | None = None
+    apelido: str | None = None
+    # Endereço
+    rua: str | None = None
+    numero: str | None = None
+    complemento: str | None = None
+    bairro: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+    pais: str | None = None
+    cep: str | None = None
 
 
 @router.patch("/players/{player_id}", response_model=PlayerOut)

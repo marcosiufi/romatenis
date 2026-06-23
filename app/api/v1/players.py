@@ -42,6 +42,17 @@ async def create_player(
         telefone=body.telefone,
         email=body.email,
         senha_hash=hash_password(body.senha),
+        cpf=body.cpf,
+        data_nascimento=body.data_nascimento,
+        apelido=body.apelido,
+        rua=body.rua,
+        numero=body.numero,
+        complemento=body.complemento,
+        bairro=body.bairro,
+        cidade=body.cidade,
+        estado=body.estado,
+        pais=body.pais or "Brasil",
+        cep=body.cep,
     )
     db.add(player)
     await db.commit()

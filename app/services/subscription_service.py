@@ -90,8 +90,10 @@ class SubscriptionService:
 
         # Garante que o jogador existe no Asaas
         if not player.asaas_customer_id:
+            nasc = player.data_nascimento.isoformat() if player.data_nascimento else None
             customer_id = await self._asaas.get_or_create_customer(
-                player.nome, player.email, player.telefone
+                player.nome, player.email, player.telefone,
+                cpf=player.cpf, data_nascimento=nasc,
             )
             player.asaas_customer_id = customer_id
 

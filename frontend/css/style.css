@@ -282,6 +282,17 @@ main {
 }
 
 /* ── Subscription card ── */
+.perfil-secao-label {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--cor-terracota);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: .9rem 0 .2rem;
+  padding-bottom: .25rem;
+  border-bottom: 1px solid var(--cor-borda);
+}
+
 .sub-card {
   background: rgba(255,255,255,.06);
   border: 1px solid var(--cor-borda);

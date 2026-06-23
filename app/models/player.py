@@ -1,7 +1,7 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, pg_enum
@@ -35,6 +35,21 @@ class Player(Base):
     aceita_convites_sistema: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Dados pessoais complementares
+    cpf: Mapped[str | None] = mapped_column(String(14), nullable=True, unique=True)
+    data_nascimento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    apelido: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Endereço
+    rua: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    numero: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    complemento: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bairro: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    cidade: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    estado: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    pais: Mapped[str | None] = mapped_column(String(50), nullable=True, default="Brasil")
+    cep: Mapped[str | None] = mapped_column(String(9), nullable=True)
 
     # ID do cliente no Asaas (preenchido na primeira cobrança)
     asaas_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
