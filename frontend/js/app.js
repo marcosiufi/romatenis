@@ -288,7 +288,7 @@ async function carregarPerfil() {
            <button class="btn btn-primario" style="width:100%" onclick="abrirRenovarUI()">Contratar Plano</button>
          </div>`;
 
-    const contratoHtml = !p.contrato_assinado
+    const contratoHtml = !p.contrato_assinado && p.contrato_link_assinatura
       ? `<div class="sub-card" style="border-left:3px solid #e0a040;margin-bottom:.75rem">
            <p style="font-weight:700;color:#e0a040;margin-bottom:.3rem">📄 Contrato pendente</p>
            <p style="font-size:.8rem;opacity:.8;margin-bottom:.5rem">
