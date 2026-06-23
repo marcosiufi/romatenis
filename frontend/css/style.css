@@ -49,12 +49,15 @@ body {
   box-shadow: var(--sombra);
 }
 
-.login-titulo {
-  font-family: var(--fonte-titulo);
-  font-size: 1.5rem;
-  color: var(--cor-terracota);
+.login-logo {
   text-align: center;
-  margin-bottom: .25rem;
+  margin: 0 auto 1rem;
+}
+.login-logo svg {
+  width: 190px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 .login-sub {
@@ -116,6 +119,19 @@ body {
   font-size: 1.25rem;
   color: var(--cor-terracota);
   letter-spacing: 0.04em;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.header-nome {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cor-terracota);
+  letter-spacing: 0.05em;
 }
 
 /* ── Nav bottom ── */

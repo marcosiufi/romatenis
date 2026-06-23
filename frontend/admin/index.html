@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin – Roma Tênis</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css">
   <style>
     /* ── Variáveis e reset base ── */
@@ -31,8 +35,9 @@
       width: 100%; max-width: 380px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
-    .login-card .logo { font-size: 2.8rem; text-align: center; margin-bottom: 0.5rem; }
-    .login-card h1 { font-size: 1.2rem; font-weight: 700; color: var(--clr-accent); text-align: center; margin-bottom: 0.25rem; }
+    .login-card .logo { text-align: center; margin-bottom: 0.75rem; }
+    .login-card .logo svg { width: 180px; height: auto; display: block; margin: 0 auto; }
+    .login-card h1 { display: none; }
     .login-card .login-sub { font-size: 0.78rem; color: var(--clr-text-muted); text-align: center; margin-bottom: 1.75rem; }
     .login-card .campo { margin-bottom: 1rem; }
     .login-card .campo label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--clr-text-muted); margin-bottom: 0.3rem; }
@@ -63,7 +68,10 @@
       top: 0;
       z-index: 10;
     }
-    .admin-header h1 { font-size: 1rem; font-weight: 700; color: var(--clr-accent); }
+    .admin-header h1 { display: none; }
+    .admin-header-brand { display: flex; align-items: center; gap: .5rem; }
+    .admin-header-brand svg { flex-shrink: 0; }
+    .admin-header-nome { font-family: 'Cinzel', Georgia, serif; font-size: 1rem; font-weight: 700; color: var(--clr-accent); letter-spacing: .05em; }
 
     .admin-nav {
       background: var(--clr-surface);
@@ -273,7 +281,20 @@
 <!-- ── Login ── -->
 <div id="tela-login" class="login-tela">
   <div class="login-card">
-    <div class="logo">🎾</div>
+    <div class="logo">
+      <svg viewBox="0 0 400 330" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
+        <path d="M110,168 L110,120 Q200,-60,290,120 L290,168" fill="none" stroke="#F0EBE4" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M132,120 Q200,-16,268,120" fill="none" stroke="#C1502E" stroke-width="6" stroke-linecap="round"/>
+        <path d="M152,120 Q200,24,248,120" fill="none" stroke="#C1502E" stroke-width="5" stroke-linecap="round"/>
+        <path d="M170,120 Q200,60,230,120" fill="none" stroke="#C1502E" stroke-width="4" stroke-linecap="round"/>
+        <path d="M186,120 Q200,92,214,120" fill="none" stroke="#C1502E" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="200" cy="103" r="7" fill="#C9A24B"/>
+        <rect x="20" y="168" width="360" height="5" rx="2.5" fill="#F0EBE4"/>
+        <text x="200" y="253" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-size="64" font-weight="700" letter-spacing="6" fill="#F0EBE4">ROMA</text>
+        <line x1="175" y1="270" x2="225" y2="270" stroke="#C1502E" stroke-width="1.5"/>
+        <text x="200" y="298" text-anchor="middle" font-family="'Inter', Helvetica, sans-serif" font-size="16" font-weight="500" letter-spacing="6" fill="#C1502E">TÊNIS</text>
+      </svg>
+    </div>
     <h1>Roma Tênis</h1>
     <p class="login-sub">Painel Administrativo</p>
     <div id="login-erro" class="erro-msg" style="display:none"></div>
@@ -294,7 +315,18 @@
 <!-- ── App ── -->
 <div id="admin-app" style="display:none">
   <header class="admin-header">
-    <h1>🎾 Roma Tênis</h1>
+    <div class="admin-header-brand">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="26" height="26" aria-hidden="true">
+        <path d="M30,175 L30,125 Q100,-15,170,125 L170,175" fill="none" stroke="#F0EBE4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M47,125 Q100,19,153,125" fill="none" stroke="#C1502E" stroke-width="7" stroke-linecap="round"/>
+        <path d="M63,125 Q100,51,137,125" fill="none" stroke="#C1502E" stroke-width="6" stroke-linecap="round"/>
+        <path d="M77,125 Q100,79,123,125" fill="none" stroke="#C1502E" stroke-width="5" stroke-linecap="round"/>
+        <path d="M89,125 Q100,103,111,125" fill="none" stroke="#C1502E" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="100" cy="110" r="8" fill="#C9A24B"/>
+      </svg>
+      <span class="admin-header-nome">Roma Tênis</span>
+    </div>
+    <h1>Roma Tênis</h1>
     <div style="display:flex;align-items:center;gap:0.75rem">
       <span id="admin-nome" style="font-size:0.82rem;color:var(--clr-text-muted)"></span>
       <button class="btn-xs sec" onclick="logout()">Sair</button>
