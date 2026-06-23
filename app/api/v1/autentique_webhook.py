@@ -42,21 +42,25 @@ async def autentique_webhook(
     payload = await request.json()
     logger.info("Autentique webhook payload completo: %s", payload)
 
-    # event pode ser string "document.finished" ou dict {"name": "document.finished"}
-    raw = payload.get("event") or payload.get("type") or ""
-    evento = (raw.get("name") or raw.get("type") or "") if isinstance(raw, dict) else raw
-    logger.info("Autentique webhook recebido: evento=%s", evento)
+    # Autentique envia: {"event": {"id": "...", "data": {"id": "<doc_id>", ...}}}
+    # O tipo do evento é implícito (só assinamos document.finished neste endpoint)
+    raw_event = payload.get("event") or {}
+    if isinstance(raw_event, dict):
+        event_data = raw_event.get("data") or {}
+        doc_id = (
+            event_data.get("id")
+            or (payload.get("data") or {}).get("id")
+            or payload.get("document", {}).get("id")
+        )
+    else:
+        # Fallback: event como string (formato legado)
+        evento = raw_event or payload.get("type") or ""
+        if evento not in _EVENTOS_ASSINATURA:
+            return {"ok": True, "msg": f"evento ignorado: {evento}"}
+        data = payload.get("data") or {}
+        doc_id = data.get("id") or (data.get("document") or {}).get("id")
 
-    if evento not in _EVENTOS_ASSINATURA:
-        return {"ok": True, "msg": f"evento ignorado: {evento}"}
-
-    # Extrai o ID do documento — tenta vários formatos de payload
-    data = payload.get("data") or {}
-    doc_id = (
-        data.get("id")
-        or (data.get("document") or {}).get("id")
-        or payload.get("document", {}).get("id")
-    )
+    logger.info("Autentique webhook: doc_id=%s", doc_id)
     if not doc_id:
         logger.warning("Autentique webhook sem document id: %s", payload)
         return {"ok": True, "msg": "sem document id"}
