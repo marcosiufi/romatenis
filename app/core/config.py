@@ -36,5 +36,9 @@ class Settings(BaseSettings):
     N8N_EVENTS_WEBHOOK_URL: str = ""
     N8N_SECRET: str = ""
 
+    # Autentique (contratos digitais)
+    AUTENTIQUE_API_KEY: str = ""
+    AUTENTIQUE_WEBHOOK_SECRET: str = ""
+
 
 settings = Settings()

@@ -294,6 +294,9 @@ class BookingService:
                 "ou na janela de última hora (menos de 1h do início)"
             )
 
+        if not player.contrato_assinado:
+            raise BookingError("Assine o Termo de Adesão para reservar quadra")
+
         if not await self._tem_assinatura_ativa(player.id):
             raise BookingError("Assinatura inativa")
 

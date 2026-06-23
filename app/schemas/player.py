@@ -76,6 +76,11 @@ class PlayerOut(PlayerBase):
     # Status de atividade
     status: StatusJogador = StatusJogador.ATIVO
     data_inativacao: datetime | None = None
+    # Contrato digital
+    contrato_assinado: bool = False
+    contrato_enviado_em: datetime | None = None
+    contrato_assinado_em: datetime | None = None
+    contrato_link_assinatura: str | None = None
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

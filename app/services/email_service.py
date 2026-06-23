@@ -105,6 +105,41 @@ async def enviar_confirmacao_pagamento(nome: str, email: str, plano: str, data_e
     )
 
 
+async def enviar_contrato_pendente(nome: str, email: str, link_assinatura: str) -> None:
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">
+      Para ativar sua conta no ranking Roma Tênis, assine o Termo de Adesão clicando no botão abaixo.
+    </p>
+    <p style="text-align:center;margin:1.5rem 0">
+      <a href="{link_assinatura}" style="background:#c0622a;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:700">
+        Assinar Contrato
+      </a>
+    </p>
+    <p style="color:#888;font-size:.85rem">
+      O link acima é de uso exclusivo e pessoal. Não compartilhe com terceiros.
+    </p>"""
+    await send_email(
+        email,
+        "📄 Assine seu Termo de Adesão — Roma Tênis",
+        _html_base("Assine seu Contrato", corpo),
+    )
+
+
+async def enviar_contrato_assinado(nome: str, email: str) -> None:
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">
+      ✅ Seu Termo de Adesão foi assinado com sucesso. Sua conta no ranking Roma Tênis está ativa!
+    </p>
+    <p style="color:#555;line-height:1.6">Bons jogos! 🎾</p>"""
+    await send_email(
+        email,
+        "✅ Contrato assinado — Roma Tênis",
+        _html_base("Contrato Assinado", corpo),
+    )
+
+
 async def enviar_aviso_pausa(nome: str, email: str, data_retorno: str | None) -> None:
     retorno = f"com retorno previsto em <strong>{data_retorno}</strong>" if data_retorno else ""
     corpo = f"""

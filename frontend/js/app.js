@@ -287,7 +287,24 @@ async function carregarPerfil() {
            <p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Fale com o administrador para ativar sua assinatura.</p>
          </div>`;
 
+    const contratoHtml = !p.contrato_assinado
+      ? `<div class="sub-card" style="border-left:3px solid #e0a040;margin-bottom:.75rem">
+           <p style="font-weight:700;color:#e0a040;margin-bottom:.3rem">📄 Contrato pendente</p>
+           <p style="font-size:.8rem;opacity:.8;margin-bottom:.5rem">
+             Assine o Termo de Adesão para liberar reservas de quadra.
+           </p>
+           ${p.contrato_link_assinatura
+             ? `<a href="${p.contrato_link_assinatura}" target="_blank" rel="noopener"
+                   style="font-size:.8rem;color:var(--cor-terracota);font-weight:600">
+                   Abrir contrato para assinar →
+                </a>`
+             : `<p style="font-size:.78rem;opacity:.6">Aguarde o administrador enviar o contrato por e-mail.</p>`
+           }
+         </div>`
+      : "";
+
     el.innerHTML = `
+      ${contratoHtml}
       <div class="perfil-avatar-wrap">
         ${avatarHtml(p, " avatar-lg")}
         <label class="btn-foto" for="inp-foto-upload">Alterar foto</label>

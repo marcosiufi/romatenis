@@ -227,10 +227,16 @@ function _statusBadge(status) {
   return map[status] || status
 }
 
+function _contratoBadge(p) {
+  if (p.contrato_assinado) return '<span class="badge ba" style="background:#2a6e3a">✓ assinado</span>'
+  if (p.contrato_enviado_em) return '<span class="badge ba" style="background:#7a6a10">aguardando</span>'
+  return '<span class="badge ba" style="background:#555">não enviado</span>'
+}
+
 function renderJogadores(lista) {
   const tb = document.getElementById('tbody-jogadores')
   if (!lista.length) {
-    tb.innerHTML = '<tr><td colspan="8" class="empty">Nenhum jogador encontrado</td></tr>'
+    tb.innerHTML = '<tr><td colspan="9" class="empty">Nenhum jogador encontrado</td></tr>'
     return
   }
   tb.innerHTML = lista.map(p => `
@@ -242,9 +248,38 @@ function renderJogadores(lista) {
       <td>${p.pontos_ranking_temporada_atual}</td>
       <td>${p.aceita_convites_sistema ? '✓' : '–'}</td>
       <td>${_statusBadge(p.status)}</td>
-      <td><button class="btn-xs sec" onclick="abrirModalJogador(${p.id})">Editar</button></td>
+      <td>${_contratoBadge(p)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-xs sec" onclick="abrirModalJogador(${p.id})">Editar</button>
+        <button class="btn-xs sec" onclick="enviarContrato(${p.id})" title="${p.contrato_enviado_em ? 'Reenviar' : 'Enviar'} contrato">
+          ${p.contrato_enviado_em ? '↺' : '📄'}
+        </button>
+        ${!p.contrato_assinado ? `<button class="btn-xs sec" onclick="marcarContratoAssinado(${p.id})" title="Marcar como assinado manualmente">✓</button>` : ''}
+      </td>
     </tr>
   `).join('')
+}
+
+async function enviarContrato(playerId) {
+  if (!confirm('Enviar Termo de Adesão via Autentique para este jogador?')) return
+  try {
+    await api(`/admin/players/${playerId}/enviar-contrato`, { method: 'POST' })
+    toast('Contrato enviado')
+    loadPlayers()
+  } catch (err) {
+    toast('Erro ao enviar contrato: ' + err.message, true)
+  }
+}
+
+async function marcarContratoAssinado(playerId) {
+  if (!confirm('Marcar o contrato como assinado manualmente?')) return
+  try {
+    await api(`/admin/players/${playerId}/marcar-contrato-assinado`, { method: 'POST' })
+    toast('Contrato marcado como assinado')
+    loadPlayers()
+  } catch (err) {
+    toast('Erro: ' + err.message, true)
+  }
 }
 
 function _setVal(id, val) { document.getElementById(id).value = val || '' }

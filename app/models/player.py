@@ -64,6 +64,13 @@ class Player(Base):
     # ID do cliente no Asaas (preenchido na primeira cobrança)
     asaas_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Contrato digital via Autentique
+    contrato_autentique_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    contrato_link_assinatura: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    contrato_assinado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    contrato_enviado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    contrato_assinado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     data_cadastro: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

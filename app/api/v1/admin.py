@@ -204,3 +204,63 @@ async def put_configuracoes(
     cfg.preco_locacao_hora = body.preco_locacao_hora
     await db.commit()
     return {"ok": True}
+
+
+# ── Contratos (Autentique) ────────────────────────────────────────────────────
+
+@router.post("/players/{player_id}/enviar-contrato", response_model=PlayerOut)
+async def enviar_contrato(
+    player_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Gera e envia o Termo de Adesão via Autentique para o jogador."""
+    from app.services.autentique_client import AutentiqueClient, AutentiqueError
+    from app.services.email_service import enviar_contrato_pendente
+
+    player = await db.get(Player, player_id)
+    if not player:
+        raise HTTPException(404, "Jogador não encontrado")
+
+    client = AutentiqueClient()
+    try:
+        doc_id, link = await client.enviar_contrato(
+            nome=player.nome,
+            email=player.email,
+            cpf=player.cpf,
+        )
+    except AutentiqueError as exc:
+        raise HTTPException(502, f"Erro Autentique: {exc}")
+
+    player.contrato_autentique_id = doc_id
+    player.contrato_link_assinatura = link
+    player.contrato_enviado_em = datetime.now(timezone.utc)
+    player.contrato_assinado = False
+    player.contrato_assinado_em = None
+    await db.commit()
+    await db.refresh(player)
+
+    if link:
+        try:
+            await enviar_contrato_pendente(player.nome, player.email, link)
+        except Exception:
+            pass  # e-mail é best-effort; o Autentique também notifica
+
+    return player
+
+
+@router.post("/players/{player_id}/marcar-contrato-assinado", response_model=PlayerOut)
+async def marcar_contrato_assinado(
+    player_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Admin confirma manualmente que o contrato foi assinado (fallback)."""
+    player = await db.get(Player, player_id)
+    if not player:
+        raise HTTPException(404, "Jogador não encontrado")
+    player.contrato_assinado = True
+    player.contrato_assinado_em = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(player)
+    return player
