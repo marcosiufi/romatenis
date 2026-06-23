@@ -185,7 +185,6 @@ class AutentiqueClient:
                         "email": email,
                         **({"phone": _normalizar_telefone(telefone)} if telefone else {}),
                         "action": "SIGN",
-                        "send_automatic_email": not bool(telefone),
                     }
                 ],
             },
