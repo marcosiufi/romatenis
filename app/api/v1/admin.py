@@ -214,9 +214,8 @@ async def enviar_contrato(
     _admin: Player = Depends(get_current_admin),
     db=Depends(get_db),
 ):
-    """Gera e envia o Termo de Adesão via Autentique para o jogador."""
+    """Gera e envia o Termo de Adesão via Autentique para o jogador (WhatsApp)."""
     from app.services.autentique_client import AutentiqueClient, AutentiqueError
-    from app.services.email_service import enviar_contrato_pendente
 
     player = await db.get(Player, player_id)
     if not player:
@@ -228,6 +227,7 @@ async def enviar_contrato(
             nome=player.nome,
             email=player.email,
             cpf=player.cpf,
+            telefone=player.telefone,
         )
     except AutentiqueError as exc:
         raise HTTPException(502, f"Erro Autentique: {exc}")
@@ -239,12 +239,6 @@ async def enviar_contrato(
     player.contrato_assinado_em = None
     await db.commit()
     await db.refresh(player)
-
-    if link:
-        try:
-            await enviar_contrato_pendente(player.nome, player.email, link)
-        except Exception:
-            pass  # e-mail é best-effort; o Autentique também notifica
 
     return player
 

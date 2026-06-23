@@ -13,6 +13,7 @@ Fluxo:
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -47,6 +48,14 @@ mutation CriarDocumento($file: Upload!, $document: DocumentInput!, $signers: [Si
 
 class AutentiqueError(Exception):
     pass
+
+
+def _normalizar_telefone(telefone: str) -> str:
+    """Remove formatação e garante prefixo 55 (Brasil)."""
+    digits = re.sub(r"\D", "", telefone)
+    if not digits.startswith("55"):
+        digits = "55" + digits
+    return digits
 
 
 def _gerar_pdf(nome: str, email: str, cpf: str | None, data_str: str) -> bytes:
@@ -145,6 +154,7 @@ class AutentiqueClient:
         nome: str,
         email: str,
         cpf: str | None = None,
+        telefone: str | None = None,
     ) -> tuple[str, str | None]:
         """
         Gera o PDF do contrato e cria o documento no Autentique via multipart upload.
@@ -173,7 +183,9 @@ class AutentiqueClient:
                     {
                         "name": nome,
                         "email": email,
+                        **({"phone": _normalizar_telefone(telefone)} if telefone else {}),
                         "action": "SIGN",
+                        "send_automatic_email": not bool(telefone),
                     }
                 ],
             },
