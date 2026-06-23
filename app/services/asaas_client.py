@@ -43,7 +43,14 @@ class AsaasClient:
             r.raise_for_status()
             data = r.json().get("data", [])
             if data:
-                return data[0]["id"]
+                customer = data[0]
+                # Atualiza CPF se ausente — exigido pelo Asaas para cobranças PIX
+                if cpf and not customer.get("cpfCnpj"):
+                    await c.put(
+                        f"/customers/{customer['id']}",
+                        json={"cpfCnpj": _limpar_cpf(cpf)},
+                    )
+                return customer["id"]
 
             payload: dict = {
                 "name": nome,
