@@ -60,10 +60,11 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
-app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
-
 
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

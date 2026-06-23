@@ -1,13 +1,8 @@
-# Caddy gera certificados Let's Encrypt automaticamente.
-# Pré-requisito: DNS do domínio apontando para este servidor.
-
-# Redireciona www → raiz
-www.{$DOMAIN} {
-    redir https://{$DOMAIN}{uri} permanent
+www.romatenis.com.br {
+    redir https://romatenis.com.br{uri} permanent
 }
 
-# App principal
-{$DOMAIN} {
+romatenis.com.br {
     reverse_proxy api:8000
     encode gzip zstd
 }
