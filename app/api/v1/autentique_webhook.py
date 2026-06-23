@@ -29,12 +29,15 @@ _EVENTOS_ASSINATURA = {"document.finished", "document_finished"}
 @router.post("/webhook")
 async def autentique_webhook(
     request: Request,
+    token: str | None = None,
     x_autentique_token: str | None = Header(None),
 ):
-    # Validação do token (opcional: só verifica se configurado)
+    # Valida token via query param (?token=...) ou header X-Autentique-Token
     secret = settings.AUTENTIQUE_WEBHOOK_SECRET
-    if secret and x_autentique_token != secret:
-        raise HTTPException(403, "Token inválido")
+    if secret:
+        received = token or x_autentique_token
+        if received != secret:
+            raise HTTPException(403, "Token inválido")
 
     payload = await request.json()
     evento = payload.get("event") or payload.get("type") or ""
