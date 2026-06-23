@@ -95,15 +95,16 @@ class SubscriptionService:
 
         # Validação de método de pagamento
         if forma_pagamento == FormaPagamento.BOLETO_AVISTA:
-            raise SubscriptionError("Boleto não está disponível. Use PIX (mensal) ou Cartão de Crédito.")
-        if plano != PlanoAssinatura.MENSAL and forma_pagamento == FormaPagamento.PIX_AVISTA:
-            raise SubscriptionError("PIX está disponível apenas para o plano mensal. Planos trimestrais, semestrais e anuais aceitam apenas Cartão de Crédito.")
+            raise SubscriptionError("Boleto não está disponível. Use PIX (5% de desconto, à vista) ou Cartão de Crédito.")
 
         if await self._get_ativa(player_id):
             raise SubscriptionError("Jogador já possui assinatura ativa")
 
         meses = PLANO_MESES[plano]
         valor_total = round(valor_mensal * meses, 2)
+        # PIX: 5% de desconto, sempre à vista
+        if forma_pagamento == FormaPagamento.PIX_AVISTA:
+            valor_total = round(valor_total * 0.95, 2)
         now_br = datetime.now(FUSO_BR)
         expiracao = now_br + timedelta(days=meses * 30)
 

@@ -337,7 +337,7 @@ async function carregarPerfil() {
         <div class="campo">
           <label>Forma de Pagamento</label>
           <select id="renovar-forma">
-            <option value="pix_avista">PIX à vista</option>
+            <option value="pix_avista">PIX à vista (5% de desconto)</option>
             <option value="cartao_parcelado">Cartão de Crédito</option>
           </select>
         </div>
@@ -402,13 +402,7 @@ function copiarPixRenovar() {
 }
 
 function atualizarFormasPagamento() {
-  const plano = document.getElementById("renovar-plano").value;
-  const formaEl = document.getElementById("renovar-forma");
-  const pixOpt = formaEl.querySelector('option[value="pix_avista"]');
-  if (pixOpt) {
-    pixOpt.disabled = plano !== "mensal";
-    if (plano !== "mensal" && formaEl.value === "pix_avista") formaEl.value = "cartao_parcelado";
-  }
+  // PIX disponível para todos os planos com 5% de desconto
 }
 
 function abrirRenovarUI() {

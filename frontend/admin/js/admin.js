@@ -820,18 +820,19 @@ function atualizarPrecoSub() {
   const p = _precos[plano]
   if (!p || typeof p !== 'object') return
 
-  // PIX só disponível para mensal
-  const pixOpt = formaEl.querySelector('option[value="pix_avista"]')
-  if (pixOpt) pixOpt.disabled = plano !== 'mensal'
-  if (plano !== 'mensal' && formaEl.value === 'pix_avista') formaEl.value = 'cartao_parcelado'
-
   const isPix = formaEl.value === 'pix_avista'
   document.getElementById('sub-valor-mensal').value = p.valor_mensal ?? ''
-  const parcelas = isPix ? 1 : (p.parcelas ?? 1)
-  const total = p.valor_total ?? (p.valor_mensal * parcelas)
-  const info = parcelas > 1
-    ? `${parcelas}× R$ ${fmtR$(p.valor_mensal)} = R$ ${fmtR$(total)} total`
-    : `R$ ${fmtR$(total)} à vista`
+  const totalBruto = p.valor_total ?? (p.valor_mensal * (p.parcelas ?? 1))
+  let info
+  if (isPix) {
+    const totalPix = Math.round(totalBruto * 0.95 * 100) / 100
+    info = `R$ ${fmtR$(totalPix)} à vista com PIX (5% de desconto)`
+  } else {
+    const parcelas = p.parcelas ?? 1
+    info = parcelas > 1
+      ? `${parcelas}× R$ ${fmtR$(p.valor_mensal)} = R$ ${fmtR$(totalBruto)} total`
+      : `R$ ${fmtR$(totalBruto)} à vista`
+  }
   document.getElementById('sub-preco-info').textContent = info
 }
 
