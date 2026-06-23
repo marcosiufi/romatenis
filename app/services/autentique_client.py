@@ -56,10 +56,10 @@ def _gerar_pdf(nome: str, email: str, cpf: str | None, data_str: str) -> bytes:
 
     # Título
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "ROMA TÊNIS — TERMO DE ADESÃO", ln=True, align="C")
+    pdf.cell(0, 10, "ROMA TÊNIS - TERMO DE ADESÃO", ln=True, align="C")
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 9)
-    pdf.cell(0, 6, "Associação Roma Tênis · CNPJ: (a preencher)", ln=True, align="C")
+    pdf.cell(0, 6, "Associacao Roma Tenis  |  CNPJ: (a preencher)", ln=True, align="C")
     pdf.ln(8)
 
     # Dados do associado
@@ -167,7 +167,7 @@ class AutentiqueClient:
             "query": _MUTATION,
             "variables": {
                 "document": {
-                    "name": f"Termo de Adesão — {nome}",
+                    "name": f"Termo de Adesão - {nome}",
                     "content_base64": pdf_b64,
                     "message": (
                         "Olá! Acesse o link abaixo para assinar seu Termo de Adesão da Roma Tênis "
