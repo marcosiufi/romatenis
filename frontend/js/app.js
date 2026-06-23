@@ -164,7 +164,7 @@ async function carregarRanking() {
         <div class="ranking-item">
           <span class="ranking-pos">${i + 1}</span>
           ${avatarHtml(j)}
-          <span style="flex:1">${j.apelido || j.nome}</span>
+          <span style="flex:1">${j.apelido || j.nome}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:rgba(200,80,30,.25);color:#e08050;padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
           <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
         </div>`)
       .join("");

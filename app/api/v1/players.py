@@ -1,13 +1,14 @@
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import or_, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_admin, get_current_player, hash_password
 from app.core.database import get_db
-from app.models.player import Player
+from app.models.player import Player, StatusJogador
 from app.schemas.player import PlayerCreate, PlayerOut, PlayerUpdate
 
 _UPLOAD_DIR = "/app/uploads/avatars"
@@ -18,10 +19,28 @@ router = APIRouter(prefix="/players", tags=["players"])
 
 
 @router.get("", response_model=list[PlayerOut])
-async def list_players(db: Annotated[AsyncSession, Depends(get_db)]):
-    """Ranking público — ordenado por pontos da temporada."""
+async def list_players(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    apenas_ativos: bool = False,
+):
+    """Ranking público — ordenado por pontos da temporada.
+
+    apenas_ativos=true: só retorna ATIVO (usado para seleção de convites).
+    Padrão: ATIVO + INATIVO dentro de 7 dias (aparecem com badge no ranking).
+    """
+    sete_dias_atras = datetime.now(timezone.utc) - timedelta(days=7)
+    if apenas_ativos:
+        cond = Player.status == StatusJogador.ATIVO.value
+    else:
+        cond = or_(
+            Player.status == StatusJogador.ATIVO.value,
+            and_(
+                Player.status == StatusJogador.INATIVO.value,
+                Player.data_inativacao >= sete_dias_atras,
+            ),
+        )
     result = await db.execute(
-        select(Player).order_by(Player.pontos_ranking_temporada_atual.desc())
+        select(Player).where(cond).order_by(Player.pontos_ranking_temporada_atual.desc())
     )
     return result.scalars().all()
 

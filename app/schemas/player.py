@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr
 
-from app.models.player import NivelJogador
+from app.models.player import NivelJogador, StatusJogador
 
 
 class PlayerBase(BaseModel):
@@ -73,6 +73,9 @@ class PlayerOut(PlayerBase):
     estado: str | None = None
     pais: str | None = None
     cep: str | None = None
+    # Status de atividade
+    status: StatusJogador = StatusJogador.ATIVO
+    data_inativacao: datetime | None = None
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

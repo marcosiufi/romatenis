@@ -184,7 +184,10 @@ class MatchmakingService:
         slot_fim = slot_dt + timedelta(hours=1)
 
         result = await self.db.execute(
-            select(Player).where(Player.aceita_convites_sistema == True)  # noqa: E712
+            select(Player).where(
+                Player.aceita_convites_sistema == True,  # noqa: E712
+                Player.status == "ativo",
+            )
         )
         candidatos = list(result.scalars().all())
 

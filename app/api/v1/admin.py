@@ -9,7 +9,7 @@ from app.core.auth import get_current_admin
 from app.core.database import get_db
 from app.models.booking import Booking, StatusReserva
 from app.models.match import Match, StatusPartida
-from app.models.player import NivelJogador, Player
+from app.models.player import NivelJogador, Player, StatusJogador
 from app.models.season import Season, StatusTemporada
 from app.models.subscription import StatusAssinatura, Subscription
 from app.schemas.player import PlayerOut
@@ -102,6 +102,18 @@ async def dashboard(
 
 # ── Players (admin-only fields) ───────────────────────────────────────────────
 
+@router.get("/players", response_model=list[PlayerOut])
+async def list_all_players(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Admin — lista todos os jogadores independente de status."""
+    result = await db.execute(
+        select(Player).order_by(Player.nome)
+    )
+    return result.scalars().all()
+
+
 class AdminPlayerPatch(BaseModel):
     nome: str | None = None
     telefone: str | None = None
@@ -122,6 +134,8 @@ class AdminPlayerPatch(BaseModel):
     estado: str | None = None
     pais: str | None = None
     cep: str | None = None
+    # Status de atividade
+    status: StatusJogador | None = None
 
 
 @router.patch("/players/{player_id}", response_model=PlayerOut)
@@ -135,7 +149,15 @@ async def update_player(
     player = await db.get(Player, player_id)
     if not player:
         raise HTTPException(404, "Jogador não encontrado")
-    for field, value in body.model_dump(exclude_none=True).items():
+    data = body.model_dump(exclude_none=True)
+    if "status" in data:
+        novo_status = data["status"]
+        if novo_status == StatusJogador.INATIVO and player.status != StatusJogador.INATIVO.value:
+            data["data_inativacao"] = datetime.now(timezone.utc)
+        elif novo_status == StatusJogador.ATIVO:
+            data["data_inativacao"] = None
+        data["status"] = novo_status.value
+    for field, value in data.items():
         setattr(player, field, value)
     await db.commit()
     await db.refresh(player)

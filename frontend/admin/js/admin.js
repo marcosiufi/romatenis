@@ -195,7 +195,7 @@ async function loadDashboard() {
 
 async function loadPlayers() {
   try {
-    _players = await api('/players')
+    _players = await api('/admin/players')
     renderJogadores(_players)
   } catch (err) {
     toast('Erro ao carregar jogadores: ' + err.message, true)
@@ -217,10 +217,19 @@ function _nomeExibicao(p) {
   return p.apelido ? `${p.apelido} <span style="opacity:.55;font-size:.75em">(${escHtml(p.nome)})</span>` : escHtml(p.nome)
 }
 
+function _statusBadge(status) {
+  const map = {
+    ativo:    '<span class="badge ba" style="background:#2a6e3a">ativo</span>',
+    inativo:  '<span class="badge ba" style="background:#7a4a18">inativo</span>',
+    suspenso: '<span class="badge ba" style="background:#5a1a1a">suspenso</span>',
+  }
+  return map[status] || status
+}
+
 function renderJogadores(lista) {
   const tb = document.getElementById('tbody-jogadores')
   if (!lista.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="empty">Nenhum jogador encontrado</td></tr>'
+    tb.innerHTML = '<tr><td colspan="8" class="empty">Nenhum jogador encontrado</td></tr>'
     return
   }
   tb.innerHTML = lista.map(p => `
@@ -231,6 +240,7 @@ function renderJogadores(lista) {
       <td>${p.rating_atual.toFixed(0)}</td>
       <td>${p.pontos_ranking_temporada_atual}</td>
       <td>${p.aceita_convites_sistema ? '✓' : '–'}</td>
+      <td>${_statusBadge(p.status)}</td>
       <td><button class="btn-xs sec" onclick="abrirModalJogador(${p.id})">Editar</button></td>
     </tr>
   `).join('')
@@ -249,8 +259,10 @@ function abrirModalJogador(playerId = null) {
   document.getElementById('jog-pais').value = 'Brasil'
   document.getElementById('jog-convites').checked = true
   document.getElementById('jog-is-admin').checked = false
+  document.getElementById('jog-status').value = 'ativo'
   document.getElementById('row-nivel').style.display = playerId ? '' : 'none'
   document.getElementById('row-is-admin').style.display = playerId ? '' : 'none'
+  document.getElementById('row-status').style.display = playerId ? '' : 'none'
   document.getElementById('row-senha').style.display = playerId ? 'none' : ''
   showErr('jog-erro', '')
 
@@ -274,6 +286,7 @@ function abrirModalJogador(playerId = null) {
       document.getElementById('jog-convites').checked = p.aceita_convites_sistema
       document.getElementById('jog-is-admin').checked = p.is_admin
       document.getElementById('jog-nivel').value = p.nivel
+      document.getElementById('jog-status').value = p.status || 'ativo'
     }
   }
   document.getElementById('modal-jogador').classList.add('open')
@@ -317,6 +330,7 @@ async function salvarJogador(e) {
         nivel:    document.getElementById('jog-nivel').value,
         is_admin: document.getElementById('jog-is-admin').checked,
       }
+      body.status = document.getElementById('jog-status').value
       await api(`/admin/players/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
       toast('Jogador atualizado')
     } else {

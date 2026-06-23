@@ -15,6 +15,12 @@ class NivelJogador(str, enum.Enum):
     NAO_CLASSIFICADO = "nao_classificado"
 
 
+class StatusJogador(str, enum.Enum):
+    ATIVO = "ativo"
+    INATIVO = "inativo"
+    SUSPENSO = "suspenso"
+
+
 class Player(Base):
     __tablename__ = "players"
 
@@ -50,6 +56,10 @@ class Player(Base):
     estado: Mapped[str | None] = mapped_column(String(2), nullable=True)
     pais: Mapped[str | None] = mapped_column(String(50), nullable=True, default="Brasil")
     cep: Mapped[str | None] = mapped_column(String(9), nullable=True)
+
+    # Status de atividade (regras de expiração Fase 2)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=StatusJogador.ATIVO.value)
+    data_inativacao: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # ID do cliente no Asaas (preenchido na primeira cobrança)
     asaas_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

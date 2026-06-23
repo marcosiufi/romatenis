@@ -353,7 +353,7 @@
         <table class="admin-table">
           <thead><tr>
             <th>Nome</th><th>E-mail</th><th>Nível</th>
-            <th>Rating</th><th>Pontos</th><th>Convites</th><th>Ações</th>
+            <th>Rating</th><th>Pontos</th><th>Convites</th><th>Status</th><th>Ações</th>
           </tr></thead>
           <tbody id="tbody-jogadores"></tbody>
         </table>
@@ -584,6 +584,14 @@
             <input type="checkbox" id="jog-is-admin">
             Administrador
           </label>
+        </div>
+        <div class="form-row" id="row-status" style="display:none">
+          <label>Status</label>
+          <select id="jog-status">
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+            <option value="suspenso">Suspenso</option>
+          </select>
         </div>
       </div>
 

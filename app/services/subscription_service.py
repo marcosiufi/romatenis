@@ -22,7 +22,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSession
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
-from app.models.player import Player
+from app.models.player import NivelJogador, Player, StatusJogador
 from app.models.subscription import (
     FormaPagamento,
     PlanoAssinatura,
@@ -351,19 +351,44 @@ class SubscriptionService:
         await self.db.commit()
 
     async def verificar_expiracoes(self) -> int:
-        """Marca assinaturas ATIVA com data_expiracao vencida como EXPIRADA."""
+        """Marca assinaturas ATIVA com data_expiracao vencida como EXPIRADA e inativa o jogador."""
+        agora = datetime.now(timezone.utc)
         result = await self.db.execute(
-            select(Subscription).where(
+            select(Subscription)
+            .options(selectinload(Subscription.player))
+            .where(
                 Subscription.status == StatusAssinatura.ATIVA,
-                Subscription.data_expiracao <= datetime.now(timezone.utc),
+                Subscription.data_expiracao <= agora,
             )
         )
         subs = list(result.scalars().all())
         for sub in subs:
             sub.status = StatusAssinatura.EXPIRADA
+            player = sub.player
+            if player and player.status == StatusJogador.ATIVO.value:
+                player.status = StatusJogador.INATIVO.value
+                player.data_inativacao = agora
         if subs:
             await self.db.commit()
         return len(subs)
+
+    async def resetar_nivel_inativos(self) -> int:
+        """Zera nivel de jogadores inativos há mais de 90 dias."""
+        noventa_dias_atras = datetime.now(timezone.utc) - timedelta(days=90)
+        result = await self.db.execute(
+            select(Player).where(
+                Player.status == StatusJogador.INATIVO.value,
+                Player.data_inativacao <= noventa_dias_atras,
+                Player.nivel != NivelJogador.NAO_CLASSIFICADO.value,
+            )
+        )
+        players = list(result.scalars().all())
+        for p in players:
+            p.nivel = NivelJogador.NAO_CLASSIFICADO
+            p.rating_atual = 1000.0
+        if players:
+            await self.db.commit()
+        return len(players)
 
     async def enviar_avisos_vencimento(self) -> int:
         """Envia e-mails de aviso para assinaturas que vencem em 7 ou 1 dia."""

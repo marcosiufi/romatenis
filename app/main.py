@@ -28,8 +28,12 @@ async def _scheduler_loop() -> None:
                 svc = SubscriptionService(db)
                 expiradas = await svc.verificar_expiracoes()
                 avisos = await svc.enviar_avisos_vencimento()
-                if expiradas or avisos:
-                    logger.info("Scheduler: %d expiradas, %d avisos enviados", expiradas, avisos)
+                resetados = await svc.resetar_nivel_inativos()
+                if expiradas or avisos or resetados:
+                    logger.info(
+                        "Scheduler: %d expiradas, %d avisos, %d niveis zerados",
+                        expiradas, avisos, resetados,
+                    )
         except Exception as exc:
             logger.error("Scheduler error: %s", exc)
         await asyncio.sleep(3600)
