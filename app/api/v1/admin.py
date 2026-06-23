@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from app.core.auth import get_current_admin
 from app.core.database import get_db
 from app.models.booking import Booking, StatusReserva
+from app.models.configuracao import Configuracao
 from app.models.match import Match, StatusPartida
 from app.models.player import NivelJogador, Player, StatusJogador
 from app.models.season import Season, StatusTemporada
@@ -162,3 +163,44 @@ async def update_player(
     await db.commit()
     await db.refresh(player)
     return player
+
+
+# ── Configurações (preços) ────────────────────────────────────────────────────
+
+class ConfiguracaoIn(BaseModel):
+    preco_mensal: float
+    preco_trimestral: float
+    preco_semestral: float
+    preco_anual: float
+    preco_locacao_hora: float
+
+
+@router.get("/configuracoes")
+async def get_configuracoes(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    cfg = await Configuracao.get(db)
+    return {
+        "preco_mensal":       float(cfg.preco_mensal),
+        "preco_trimestral":   float(cfg.preco_trimestral),
+        "preco_semestral":    float(cfg.preco_semestral),
+        "preco_anual":        float(cfg.preco_anual),
+        "preco_locacao_hora": float(cfg.preco_locacao_hora),
+    }
+
+
+@router.put("/configuracoes")
+async def put_configuracoes(
+    body: ConfiguracaoIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    cfg = await Configuracao.get(db)
+    cfg.preco_mensal       = body.preco_mensal
+    cfg.preco_trimestral   = body.preco_trimestral
+    cfg.preco_semestral    = body.preco_semestral
+    cfg.preco_anual        = body.preco_anual
+    cfg.preco_locacao_hora = body.preco_locacao_hora
+    await db.commit()
+    return {"ok": True}

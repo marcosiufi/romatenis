@@ -7,6 +7,7 @@ from app.models.payment import Payment
 from app.models.whatsapp_log import WhatsAppMessageLog
 from app.models.match_invitation import MatchInvitation, MatchInvitationPlayer
 from app.models.feriado import Feriado
+from app.models.configuracao import Configuracao
 
 __all__ = [
     "Player",
@@ -20,4 +21,5 @@ __all__ = [
     "MatchInvitation",
     "MatchInvitationPlayer",
     "Feriado",
+    "Configuracao",
 ]

@@ -26,6 +26,7 @@ from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.booking import Booking, StatusReserva, TipoReserva
+from app.models.configuracao import Configuracao
 from app.models.feriado import Feriado
 from app.models.match import LadoPartida, Match, MatchParticipant, StatusPartida, TipoPartida
 from app.models.player import Player
@@ -228,7 +229,7 @@ class BookingService:
             jogador_responsavel_id=player.id if player else None,
             cliente_locacao_nome=nome_externo,
             cliente_locacao_telefone=telefone_externo,
-            valor=120.00,
+            valor=float((await Configuracao.get(self.db)).preco_locacao_hora),
         )
         self.db.add(booking)
         await self.db.commit()

@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import get_current_admin, get_current_player
-from app.core.config import settings
 from app.core.database import get_db
+from app.models.configuracao import Configuracao
 from app.models.player import Player
+from app.services.subscription_service import PLANO_MESES, PLANO_PARCELAS
 from app.schemas.subscription import (
     PausaRequest,
     SubscriptionAdminOut,
@@ -99,13 +100,28 @@ async def verificar_expiracoes(
 # ── Preços padrão (público, usado pelo frontend) ───────────────────────────────
 
 @router.get("/precos")
-async def precos():
-    return {
-        "mensal": settings.PRECO_MENSAL,
-        "trimestral": settings.PRECO_TRIMESTRAL,
-        "semestral": settings.PRECO_SEMESTRAL,
-        "anual": settings.PRECO_ANUAL,
+async def precos(db=Depends(get_db)):
+    """Retorna preços e parcelas de cada plano lidos do banco."""
+    from app.models.subscription import PlanoAssinatura
+    cfg = await Configuracao.get(db)
+    totais = {
+        "mensal":      float(cfg.preco_mensal),
+        "trimestral":  float(cfg.preco_trimestral),
+        "semestral":   float(cfg.preco_semestral),
+        "anual":       float(cfg.preco_anual),
+        "locacao_hora": float(cfg.preco_locacao_hora),
     }
+    result = {}
+    for plano in PlanoAssinatura:
+        total = totais[plano.value]
+        meses = PLANO_MESES[plano]
+        result[plano.value] = {
+            "valor_total":  total,
+            "valor_mensal": round(total / meses, 2),
+            "parcelas":     PLANO_PARCELAS[plano],
+        }
+    result["locacao_hora"] = totais["locacao_hora"]
+    return result
 
 
 # ── Player ────────────────────────────────────────────────────────────────────

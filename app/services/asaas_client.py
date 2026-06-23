@@ -76,7 +76,7 @@ class AsaasClient:
             "dueDate": due_date,
             "description": descricao,
         }
-        if billing_type == "CREDIT_CARD" and installment_count > 1:
+        if billing_type in ("CREDIT_CARD", "BOLETO") and installment_count > 1:
             payload["installmentCount"] = installment_count
             payload["installmentValue"] = round(valor / installment_count, 2)
 

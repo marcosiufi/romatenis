@@ -326,6 +326,7 @@
     <button data-tab="temporada" onclick="switchTab('temporada')">Temporada</button>
     <button data-tab="assinaturas" onclick="switchTab('assinaturas')">Assinaturas</button>
     <button data-tab="matchmaking" onclick="switchTab('matchmaking')">Matchmaking</button>
+    <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
   </nav>
 
   <main>
@@ -466,6 +467,63 @@
             <th>Slot</th><th>Tipo</th><th>Status</th><th>Jogadores</th><th>Expira</th>
           </tr></thead>
           <tbody id="tbody-convites"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Configurações -->
+    <section id="sec-configuracoes" class="admin-section">
+      <div class="section-header">
+        <h2>Configurações de Preços</h2>
+      </div>
+
+      <div class="card" style="max-width:540px">
+        <p class="form-section-label">Planos de Assinatura</p>
+        <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">Valor total cobrado por período. Para planos multi-mensais, o valor mensal é calculado automaticamente.</p>
+
+        <form id="form-config" onsubmit="salvarConfiguracoes(event)">
+          <div class="form-grid-2">
+            <div class="form-row">
+              <label>Mensal (R$)</label>
+              <input type="number" id="cfg-mensal" step="0.01" min="0" required>
+              <small id="cfg-mensal-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
+            </div>
+            <div class="form-row">
+              <label>Trimestral — total (R$)</label>
+              <input type="number" id="cfg-trimestral" step="0.01" min="0" required>
+              <small id="cfg-trimestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
+            </div>
+            <div class="form-row">
+              <label>Semestral — total (R$)</label>
+              <input type="number" id="cfg-semestral" step="0.01" min="0" required>
+              <small id="cfg-semestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
+            </div>
+            <div class="form-row">
+              <label>Anual — total (R$)</label>
+              <input type="number" id="cfg-anual" step="0.01" min="0" required>
+              <small id="cfg-anual-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
+            </div>
+          </div>
+
+          <p class="form-section-label" style="margin-top:1rem">Locação Avulsa</p>
+          <div class="form-row" style="max-width:200px">
+            <label>Valor por hora (R$)</label>
+            <input type="number" id="cfg-locacao" step="0.01" min="0" required>
+          </div>
+
+          <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.5rem"></div>
+          <div style="margin-top:1.25rem">
+            <button type="submit" class="btn-xs primary">Salvar Configurações</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="max-width:540px;margin-top:1rem">
+        <p class="form-section-label">Parcelamento (gerado automaticamente)</p>
+        <p style="font-size:.78rem;opacity:.6;margin-bottom:.5rem">Boleto e cartão parcelado geram automaticamente as parcelas abaixo. PIX é sempre cobrado à vista.</p>
+        <table class="data-table" style="font-size:.82rem">
+          <thead><tr><th>Plano</th><th>Parcelas</th><th>Valor/parcela</th><th>Total</th></tr></thead>
+          <tbody id="tbody-parcelas"></tbody>
         </table>
       </div>
     </section>
@@ -704,15 +762,16 @@
       </div>
       <div class="form-row">
         <label>Forma de Pagamento</label>
-        <select id="sub-forma">
+        <select id="sub-forma" onchange="atualizarPrecoSub()">
           <option value="pix_avista">PIX à vista</option>
-          <option value="boleto_avista">Boleto à vista</option>
+          <option value="boleto_avista">Boleto parcelado</option>
           <option value="cartao_parcelado">Cartão parcelado</option>
         </select>
       </div>
       <div class="form-row">
         <label>Valor Mensal (R$)</label>
         <input type="number" id="sub-valor-mensal" step="0.01" min="1" required>
+        <small id="sub-preco-info" style="color:var(--clr-text-muted);font-size:.72rem;margin-top:.2rem"></small>
       </div>
       <div id="sub-pix-result" style="display:none;margin-top:0.75rem">
         <p style="font-size:0.8rem;color:var(--clr-text-muted);margin-bottom:0.4rem">PIX Copia-e-Cola:</p>

@@ -154,8 +154,9 @@ function switchTab(tab) {
     case 'jogadores':    loadPlayers(); break
     case 'partidas':     loadMatches(); break
     case 'temporada':    loadSeasons(); break
-    case 'assinaturas':  loadAssinaturas(); break
-    case 'matchmaking':  loadInvitations(); break
+    case 'assinaturas':    loadAssinaturas(); break
+    case 'matchmaking':    loadInvitations(); break
+    case 'configuracoes':  loadConfiguracoes(); break
   }
 }
 
@@ -778,7 +779,21 @@ function fecharModalAssinatura() {
 
 function atualizarPrecoSub() {
   const plano = document.getElementById('sub-plano').value
-  document.getElementById('sub-valor-mensal').value = _precos[plano] ?? ''
+  const forma = document.getElementById('sub-forma').value
+  const p = _precos[plano]
+  if (!p || typeof p !== 'object') return
+  document.getElementById('sub-valor-mensal').value = p.valor_mensal ?? ''
+  const isPix = forma === 'pix_avista'
+  const parcelas = isPix ? 1 : (p.parcelas ?? 1)
+  const total = p.valor_total ?? (p.valor_mensal * parcelas)
+  const info = parcelas > 1
+    ? `${parcelas}× R$ ${fmtR$(p.valor_mensal)} = R$ ${fmtR$(total)} total`
+    : `R$ ${fmtR$(total)} à vista`
+  document.getElementById('sub-preco-info').textContent = info
+}
+
+function fmtR$(v) {
+  return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 async function salvarAssinatura(e) {
@@ -787,12 +802,17 @@ async function salvarAssinatura(e) {
   const btn = document.getElementById('sub-btn-salvar')
   btn.disabled = true; btn.textContent = 'Gerando…'
   try {
+    const plano = document.getElementById('sub-plano').value
+    const forma = document.getElementById('sub-forma').value
+    const isPix = forma === 'pix_avista'
+    const p = _precos[plano]
+    const parcelas = (!isPix && p?.parcelas) ? p.parcelas : 1
     const body = {
-      player_id:     parseInt(document.getElementById('sub-player-id').value),
-      plano:         document.getElementById('sub-plano').value,
-      forma_pagamento: document.getElementById('sub-forma').value,
-      valor_mensal:  parseFloat(document.getElementById('sub-valor-mensal').value),
-      parcelas:      1,
+      player_id:       parseInt(document.getElementById('sub-player-id').value),
+      plano,
+      forma_pagamento: forma,
+      valor_mensal:    parseFloat(document.getElementById('sub-valor-mensal').value),
+      parcelas,
     }
     const res = await api('/subscriptions', { method: 'POST', body: JSON.stringify(body) })
     toast('✅ Assinatura criada!')
@@ -898,6 +918,114 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
 }
+
+// ── Configurações ─────────────────────────────────────────────────────────────
+
+const _PLANO_MESES = { mensal: 1, trimestral: 3, semestral: 6, anual: 12 }
+const _PLANO_LABEL2 = { mensal: 'Mensal', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' }
+
+async function loadConfiguracoes() {
+  try {
+    const cfg = await api('/admin/configuracoes')
+    document.getElementById('cfg-mensal').value      = cfg.preco_mensal
+    document.getElementById('cfg-trimestral').value  = cfg.preco_trimestral
+    document.getElementById('cfg-semestral').value   = cfg.preco_semestral
+    document.getElementById('cfg-anual').value       = cfg.preco_anual
+    document.getElementById('cfg-locacao').value     = cfg.preco_locacao_hora
+    _atualizarInfoPrecos(cfg)
+    _renderTabelaParcelas(cfg)
+  } catch (err) {
+    toast('Erro ao carregar configurações: ' + err.message, true)
+  }
+}
+
+function _atualizarInfoPrecos(cfg) {
+  const planos = {
+    mensal: { total: cfg.preco_mensal, meses: 1 },
+    trimestral: { total: cfg.preco_trimestral, meses: 3 },
+    semestral: { total: cfg.preco_semestral, meses: 6 },
+    anual: { total: cfg.preco_anual, meses: 12 },
+  }
+  for (const [key, { total, meses }] of Object.entries(planos)) {
+    const el = document.getElementById(`cfg-${key}-info`)
+    if (!el) continue
+    if (meses > 1) {
+      el.textContent = `= R$ ${fmtR$(total / meses)}/mês · ${meses}× parcelas`
+    } else {
+      el.textContent = `= R$ ${fmtR$(total)} à vista`
+    }
+  }
+}
+
+function _renderTabelaParcelas(cfg) {
+  const planos = [
+    { key: 'mensal',      total: cfg.preco_mensal,      meses: 1  },
+    { key: 'trimestral',  total: cfg.preco_trimestral,  meses: 3  },
+    { key: 'semestral',   total: cfg.preco_semestral,   meses: 6  },
+    { key: 'anual',       total: cfg.preco_anual,       meses: 12 },
+  ]
+  document.getElementById('tbody-parcelas').innerHTML = planos.map(({ key, total, meses }) => {
+    const porParcela = meses > 1 ? fmtR$(total / meses) : '—'
+    const parcLabel  = meses > 1 ? `${meses}×` : '1× (à vista)'
+    return `<tr>
+      <td>${_PLANO_LABEL2[key]}</td>
+      <td>${parcLabel}</td>
+      <td>${meses > 1 ? 'R$ ' + porParcela : '—'}</td>
+      <td>R$ ${fmtR$(total)}</td>
+    </tr>`
+  }).join('')
+}
+
+async function salvarConfiguracoes(e) {
+  e.preventDefault()
+  showErr('cfg-erro', '')
+  const btn = e.submitter
+  btn.disabled = true
+  try {
+    await api('/admin/configuracoes', {
+      method: 'PUT',
+      body: JSON.stringify({
+        preco_mensal:      parseFloat(document.getElementById('cfg-mensal').value),
+        preco_trimestral:  parseFloat(document.getElementById('cfg-trimestral').value),
+        preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
+        preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
+        preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
+      }),
+    })
+    // Recarrega _precos para atualizar o modal de assinatura
+    _precos = await api('/subscriptions/precos').catch(() => _precos)
+    // Atualiza infos visuais
+    const cfg = {
+      preco_mensal:      parseFloat(document.getElementById('cfg-mensal').value),
+      preco_trimestral:  parseFloat(document.getElementById('cfg-trimestral').value),
+      preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
+      preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
+      preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
+    }
+    _atualizarInfoPrecos(cfg)
+    _renderTabelaParcelas(cfg)
+    toast('Configurações salvas')
+  } catch (err) {
+    showErr('cfg-erro', err.message)
+  } finally {
+    btn.disabled = false
+  }
+}
+
+// Atualiza info ao digitar novo valor
+;['cfg-mensal','cfg-trimestral','cfg-semestral','cfg-anual','cfg-locacao'].forEach(id => {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      _atualizarInfoPrecos({
+        preco_mensal:       parseFloat(document.getElementById('cfg-mensal').value)     || 0,
+        preco_trimestral:   parseFloat(document.getElementById('cfg-trimestral').value) || 0,
+        preco_semestral:    parseFloat(document.getElementById('cfg-semestral').value)  || 0,
+        preco_anual:        parseFloat(document.getElementById('cfg-anual').value)      || 0,
+        preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value)    || 0,
+      })
+    })
+  })
+})
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 

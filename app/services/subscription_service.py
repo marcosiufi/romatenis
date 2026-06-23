@@ -22,6 +22,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSession
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
+from app.models.configuracao import Configuracao
 from app.models.player import NivelJogador, Player, StatusJogador
 from app.models.subscription import (
     FormaPagamento,
@@ -35,6 +36,14 @@ from app.services import email_service
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
 
 PLANO_MESES: dict[PlanoAssinatura, int] = {
+    PlanoAssinatura.MENSAL: 1,
+    PlanoAssinatura.TRIMESTRAL: 3,
+    PlanoAssinatura.SEMESTRAL: 6,
+    PlanoAssinatura.ANUAL: 12,
+}
+
+# Número padrão de parcelas por plano para BOLETO e cartão
+PLANO_PARCELAS: dict[PlanoAssinatura, int] = {
     PlanoAssinatura.MENSAL: 1,
     PlanoAssinatura.TRIMESTRAL: 3,
     PlanoAssinatura.SEMESTRAL: 6,
@@ -101,6 +110,13 @@ class SubscriptionService:
         due_date = (now_br + timedelta(days=3)).strftime("%Y-%m-%d")
         descricao = f"Assinatura {plano.value} — Ranking de Tênis"
 
+        # PIX não suporta parcelamento no Asaas; boleto e cartão suportam
+        installment_count = (
+            parcelas
+            if forma_pagamento in (FormaPagamento.BOLETO_AVISTA, FormaPagamento.CARTAO_PARCELADO)
+            else 1
+        )
+
         try:
             cobranca = await self._asaas.criar_cobranca(
                 customer_id=player.asaas_customer_id,
@@ -108,7 +124,7 @@ class SubscriptionService:
                 billing_type=billing_type,
                 due_date=due_date,
                 descricao=descricao,
-                installment_count=parcelas if forma_pagamento == FormaPagamento.CARTAO_PARCELADO else 1,
+                installment_count=installment_count,
             )
         except AsaasError as e:
             raise SubscriptionError(str(e))
@@ -167,14 +183,18 @@ class SubscriptionService:
             if dias_restantes > 7:
                 raise SubscriptionError("Você ainda tem mais de 7 dias de assinatura ativa.")
 
-        precos = {
-            PlanoAssinatura.MENSAL: cfg.PRECO_MENSAL,
-            PlanoAssinatura.TRIMESTRAL: cfg.PRECO_TRIMESTRAL,
-            PlanoAssinatura.SEMESTRAL: cfg.PRECO_SEMESTRAL,
-            PlanoAssinatura.ANUAL: cfg.PRECO_ANUAL,
+        config = await Configuracao.get(self.db)
+        meses = PLANO_MESES[plano]
+        precos_totais = {
+            PlanoAssinatura.MENSAL:      float(config.preco_mensal),
+            PlanoAssinatura.TRIMESTRAL:  float(config.preco_trimestral),
+            PlanoAssinatura.SEMESTRAL:   float(config.preco_semestral),
+            PlanoAssinatura.ANUAL:       float(config.preco_anual),
         }
-        valor_mensal = precos[plano]
-        return await self.criar_assinatura(player.id, plano, forma_pagamento, valor_mensal)
+        valor_total_plano = precos_totais[plano]
+        valor_mensal_unitario = round(valor_total_plano / meses, 2)
+        parcelas = PLANO_PARCELAS[plano]
+        return await self.criar_assinatura(player.id, plano, forma_pagamento, valor_mensal_unitario, parcelas)
 
     async def admin_atualizar_status(
         self,
