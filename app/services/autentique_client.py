@@ -209,6 +209,8 @@ class AutentiqueClient:
                 files=multipart,
             )
 
+        logger.info("Autentique response status=%s body=%s", r.status_code, r.text[:800])
+
         if not r.is_success:
             raise AutentiqueError(f"Autentique HTTP {r.status_code}: {r.text[:300]}")
 
