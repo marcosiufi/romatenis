@@ -23,7 +23,7 @@ class AsaasError(Exception):
 def _cliente() -> httpx.AsyncClient:
     return httpx.AsyncClient(
         base_url=settings.ASAAS_BASE_URL,
-        headers={"access_token": settings.ASAAS_API_KEY, "Content-Type": "application/json"},
+        headers={"access_token": settings.asaas_api_key, "Content-Type": "application/json"},
         timeout=15.0,
     )
 

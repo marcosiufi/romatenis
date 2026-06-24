@@ -13,8 +13,19 @@ class Settings(BaseSettings):
 
     DOMAIN: str = "https://romatenis.com.br"
 
-    ASAAS_API_KEY: str = ""
-    ASAAS_BASE_URL: str = "https://sandbox.asaas.com/api/v3"
+    ASAAS_API_KEY: str = ""       # armazenado em base64 no .env para evitar interpolação do $
+    ASAAS_BASE_URL: str = "https://api.asaas.com/v3"
+
+    @property
+    def asaas_api_key(self) -> str:
+        """Decodifica a chave Asaas de base64 (necessário pois a chave contém $ que o Docker Compose interpola)."""
+        if not self.ASAAS_API_KEY:
+            return ""
+        import base64
+        try:
+            return base64.b64decode(self.ASAAS_API_KEY).decode()
+        except Exception:
+            return self.ASAAS_API_KEY  # fallback: valor literal
     ASAAS_WEBHOOK_TOKEN: str = ""
 
     # Preços padrão por plano (R$) — sobrescrevíveis pelo admin na criação
