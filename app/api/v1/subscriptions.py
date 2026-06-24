@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import get_current_admin, get_current_player
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.configuracao import Configuracao
 from app.models.player import Player
