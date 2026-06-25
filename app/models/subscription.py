@@ -52,6 +52,8 @@ class Subscription(Base):
 
     gateway_subscription_id: Mapped[str | None] = mapped_column(nullable=True)
     notas: Mapped[str | None] = mapped_column(nullable=True)
+    pausa_solicitada: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    pausa_motivo: Mapped[str | None] = mapped_column(nullable=True)
     aviso_7d_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     aviso_1d_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

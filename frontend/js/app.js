@@ -221,7 +221,7 @@ function _subCardHtml(sub, pixPendente) {
   const pct     = _subProgressPct(sub);
   const dias    = _diasRestantes(sub);
   const expira  = fmtData(sub.data_expiracao);
-  const podePausar  = sub.status === "ativa" && dias > 0;
+  const podePausar  = sub.status === "ativa" && dias > 0 && sub.plano !== "mensal";
   const podeRenovar = ["expirada", "inadimplente", "cancelada"].includes(sub.status) || (sub.status === "ativa" && dias <= 7);
 
   let retornoHtml = "";
@@ -364,9 +364,18 @@ async function carregarPerfil() {
       </div>
       <div id="sub-pausa-ui" style="display:none" class="sub-card">
         <p style="font-weight:700;margin-bottom:.5rem">Solicitar Pausa</p>
+        <p style="font-size:.78rem;opacity:.7;margin-bottom:.5rem">Disponível para planos de 3, 6 ou 12 meses. Pausa máxima de 15 dias.</p>
         <div class="campo">
-          <label>Motivo (opcional)</label>
+          <label>Motivo (obrigatório)</label>
           <input type="text" id="pausa-motivo" placeholder="Ex: viagem, lesão…" />
+        </div>
+        <div class="campo">
+          <label>Data de início da pausa (obrigatório)</label>
+          <input type="date" id="pausa-data-inicio" min="${new Date().toISOString().split('T')[0]}" />
+        </div>
+        <div class="campo">
+          <label>Dias de pausa (1–15)</label>
+          <input type="number" id="pausa-dias" min="1" max="15" value="7" />
         </div>
         <p id="pausa-erro" class="erro" hidden></p>
         <div style="display:flex;gap:.5rem;margin-top:.5rem">
@@ -467,13 +476,31 @@ function fecharPausaUI() { document.getElementById("sub-pausa-ui").style.display
 async function confirmarPausa() {
   const erroEl = document.getElementById("pausa-erro");
   erroEl.hidden = true;
+  const motivo = document.getElementById("pausa-motivo").value.trim();
+  const dataInicio = document.getElementById("pausa-data-inicio").value;
+  const diasPausa = parseInt(document.getElementById("pausa-dias").value, 10);
+
+  if (!motivo) {
+    erroEl.textContent = "O motivo da pausa é obrigatório.";
+    erroEl.hidden = false;
+    return;
+  }
+  if (!dataInicio) {
+    erroEl.textContent = "Informe a data de início da pausa.";
+    erroEl.hidden = false;
+    return;
+  }
+  if (!diasPausa || diasPausa < 1 || diasPausa > 15) {
+    erroEl.textContent = "Informe entre 1 e 15 dias de pausa.";
+    erroEl.hidden = false;
+    return;
+  }
   try {
-    const motivo = document.getElementById("pausa-motivo").value;
     await apiFetch("/subscriptions/solicitar-pausa", {
       method: "POST",
-      body: JSON.stringify({ motivo: motivo || null }),
+      body: JSON.stringify({ motivo, data_inicio: dataInicio, dias_pausa: diasPausa }),
     });
-    alert("Solicitação enviada! O administrador entrará em contato.");
+    alert("Solicitação enviada! O administrador analisará e entrará em contato.");
     fecharPausaUI();
   } catch (err) {
     erroEl.textContent = err.message;

@@ -168,7 +168,7 @@ async def solicitar_pausa(
     svc: SubscriptionService = Depends(_svc),
 ):
     try:
-        await svc.solicitar_pausa(player, body.motivo)
+        await svc.solicitar_pausa(player, body.motivo, body.data_inicio, body.dias_pausa)
     except SubscriptionError as e:
         raise HTTPException(422, str(e))
     return {"ok": True, "msg": "Solicitação enviada. O admin entrará em contato."}

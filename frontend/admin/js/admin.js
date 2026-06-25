@@ -177,7 +177,14 @@ async function loadDashboard() {
     const liderInfo = d.lider_ranking
       ? `${d.lider_ranking.nome} (${d.lider_ranking.pontos} pts)`
       : 'Sem pontuações ainda'
+    const pausaCard = d.pausas_pendentes > 0
+      ? `<div class="dash-card" style="border-left:3px solid #e0a040;cursor:pointer" onclick="switchTab('assinaturas');filtrarPausasPendentes()">
+           <div class="dc-label">⏸ Solicitações de Pausa</div>
+           <div class="dc-val" style="color:#e0a040">${d.pausas_pendentes} aguardando aprovação →</div>
+         </div>`
+      : ''
     extra.innerHTML = `
+      ${pausaCard}
       <div class="dash-card">
         <div class="dc-label">Temporada</div>
         <div class="dc-val">${tempInfo}</div>
@@ -747,12 +754,22 @@ async function loadAssinaturas() {
 function atualizarStatsSubs(list) {
   const hoje = Date.now()
   const em7d = new Date(hoje + 7 * 86400000)
+  const pendentes = list.filter(s => s.pausa_solicitada).length
   document.getElementById('sub-st-ativas').textContent    = list.filter(s => s.status === 'ativa').length
   document.getElementById('sub-st-pausadas').textContent  = list.filter(s => s.status === 'pausada').length
   document.getElementById('sub-st-expiradas').textContent = list.filter(s => s.status === 'expirada').length
   document.getElementById('sub-st-7d').textContent        = list.filter(s =>
     s.status === 'ativa' && new Date(s.data_expiracao) <= em7d && new Date(s.data_expiracao) > hoje
   ).length
+  document.getElementById('sub-st-pausas-pendentes').textContent = pendentes
+  document.getElementById('sub-st-pausas-card').style.opacity = pendentes > 0 ? '1' : '0.4'
+}
+
+function filtrarPausasPendentes() {
+  document.getElementById('filtro-sub-status').value = ''
+  document.getElementById('filtro-sub-nome').value = ''
+  const filtrados = _subs.filter(s => s.pausa_solicitada)
+  renderAssinaturas(filtrados)
 }
 
 function filtrarAssinaturas() {
@@ -772,19 +789,23 @@ function renderAssinaturas(list) {
     return
   }
   tbody.innerHTML = list.map(s => `
-    <tr>
+    <tr${s.pausa_solicitada ? ' style="background:rgba(224,160,64,.07)"' : ''}>
       <td>
         <strong>${escHtml(s.player_nome || '–')}</strong>
         <div style="font-size:0.72rem;color:var(--clr-text-muted)">${escHtml(s.player_email || '')}</div>
       </td>
       <td>${PLANO_LABEL[s.plano] || s.plano}</td>
-      <td>${subBadge(s.status)}${s.status === 'pausada' && s.data_retorno_prevista
-        ? `<div style="font-size:0.68rem;color:var(--clr-text-muted);margin-top:2px">retorno: ${fmtD(s.data_retorno_prevista)}</div>` : ''}</td>
+      <td>
+        ${subBadge(s.status)}
+        ${s.pausa_solicitada ? '<span class="badge b-pendente" style="margin-left:3px">⏸ Pausa</span>' : ''}
+        ${s.status === 'pausada' && s.data_retorno_prevista
+          ? `<div style="font-size:0.68rem;color:var(--clr-text-muted);margin-top:2px">retorno: ${fmtD(s.data_retorno_prevista)}</div>` : ''}
+      </td>
       <td>${fmtD(s.data_inicio_ciclo)}</td>
       <td>${fmtD(s.data_expiracao)}<br>${diasRestantes(s.data_expiracao)}</td>
       <td>R$ ${Number(s.valor_total_ciclo).toFixed(2)}</td>
       <td>
-        <button class="btn-xs sec" onclick="abrirModalSubStatus(${s.id}, '${s.status}')">Status</button>
+        <button class="btn-xs sec" onclick="abrirModalSubStatus(${s.id})">Status</button>
         ${s.gateway_subscription_id
           ? `<button class="btn-xs primary" onclick="verPixSub(${s.id}, '${s.gateway_subscription_id}')">PIX</button>`
           : ''}
@@ -878,11 +899,33 @@ async function salvarAssinatura(e) {
 
 // ── Modal Status ──────────────────────────────────────────────────────────────
 
-function abrirModalSubStatus(id, statusAtual) {
+function abrirModalSubStatus(id) {
+  const s = _subs.find(x => x.id === id)
+  if (!s) return
   document.getElementById('sub-status-id').value = id
-  document.getElementById('sub-novo-status').value = statusAtual
+  document.getElementById('sub-novo-status').value = s.status
   document.getElementById('sub-notas').value = ''
   showErr('sub-status-err', '')
+
+  const infoEl = document.getElementById('pausa-request-info')
+  const motivoEl = document.getElementById('pausa-request-motivo')
+  if (s.pausa_solicitada && s.pausa_motivo) {
+    const dataInicio = s.data_pausa ? s.data_pausa.split('T')[0] : ''
+    const dataRetorno = s.data_retorno_prevista ? s.data_retorno_prevista.split('T')[0] : ''
+    const dias = dataInicio && dataRetorno
+      ? Math.ceil((new Date(dataRetorno) - new Date(dataInicio)) / 86400000)
+      : ''
+    motivoEl.textContent = `Motivo: "${s.pausa_motivo}"${dias ? ` · ${dataInicio} → ${dataRetorno} (${dias} dias)` : ''}`
+    infoEl.style.display = ''
+    document.getElementById('sub-novo-status').value = 'pausada'
+    document.getElementById('sub-data-pausa').value = dataInicio
+    document.getElementById('sub-data-retorno').value = dataRetorno
+  } else {
+    infoEl.style.display = 'none'
+    document.getElementById('sub-data-pausa').value = ''
+    document.getElementById('sub-data-retorno').value = ''
+  }
+
   togglePausaFields()
   document.getElementById('modal-sub-status').classList.add('open')
 }
@@ -903,6 +946,15 @@ async function confirmarSubStatus() {
   const pausa  = document.getElementById('sub-data-pausa').value
   const retorno= document.getElementById('sub-data-retorno').value
   const notas  = document.getElementById('sub-notas').value
+
+  if (status === 'pausada' && pausa && retorno) {
+    const dias = Math.ceil((new Date(retorno) - new Date(pausa)) / 86400000)
+    if (dias > 15) {
+      showErr('sub-status-err', 'A pausa máxima é de 15 dias.')
+      return
+    }
+  }
+
   try {
     await api(`/subscriptions/${id}/status`, {
       method: 'PATCH',

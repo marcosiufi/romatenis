@@ -74,6 +74,14 @@ async def dashboard(
         )
     ) or 0
 
+    pausas_pendentes = (
+        await db.scalar(
+            select(func.count(Subscription.id)).where(
+                Subscription.pausa_solicitada == True,  # noqa: E712
+            )
+        )
+    ) or 0
+
     return {
         "total_jogadores": total_jogadores,
         "assinaturas_ativas": assinaturas_ativas,
@@ -98,6 +106,7 @@ async def dashboard(
             if lider_row and lider_row.pontos_ranking_temporada_atual > 0
             else None
         ),
+        "pausas_pendentes": pausas_pendentes,
     }
 
 

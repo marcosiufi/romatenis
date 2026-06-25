@@ -406,6 +406,10 @@
         <div class="stat-card"><div class="valor" id="sub-st-pausadas">–</div><div class="lbl">Pausadas</div></div>
         <div class="stat-card"><div class="valor" id="sub-st-expiradas">–</div><div class="lbl">Expiradas</div></div>
         <div class="stat-card"><div class="valor" id="sub-st-7d" style="color:#e67e22">–</div><div class="lbl">Vencem em 7 dias</div></div>
+        <div class="stat-card" id="sub-st-pausas-card" style="cursor:pointer" onclick="filtrarPausasPendentes()" title="Clique para filtrar">
+          <div class="valor" id="sub-st-pausas-pendentes" style="color:#e0a040">–</div>
+          <div class="lbl">⏸ Pausa pendente</div>
+        </div>
       </div>
       <div class="section-header">
         <h2>Assinaturas</h2>
@@ -793,6 +797,10 @@
   <div class="modal">
     <h2>Alterar Status</h2>
     <input type="hidden" id="sub-status-id">
+    <div id="pausa-request-info" style="display:none;background:rgba(224,160,64,.12);border:1px solid #e0a040;border-radius:0.4rem;padding:0.6rem 0.75rem;margin-bottom:0.75rem">
+      <p style="font-size:0.78rem;font-weight:700;color:#e0a040;margin-bottom:0.2rem">⏸ Solicitação de pausa pendente</p>
+      <p style="font-size:0.8rem" id="pausa-request-motivo"></p>
+    </div>
     <div class="form-row">
       <label>Novo Status</label>
       <select id="sub-novo-status" onchange="togglePausaFields()">
@@ -809,7 +817,7 @@
         <input type="date" id="sub-data-pausa">
       </div>
       <div class="form-row">
-        <label>Retorno Previsto</label>
+        <label>Retorno Previsto (máx. 15 dias)</label>
         <input type="date" id="sub-data-retorno">
       </div>
     </div>

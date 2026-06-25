@@ -4,7 +4,12 @@
       "PowerShell(Get-ChildItem -Recurse -Path \"C:\\\\Users\\\\Marco Siufi\\\\OneDrive\\\\Quadra de tenis\\\\Sistema\\\\Desenvolvimento\\\\Backend\" | Where-Object { -not $_.PSIsContainer } | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\(\"C:\\\\Users\\\\Marco Siufi\\\\OneDrive\\\\Quadra de tenis\\\\Sistema\\\\Desenvolvimento\\\\Backend\\\\\", \"\"\\) } | Sort-Object)",
       "mcp__Claude_Preview__preview_start",
       "mcp__visualize__read_me",
-      "mcp__visualize__show_widget"
+      "mcp__visualize__show_widget",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(grep -n \"sec-matchmaking\\\\|</section>$\" frontend/admin/index.html)",
+      "Bash(git commit *)"
     ]
   }
 }

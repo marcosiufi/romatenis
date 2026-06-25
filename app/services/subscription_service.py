@@ -16,7 +16,7 @@ Fluxo de confirmação (webhook Asaas → POST /subscriptions/webhook):
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -241,24 +241,38 @@ class SubscriptionService:
         if not sub:
             raise SubscriptionError("Assinatura não encontrada")
 
+        status_anterior = sub.status
         sub.status = novo_status
         if notas is not None:
             sub.notas = notas
 
         if novo_status == StatusAssinatura.PAUSADA:
-            sub.data_pausa = data_pausa or datetime.now(FUSO_BR)
+            pausa_inicio = data_pausa or datetime.now(FUSO_BR)
+            if data_retorno_prevista:
+                retorno_naive = data_retorno_prevista.replace(tzinfo=None)
+                pausa_naive = pausa_inicio.replace(tzinfo=None)
+                if (retorno_naive - pausa_naive).days > 15:
+                    raise SubscriptionError("A pausa máxima permitida é de 15 dias.")
+            sub.data_pausa = pausa_inicio
             sub.data_retorno_prevista = data_retorno_prevista
+            sub.pausa_solicitada = False
+            if sub.player:
+                sub.player.status = StatusJogador.INATIVO.value
             await self.db.commit()
             await self.db.refresh(sub)
             data_ret_str = sub.data_retorno_prevista.strftime("%d/%m/%Y") if sub.data_retorno_prevista else None
             await email_service.enviar_aviso_pausa(sub.player.nome, sub.player.email, data_ret_str)
         else:
+            if status_anterior == StatusAssinatura.PAUSADA and novo_status == StatusAssinatura.ATIVA:
+                if sub.player:
+                    sub.player.status = StatusJogador.ATIVO.value
+            sub.pausa_solicitada = False
             await self.db.commit()
             await self.db.refresh(sub)
 
         return sub
 
-    async def solicitar_pausa(self, player: Player, motivo: str | None) -> None:
+    async def solicitar_pausa(self, player: Player, motivo: str, data_inicio: date, dias_pausa: int) -> None:
         """Registra o pedido de pausa — admin será notificado por e-mail."""
         from app.core.config import settings as cfg
         from app.services import email_service as em
@@ -267,10 +281,26 @@ class SubscriptionService:
         if not sub:
             raise SubscriptionError("Nenhuma assinatura ativa para pausar.")
 
+        if sub.plano == PlanoAssinatura.MENSAL:
+            raise SubscriptionError("Pausa não está disponível para o plano mensal.")
+
+        if not motivo or not motivo.strip():
+            raise SubscriptionError("O motivo da pausa é obrigatório.")
+
+        data_inicio_dt = datetime(data_inicio.year, data_inicio.month, data_inicio.day, tzinfo=FUSO_BR)
+        data_retorno_dt = data_inicio_dt + timedelta(days=dias_pausa)
+
+        sub.pausa_solicitada = True
+        sub.pausa_motivo = motivo.strip()
+        sub.data_pausa = data_inicio_dt
+        sub.data_retorno_prevista = data_retorno_dt
+        await self.db.commit()
+
         corpo = f"""
         <p>O jogador <strong>{player.nome}</strong> ({player.email}) solicitou pausa na assinatura.</p>
         <p><strong>Plano:</strong> {sub.plano.value} &nbsp; <strong>Vence:</strong> {sub.data_expiracao.strftime('%d/%m/%Y')}</p>
-        <p><strong>Motivo:</strong> {motivo or '(não informado)'}</p>
+        <p><strong>Motivo:</strong> {motivo}</p>
+        <p><strong>Período solicitado:</strong> {data_inicio_dt.strftime('%d/%m/%Y')} → {data_retorno_dt.strftime('%d/%m/%Y')} ({dias_pausa} dias)</p>
         <p>Acesse o painel admin para aprovar a pausa.</p>"""
 
         if cfg.SMTP_USER:

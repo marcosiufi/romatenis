@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date as date_type, datetime
 
 from pydantic import BaseModel, Field
 
@@ -26,7 +26,9 @@ class SubscriptionAdminUpdate(BaseModel):
 
 
 class PausaRequest(BaseModel):
-    motivo: str | None = None
+    motivo: str
+    data_inicio: date_type
+    dias_pausa: int = Field(ge=1, le=15)
 
 
 class SubscriptionOut(BaseModel):
@@ -47,6 +49,8 @@ class SubscriptionOut(BaseModel):
     data_retorno_prevista: datetime | None = None
     gateway_subscription_id: str | None
     notas: str | None = None
+    pausa_solicitada: bool = False
+    pausa_motivo: str | None = None
 
 
 class SubscriptionCreateOut(SubscriptionOut):
