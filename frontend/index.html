@@ -2,228 +2,446 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Roma Tênis — Quadra profissional, ranking oficial e agendamento online. Reserve sua quadra hoje." />
   <meta name="theme-color" content="#C1502E" />
-  <title>Roma Tênis</title>
-  <link rel="manifest" href="/manifest.json" />
+  <title>Roma Tênis — Quadra &amp; Ranking</title>
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/landing.css" />
 </head>
 <body>
 
-  <!-- ── Tela de Login (exibida antes de autenticar) ── -->
-  <div id="tela-login" class="login-wrapper">
-    <div class="login-box">
-      <div class="login-logo">
-        <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
-          <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
-          <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
-          <text x="150" y="102" text-anchor="middle" font-family="'Inter', Helvetica, Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
-        </svg>
-      </div>
-      <p class="login-sub">Experiência única no seu esporte preferido</p>
+<!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+<nav class="land-nav" id="land-nav">
+  <div class="container">
+    <a href="/" class="nav-logo" aria-label="Roma Tênis">
+      <svg viewBox="0 0 260 52" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="38" font-family="'Cinzel', Georgia, serif" font-size="36" font-weight="700" letter-spacing="6" fill="#F0EBE4">ROMA</text>
+        <line x1="0" y1="46" x2="148" y2="46" stroke="#C1502E" stroke-width="1.5"/>
+        <text x="0" y="52" font-family="'Inter', Arial, sans-serif" font-size="11" font-weight="500" letter-spacing="9" fill="#C1502E">TÊNIS</text>
+      </svg>
+    </a>
 
-      <form id="form-login" autocomplete="on">
-        <div class="campo">
-          <label for="inp-email">E-mail</label>
-          <input id="inp-email" type="email" name="email" autocomplete="email"
-                 placeholder="seu@email.com" required />
-        </div>
-        <div class="campo">
-          <label for="inp-senha">Senha</label>
-          <input id="inp-senha" type="password" name="password" autocomplete="current-password"
-                 placeholder="••••••••" required />
-        </div>
-        <p id="login-erro" class="erro" hidden></p>
-        <button type="submit" class="btn btn-primario" style="width:100%; margin-top:.5rem">
-          Entrar
-        </button>
-      </form>
+    <ul class="nav-links">
+      <li><a href="#sobre">Sobre</a></li>
+      <li><a href="#agendar">Agendar</a></li>
+      <li><a href="#planos">Planos</a></li>
+      <li><a href="#contato">Contato</a></li>
+    </ul>
+
+    <div class="nav-cta">
+      <a href="/app/" class="btn-land btn-primary">Área do Sócio →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+
+  <!-- Court line decoration -->
+  <svg class="hero-court" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <rect x="120" y="80" width="960" height="540" fill="none" stroke="#F0EBE4" stroke-width="2"/>
+    <rect x="200" y="80" width="800" height="540" fill="none" stroke="#F0EBE4" stroke-width="1"/>
+    <line x1="600" y1="80" x2="600" y2="620" stroke="#F0EBE4" stroke-width="1"/>
+    <line x1="120" y1="350" x2="1080" y2="350" stroke="#F0EBE4" stroke-width="2"/>
+    <line x1="200" y1="190" x2="1000" y2="190" stroke="#F0EBE4" stroke-width="1"/>
+    <line x1="200" y1="510" x2="1000" y2="510" stroke="#F0EBE4" stroke-width="1"/>
+    <rect x="560" y="340" width="80" height="20" fill="none" stroke="#F0EBE4" stroke-width="1"/>
+  </svg>
+
+  <div class="hero-content">
+    <div class="hero-logo">
+      <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
+        <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+        <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
+        <text x="150" y="102" text-anchor="middle" font-family="'Inter', Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
+      </svg>
+    </div>
+
+    <p class="hero-tagline">Onde o tênis encontra a excelência</p>
+    <p class="hero-sub">Quadra profissional, ranking oficial e agendamento fácil —<br>tudo num só lugar.</p>
+
+    <div class="hero-ctas">
+      <a href="#agendar" class="btn-land btn-primary">Agendar Quadra</a>
+      <a href="#planos" class="btn-land btn-ghost">Ver Planos</a>
     </div>
   </div>
 
-  <!-- ── App (exibido após autenticar) ── -->
-  <div id="app" hidden>
-    <header class="app-header">
-      <h1>Roma Tênis</h1>
-      <button id="btn-logout" class="btn btn-secundario" style="font-size:.75rem;padding:.3rem .7rem">
-        Sair
-      </button>
-    </header>
-
-    <main>
-      <!-- Tela: Ranking -->
-      <section id="tela-ranking" class="tela ativa">
-        <div class="card">
-          <p class="card-titulo">Classificação da temporada</p>
-          <div id="lista-ranking"></div>
-        </div>
-      </section>
-
-      <!-- Tela: Agendar -->
-      <section id="tela-agendar" class="tela">
-        <div class="card">
-          <p class="card-titulo">Buscar horários</p>
-
-          <div class="campo">
-            <label for="inp-data-jogo">Data</label>
-            <input id="inp-data-jogo" type="date" />
-          </div>
-
-          <div class="campo">
-            <label>Modalidade</label>
-            <div class="radio-group">
-              <label class="radio-opt">
-                <input type="radio" name="tipo-jogo" value="simples" checked /> Simples
-              </label>
-              <label class="radio-opt">
-                <input type="radio" name="tipo-jogo" value="duplas" /> Duplas
-              </label>
-            </div>
-          </div>
-
-          <button id="btn-buscar-slots" class="btn btn-primario" style="width:100%">
-            Ver horários disponíveis
-          </button>
-        </div>
-
-        <!-- Lista de slots -->
-        <div id="slots-container" hidden>
-          <div class="card">
-            <p class="card-titulo">Horários disponíveis</p>
-            <div id="lista-slots"></div>
-          </div>
-        </div>
-
-        <!-- Formulário de confirmação (aparece ao clicar num slot) -->
-        <div id="form-reserva" hidden>
-          <div class="card">
-            <p class="card-titulo">Confirmar reserva</p>
-            <p id="reserva-slot-info" style="font-size:.9rem;margin-bottom:.75rem;opacity:.8"></p>
-
-            <div class="campo">
-              <label>Adversário</label>
-              <select id="sel-adversario"></select>
-            </div>
-            <div id="campo-parceiro" hidden class="campo">
-              <label>Seu parceiro (duplas)</label>
-              <select id="sel-parceiro"></select>
-            </div>
-            <div id="campo-adversario2" hidden class="campo">
-              <label>2º adversário (duplas)</label>
-              <select id="sel-adversario2"></select>
-            </div>
-
-            <p id="reserva-erro" class="erro" hidden></p>
-
-            <div style="display:flex;gap:.5rem;margin-top:.5rem">
-              <button id="btn-cancelar-reserva" class="btn btn-secundario" style="flex:1">Voltar</button>
-              <button id="btn-confirmar-reserva" class="btn btn-primario" style="flex:1">Confirmar</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Tela: Minhas partidas -->
-      <section id="tela-partidas" class="tela">
-        <div id="partidas-lista"></div>
-
-        <!-- Formulário de placar (aparece ao clicar em "Lançar placar") -->
-        <div id="form-placar" hidden>
-          <div class="card">
-            <p class="card-titulo">Lançar placar</p>
-            <p id="placar-match-info" style="font-size:.85rem;margin-bottom:.75rem;opacity:.75"></p>
-
-            <div class="placar-grid">
-              <div class="campo">
-                <label id="label-games-a">Lado A</label>
-                <input id="inp-games-a" type="number" min="0" max="9" value="0" />
-              </div>
-              <span class="placar-sep">×</span>
-              <div class="campo">
-                <label id="label-games-b">Lado B</label>
-                <input id="inp-games-b" type="number" min="0" max="9" value="0" />
-              </div>
-            </div>
-
-            <div id="campo-tiebreak" hidden>
-              <p style="font-size:.78rem;opacity:.6;margin-bottom:.4rem;text-align:center">
-                Tiebreak (pontos)
-              </p>
-              <div class="placar-grid">
-                <div class="campo">
-                  <label>Lado A</label>
-                  <input id="inp-tb-a" type="number" min="0" value="0" />
-                </div>
-                <span class="placar-sep">×</span>
-                <div class="campo">
-                  <label>Lado B</label>
-                  <input id="inp-tb-b" type="number" min="0" value="0" />
-                </div>
-              </div>
-            </div>
-
-            <p id="placar-erro" class="erro" hidden></p>
-
-            <div style="display:flex;gap:.5rem;margin-top:.5rem">
-              <button id="btn-cancelar-placar" class="btn btn-secundario" style="flex:1">Cancelar</button>
-              <button id="btn-submeter-placar" class="btn btn-primario" style="flex:1">Confirmar</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Tela: Meu perfil -->
-      <section id="tela-perfil" class="tela">
-        <div class="card">
-          <p class="card-titulo">Meu perfil</p>
-          <div id="perfil-info"></div>
-        </div>
-      </section>
-    </main>
-
-    <nav class="nav-bottom">
-      <a href="#" data-tela="tela-ranking">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 3h10v8a5 5 0 0 1-10 0V3z"/>
-          <path d="M7 7H4a1 1 0 0 0-1 1 3 3 0 0 0 3 3h1"/>
-          <path d="M17 7h3a1 1 0 0 1 1 1 3 3 0 0 1-3 3h-1"/>
-          <line x1="12" y1="16" x2="12" y2="20"/>
-          <line x1="9" y1="20" x2="15" y2="20"/>
-        </svg>
-        Ranking
-      </a>
-      <a href="#" data-tela="tela-agendar">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-        </svg>
-        Agendar
-      </a>
-      <a href="#" data-tela="tela-partidas">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="10.5" cy="8.5" r="5.5"/>
-          <line x1="10.5" y1="3" x2="10.5" y2="14"/>
-          <line x1="5" y1="8.5" x2="16" y2="8.5"/>
-          <line x1="14.5" y1="13.5" x2="19" y2="19"/>
-        </svg>
-        Partidas
-      </a>
-      <a href="#" data-tela="tela-perfil">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
-        </svg>
-        Perfil
-      </a>
-    </nav>
+  <div class="hero-scroll" aria-hidden="true">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F0EBE4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
   </div>
+</section>
 
-  <script src="/js/app.js"></script>
+<!-- ── Diferenciais ──────────────────────────────────────────────────────── -->
+<section class="diferenciais" id="sobre">
+  <div class="container">
+    <div class="header reveal">
+      <p class="section-label">Por que escolher</p>
+      <h2 class="section-title">Roma Tênis</h2>
+      <div class="accent-line center"></div>
+      <p class="section-sub">Uma experiência completa para quem leva o tênis a sério.</p>
+    </div>
+
+    <div class="cards-grid">
+
+      <div class="dif-card reveal">
+        <div class="dif-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="12" rx="10" ry="10"/>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+            <path d="M2 12h20"/>
+          </svg>
+        </div>
+        <h3>Quadra Profissional</h3>
+        <p>Estrutura de alto nível, mantida em perfeitas condições para elevar o seu jogo a cada partida.</p>
+      </div>
+
+      <div class="dif-card reveal">
+        <div class="dif-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 3h10v8a5 5 0 0 1-10 0V3z"/>
+            <path d="M7 7H4a1 1 0 0 0-1 1 3 3 0 0 0 3 3h1"/>
+            <path d="M17 7h3a1 1 0 0 1 1 1 3 3 0 0 1-3 3h-1"/>
+            <line x1="12" y1="16" x2="12" y2="20"/>
+            <line x1="9" y1="20" x2="15" y2="20"/>
+          </svg>
+        </div>
+        <h3>Ranking Oficial</h3>
+        <p>Dispute temporadas, acompanhe sua evolução e suba no ranking entre os associados.</p>
+      </div>
+
+      <div class="dif-card reveal">
+        <div class="dif-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+          </svg>
+        </div>
+        <h3>Agendamento Online</h3>
+        <p>Reserve seu horário pelo aplicativo a qualquer hora, sem burocracia e com confirmação imediata.</p>
+      </div>
+
+      <div class="dif-card reveal">
+        <div class="dif-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h3>Comunidade Ativa</h3>
+        <p>Encontre parceiros para simples ou duplas e amplie sua rede de contatos dentro do esporte.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Agendar Avulso ────────────────────────────────────────────────────── -->
+<section class="agendar-section" id="agendar">
+  <div class="container">
+    <div class="agendar-inner">
+
+      <div class="agendar-text reveal">
+        <p class="section-label">Aluguel Avulso</p>
+        <h2 class="section-title">Reserve sua Quadra</h2>
+        <div class="accent-line"></div>
+        <p class="section-sub">Sem necessidade de assinatura. Escolha a data e o horário, pague online e receba a confirmação na hora.</p>
+        <br>
+        <p class="section-sub" style="font-size:.85rem">Associados têm prioridade no agendamento e desconto exclusivo na hora avulsa.</p>
+      </div>
+
+      <div class="agendar-widget reveal">
+        <h3>Verificar Disponibilidade</h3>
+
+        <div class="aw-notice">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>O agendamento online com pagamento estará disponível em breve. Por enquanto, entre em contato pelo WhatsApp para reservar.</span>
+        </div>
+
+        <div class="aw-field">
+          <label>Data desejada</label>
+          <input type="date" id="aw-data" />
+        </div>
+        <div class="aw-field">
+          <label>Horário preferido</label>
+          <select id="aw-hora">
+            <option value="">Selecione…</option>
+            <option>08:00</option><option>09:00</option><option>10:00</option>
+            <option>11:00</option><option>14:00</option><option>15:00</option>
+            <option>16:00</option><option>17:00</option><option>18:00</option>
+            <option>19:00</option><option>20:00</option>
+          </select>
+        </div>
+        <div class="aw-field">
+          <label>Modalidade</label>
+          <select id="aw-tipo">
+            <option value="simples">Simples</option>
+            <option value="duplas">Duplas</option>
+          </select>
+        </div>
+
+        <a id="aw-whatsapp-btn" href="#" target="_blank" rel="noopener"
+           class="btn-land btn-primary" style="width:100%;margin-top:.5rem">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.557 4.11 1.527 5.835L0 24l6.345-1.507A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.005-1.374l-.36-.213-3.767.895.952-3.656-.234-.375A9.818 9.818 0 1 1 12 21.818z"/>
+          </svg>
+          Consultar pelo WhatsApp
+        </a>
+        <p style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:.6rem">Resposta em até 30 minutos</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Planos ─────────────────────────────────────────────────────────────── -->
+<section class="planos-section" id="planos">
+  <div class="container">
+    <div class="header reveal">
+      <p class="section-label">Faça parte do clube</p>
+      <h2 class="section-title">Planos de Assinatura</h2>
+      <div class="accent-line center"></div>
+      <p class="section-sub">Acesso à quadra, ranking oficial e agendamento prioritário. Cancele a qualquer momento.</p>
+    </div>
+
+    <div class="planos-grid" id="planos-grid">
+      <!-- Preenchido via JS com preços da API -->
+      <div class="plano-card reveal">
+        <p class="plano-badge">Mensal</p>
+        <p class="plano-nome">Mensal</p>
+        <p class="plano-duracao">1 mês de acesso</p>
+        <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-mensal">–</span><span class="periodo">/mês</span></div>
+        <p class="plano-total" id="pix-mensal"></p>
+        <ul class="plano-features">
+          <li>Acesso ilimitado à quadra</li>
+          <li>Participação no ranking</li>
+          <li>Agendamento online</li>
+        </ul>
+        <a href="/app/" class="btn-land btn-ghost plano-cta">Contratar Plano</a>
+      </div>
+
+      <div class="plano-card reveal">
+        <p class="plano-badge">Trimestral</p>
+        <p class="plano-nome">Trimestral</p>
+        <p class="plano-duracao">3 meses de acesso</p>
+        <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-trimestral">–</span><span class="periodo">/mês</span></div>
+        <p class="plano-total" id="pix-trimestral"></p>
+        <ul class="plano-features">
+          <li>Acesso ilimitado à quadra</li>
+          <li>Participação no ranking</li>
+          <li>Agendamento online</li>
+          <li>Solicitação de pausa</li>
+        </ul>
+        <a href="/app/" class="btn-land btn-ghost plano-cta">Contratar Plano</a>
+      </div>
+
+      <div class="plano-card destaque reveal">
+        <p class="plano-badge">Mais popular</p>
+        <p class="plano-nome">Semestral</p>
+        <p class="plano-duracao">6 meses de acesso</p>
+        <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-semestral">–</span><span class="periodo">/mês</span></div>
+        <p class="plano-total" id="pix-semestral"></p>
+        <ul class="plano-features">
+          <li>Acesso ilimitado à quadra</li>
+          <li>Participação no ranking</li>
+          <li>Agendamento online</li>
+          <li>Solicitação de pausa</li>
+        </ul>
+        <a href="/app/" class="btn-land btn-primary plano-cta">Contratar Plano</a>
+      </div>
+
+      <div class="plano-card reveal">
+        <p class="plano-badge">Anual</p>
+        <p class="plano-nome">Anual</p>
+        <p class="plano-duracao">12 meses de acesso</p>
+        <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-anual">–</span><span class="periodo">/mês</span></div>
+        <p class="plano-total" id="pix-anual"></p>
+        <ul class="plano-features">
+          <li>Acesso ilimitado à quadra</li>
+          <li>Participação no ranking</li>
+          <li>Agendamento online</li>
+          <li>Solicitação de pausa</li>
+          <li>Melhor custo-benefício</li>
+        </ul>
+        <a href="/app/" class="btn-land btn-ghost plano-cta">Contratar Plano</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Contato ────────────────────────────────────────────────────────────── -->
+<section class="contato-section" id="contato">
+  <div class="container">
+    <div class="header reveal">
+      <p class="section-label">Onde estamos</p>
+      <h2 class="section-title">Localização &amp; Contato</h2>
+      <div class="accent-line"></div>
+    </div>
+
+    <div class="contato-grid">
+
+      <div class="contato-item reveal">
+        <div class="contato-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div>
+          <p class="contato-label">Endereço</p>
+          <!-- TODO: preencher endereço real -->
+          <p class="contato-value">A preencher — São Paulo, SP</p>
+        </div>
+      </div>
+
+      <div class="contato-item reveal">
+        <div class="contato-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+            <line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+        </div>
+        <div>
+          <p class="contato-label">WhatsApp</p>
+          <!-- TODO: preencher número real -->
+          <a id="footer-whatsapp" href="#" class="contato-value" style="color:var(--accent)">Clique para conversar</a>
+        </div>
+      </div>
+
+      <div class="contato-item reveal">
+        <div class="contato-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+          </svg>
+        </div>
+        <div>
+          <p class="contato-label">Instagram</p>
+          <!-- TODO: preencher @ real -->
+          <a href="#" class="contato-value" style="color:var(--accent)">@romatenis</a>
+        </div>
+      </div>
+
+      <div class="contato-item reveal">
+        <div class="contato-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div>
+          <p class="contato-label">Funcionamento</p>
+          <p class="contato-value">Seg – Dom: 07h às 22h</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+<footer class="land-footer">
+  <div class="container">
+    <div class="footer-logo">
+      <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg">
+        <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+        <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
+        <text x="150" y="102" text-anchor="middle" font-family="'Inter', Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
+      </svg>
+    </div>
+
+    <ul class="footer-links">
+      <li><a href="#sobre">Sobre</a></li>
+      <li><a href="#agendar">Agendar</a></li>
+      <li><a href="#planos">Planos</a></li>
+      <li><a href="/app/">Área do Sócio</a></li>
+    </ul>
+
+    <p class="footer-copy">© 2026 Roma Tênis</p>
+  </div>
+</footer>
+
+<script>
+// ── Nav scroll effect ──────────────────────────────────────────────────────
+const nav = document.getElementById('land-nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 30);
+}, { passive: true });
+
+// ── Reveal on scroll ──────────────────────────────────────────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── WhatsApp link builder ──────────────────────────────────────────────────
+// TODO: substitua pelo número real (apenas dígitos, com código do país 55)
+const WA_NUMBER = '5511999999999';
+const WA_BASE   = `https://wa.me/${WA_NUMBER}`;
+
+function buildWhatsAppMsg() {
+  const data  = document.getElementById('aw-data').value;
+  const hora  = document.getElementById('aw-hora').value;
+  const tipo  = document.getElementById('aw-tipo').value;
+  let msg = 'Olá! Gostaria de verificar disponibilidade para aluguel de quadra no Roma Tênis.';
+  if (data) msg += `\nData: ${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}`;
+  if (hora) msg += `\nHorário: ${hora}`;
+  if (tipo) msg += `\nModalidade: ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
+  return WA_BASE + '?text=' + encodeURIComponent(msg);
+}
+
+document.getElementById('aw-whatsapp-btn').addEventListener('click', function(e) {
+  e.preventDefault();
+  window.open(buildWhatsAppMsg(), '_blank', 'noopener');
+});
+
+document.getElementById('footer-whatsapp').href = WA_BASE;
+
+// ── Carregar preços da API ─────────────────────────────────────────────────
+function fmtR(v) {
+  return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+fetch('/api/v1/subscriptions/precos')
+  .then(r => r.ok ? r.json() : null)
+  .then(p => {
+    if (!p) return;
+    const planos = [
+      { key: 'mensal',      idValor: 'preco-mensal',      idPix: 'pix-mensal' },
+      { key: 'trimestral',  idValor: 'preco-trimestral',  idPix: 'pix-trimestral' },
+      { key: 'semestral',   idValor: 'preco-semestral',   idPix: 'pix-semestral' },
+      { key: 'anual',       idValor: 'preco-anual',       idPix: 'pix-anual' },
+    ];
+    planos.forEach(({ key, idValor, idPix }) => {
+      const d = p[key];
+      if (!d) return;
+      const elV = document.getElementById(idValor);
+      const elP = document.getElementById(idPix);
+      if (elV) elV.textContent = fmtR(d.valor_mensal);
+      if (elP) {
+        const pixTotal = (d.valor_total * 0.95).toFixed(2);
+        elP.innerHTML = `Total: R$ ${fmtR(d.valor_total)}<br><span style="color:#6fcf97">PIX à vista: R$ ${fmtR(pixTotal)} (5% off)</span>`;
+      }
+    });
+  })
+  .catch(() => {});
+
+// ── Definir data mínima no widget de agendamento ───────────────────────────
+document.getElementById('aw-data').min = new Date().toISOString().split('T')[0];
+</script>
 </body>
 </html>

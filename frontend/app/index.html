@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#C1502E" />
+  <title>Roma Tênis — App</title>
+  <link rel="manifest" href="/app/manifest.json" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- ── Tela de Login (exibida antes de autenticar) ── -->
+  <div id="tela-login" class="login-wrapper">
+    <div class="login-box">
+      <div class="login-logo">
+        <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
+          <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+          <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
+          <text x="150" y="102" text-anchor="middle" font-family="'Inter', Helvetica, Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
+        </svg>
+      </div>
+      <p class="login-sub">Experiência única no seu esporte preferido</p>
+
+      <form id="form-login" autocomplete="on">
+        <div class="campo">
+          <label for="inp-email">E-mail</label>
+          <input id="inp-email" type="email" name="email" autocomplete="email"
+                 placeholder="seu@email.com" required />
+        </div>
+        <div class="campo">
+          <label for="inp-senha">Senha</label>
+          <input id="inp-senha" type="password" name="password" autocomplete="current-password"
+                 placeholder="••••••••" required />
+        </div>
+        <p id="login-erro" class="erro" hidden></p>
+        <button type="submit" class="btn btn-primario" style="width:100%; margin-top:.5rem">
+          Entrar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── App (exibido após autenticar) ── -->
+  <div id="app" hidden>
+    <header class="app-header">
+      <h1>Roma Tênis</h1>
+      <button id="btn-logout" class="btn btn-secundario" style="font-size:.75rem;padding:.3rem .7rem">
+        Sair
+      </button>
+    </header>
+
+    <main>
+      <!-- Tela: Ranking -->
+      <section id="tela-ranking" class="tela ativa">
+        <div class="card">
+          <p class="card-titulo">Classificação da temporada</p>
+          <div id="lista-ranking"></div>
+        </div>
+      </section>
+
+      <!-- Tela: Agendar -->
+      <section id="tela-agendar" class="tela">
+        <div class="card">
+          <p class="card-titulo">Buscar horários</p>
+
+          <div class="campo">
+            <label for="inp-data-jogo">Data</label>
+            <input id="inp-data-jogo" type="date" />
+          </div>
+
+          <div class="campo">
+            <label>Modalidade</label>
+            <div class="radio-group">
+              <label class="radio-opt">
+                <input type="radio" name="tipo-jogo" value="simples" checked /> Simples
+              </label>
+              <label class="radio-opt">
+                <input type="radio" name="tipo-jogo" value="duplas" /> Duplas
+              </label>
+            </div>
+          </div>
+
+          <button id="btn-buscar-slots" class="btn btn-primario" style="width:100%">
+            Ver horários disponíveis
+          </button>
+        </div>
+
+        <div id="slots-container" hidden>
+          <div class="card">
+            <p class="card-titulo">Horários disponíveis</p>
+            <div id="lista-slots"></div>
+          </div>
+        </div>
+
+        <div id="form-reserva" hidden>
+          <div class="card">
+            <p class="card-titulo">Confirmar reserva</p>
+            <p id="reserva-slot-info" style="font-size:.9rem;margin-bottom:.75rem;opacity:.8"></p>
+
+            <div class="campo">
+              <label>Adversário</label>
+              <select id="sel-adversario"></select>
+            </div>
+            <div id="campo-parceiro" hidden class="campo">
+              <label>Seu parceiro (duplas)</label>
+              <select id="sel-parceiro"></select>
+            </div>
+            <div id="campo-adversario2" hidden class="campo">
+              <label>2º adversário (duplas)</label>
+              <select id="sel-adversario2"></select>
+            </div>
+
+            <p id="reserva-erro" class="erro" hidden></p>
+
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+              <button id="btn-cancelar-reserva" class="btn btn-secundario" style="flex:1">Voltar</button>
+              <button id="btn-confirmar-reserva" class="btn btn-primario" style="flex:1">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tela: Minhas partidas -->
+      <section id="tela-partidas" class="tela">
+        <div id="partidas-lista"></div>
+
+        <div id="form-placar" hidden>
+          <div class="card">
+            <p class="card-titulo">Lançar placar</p>
+            <p id="placar-match-info" style="font-size:.85rem;margin-bottom:.75rem;opacity:.75"></p>
+
+            <div class="placar-grid">
+              <div class="campo">
+                <label id="label-games-a">Lado A</label>
+                <input id="inp-games-a" type="number" min="0" max="9" value="0" />
+              </div>
+              <span class="placar-sep">×</span>
+              <div class="campo">
+                <label id="label-games-b">Lado B</label>
+                <input id="inp-games-b" type="number" min="0" max="9" value="0" />
+              </div>
+            </div>
+
+            <div id="campo-tiebreak" hidden>
+              <p style="font-size:.78rem;opacity:.6;margin-bottom:.4rem;text-align:center">
+                Tiebreak (pontos)
+              </p>
+              <div class="placar-grid">
+                <div class="campo">
+                  <label>Lado A</label>
+                  <input id="inp-tb-a" type="number" min="0" value="0" />
+                </div>
+                <span class="placar-sep">×</span>
+                <div class="campo">
+                  <label>Lado B</label>
+                  <input id="inp-tb-b" type="number" min="0" value="0" />
+                </div>
+              </div>
+            </div>
+
+            <p id="placar-erro" class="erro" hidden></p>
+
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+              <button id="btn-cancelar-placar" class="btn btn-secundario" style="flex:1">Cancelar</button>
+              <button id="btn-submeter-placar" class="btn btn-primario" style="flex:1">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tela: Meu perfil -->
+      <section id="tela-perfil" class="tela">
+        <div class="card">
+          <p class="card-titulo">Meu perfil</p>
+          <div id="perfil-info"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="nav-bottom">
+      <a href="#" data-tela="tela-ranking">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 3h10v8a5 5 0 0 1-10 0V3z"/>
+          <path d="M7 7H4a1 1 0 0 0-1 1 3 3 0 0 0 3 3h1"/>
+          <path d="M17 7h3a1 1 0 0 1 1 1 3 3 0 0 1-3 3h-1"/>
+          <line x1="12" y1="16" x2="12" y2="20"/>
+          <line x1="9" y1="20" x2="15" y2="20"/>
+        </svg>
+        Ranking
+      </a>
+      <a href="#" data-tela="tela-agendar">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+        </svg>
+        Agendar
+      </a>
+      <a href="#" data-tela="tela-partidas">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="10.5" cy="8.5" r="5.5"/>
+          <line x1="10.5" y1="3" x2="10.5" y2="14"/>
+          <line x1="5" y1="8.5" x2="16" y2="8.5"/>
+          <line x1="14.5" y1="13.5" x2="19" y2="19"/>
+        </svg>
+        Partidas
+      </a>
+      <a href="#" data-tela="tela-perfil">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+        </svg>
+        Perfil
+      </a>
+    </nav>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

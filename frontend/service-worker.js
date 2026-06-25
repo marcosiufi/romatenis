@@ -1,5 +1,5 @@
-const CACHE_NAME = "romatenis-v20";
-const STATIC_ASSETS = ["/", "/css/style.css", "/js/app.js", "/manifest.json", "/admin/", "/admin/js/admin.js"];
+const CACHE_NAME = "romatenis-v21";
+const STATIC_ASSETS = ["/", "/app/", "/css/style.css", "/css/landing.css", "/js/app.js", "/app/manifest.json", "/admin/", "/admin/js/admin.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
