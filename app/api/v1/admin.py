@@ -9,6 +9,7 @@ from app.core.auth import get_current_admin
 from app.core.database import get_db
 from app.models.booking import Booking, StatusReserva
 from app.models.configuracao import Configuracao
+from app.models.slot_ranking import SlotRanking
 from app.models.match import Match, StatusPartida
 from app.models.player import NivelJogador, Player, StatusJogador
 from app.models.season import Season, StatusTemporada
@@ -267,3 +268,87 @@ async def marcar_contrato_assinado(
     await db.commit()
     await db.refresh(player)
     return player
+
+
+# ── Slots de Ranking ──────────────────────────────────────────────────────────
+
+class SlotRankingIn(BaseModel):
+    dia_semana: int   # 0=segunda … 6=domingo
+    hora_inicio: time
+    hora_fim: time
+    ativo: bool = True
+
+
+class SlotRankingOut(BaseModel):
+    id: int
+    dia_semana: int
+    hora_inicio: time
+    hora_fim: time
+    ativo: bool
+
+    model_config = {"from_attributes": True}
+
+
+DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
+
+@router.get("/slots-ranking", response_model=list[SlotRankingOut])
+async def listar_slots_ranking(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    result = await db.execute(
+        select(SlotRanking).order_by(SlotRanking.dia_semana, SlotRanking.hora_inicio)
+    )
+    return result.scalars().all()
+
+
+@router.post("/slots-ranking", response_model=SlotRankingOut, status_code=201)
+async def criar_slot_ranking(
+    body: SlotRankingIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    if not (0 <= body.dia_semana <= 6):
+        raise HTTPException(422, "Dia da semana inválido (0=segunda, 6=domingo).")
+    if body.hora_inicio >= body.hora_fim:
+        raise HTTPException(422, "Hora de início deve ser anterior à hora de fim.")
+
+    slot = SlotRanking(
+        dia_semana=body.dia_semana,
+        hora_inicio=body.hora_inicio,
+        hora_fim=body.hora_fim,
+        ativo=body.ativo,
+    )
+    db.add(slot)
+    await db.commit()
+    await db.refresh(slot)
+    return slot
+
+
+@router.patch("/slots-ranking/{slot_id}/toggle", response_model=SlotRankingOut)
+async def toggle_slot_ranking(
+    slot_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    slot = await db.get(SlotRanking, slot_id)
+    if not slot:
+        raise HTTPException(404, "Slot não encontrado.")
+    slot.ativo = not slot.ativo
+    await db.commit()
+    await db.refresh(slot)
+    return slot
+
+
+@router.delete("/slots-ranking/{slot_id}", status_code=204)
+async def deletar_slot_ranking(
+    slot_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    slot = await db.get(SlotRanking, slot_id)
+    if not slot:
+        raise HTTPException(404, "Slot não encontrado.")
+    await db.delete(slot)
+    await db.commit()

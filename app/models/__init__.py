@@ -8,6 +8,7 @@ from app.models.whatsapp_log import WhatsAppMessageLog
 from app.models.match_invitation import MatchInvitation, MatchInvitationPlayer
 from app.models.feriado import Feriado
 from app.models.configuracao import Configuracao
+from app.models.slot_ranking import SlotRanking
 
 __all__ = [
     "Player",
@@ -22,4 +23,5 @@ __all__ = [
     "MatchInvitationPlayer",
     "Feriado",
     "Configuracao",
+    "SlotRanking",
 ]

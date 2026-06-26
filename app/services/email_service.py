@@ -140,6 +140,21 @@ async def enviar_contrato_assinado(nome: str, email: str) -> None:
     )
 
 
+async def enviar_reset_senha(nome: str, email: str, link_reset: str) -> None:
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">Recebemos uma solicitação para redefinir a senha da sua conta Roma Tênis.</p>
+    {_btn("Redefinir minha senha", link_reset)}
+    <p style="color:#888;font-size:0.8rem;margin-top:16px">
+      Este link expira em <strong>1 hora</strong>. Se você não solicitou a redefinição, ignore este e-mail com segurança.
+    </p>"""
+    await send_email(
+        email,
+        "🔐 Redefinição de senha — Roma Tênis",
+        _html_base("Redefinir Senha", corpo),
+    )
+
+
 async def enviar_aviso_pausa(nome: str, email: str, data_retorno: str | None) -> None:
     retorno = f"com retorno previsto em <strong>{data_retorno}</strong>" if data_retorno else ""
     corpo = f"""

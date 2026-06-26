@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from app.api.v1 import admin, auth, autentique_webhook, bookings, matches, players, seasons, subscriptions, webhooks
+from app.api.v1 import admin, auth, autentique_webhook, bookings, matches, players, public, seasons, subscriptions, webhooks
 
 router = APIRouter()
 
 router.include_router(auth.router)
+router.include_router(public.router)
 router.include_router(players.router)
 router.include_router(bookings.router)
 router.include_router(matches.router)

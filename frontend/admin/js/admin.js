@@ -156,7 +156,7 @@ function switchTab(tab) {
     case 'temporada':    loadSeasons(); break
     case 'assinaturas':    loadAssinaturas(); break
     case 'matchmaking':    loadInvitations(); break
-    case 'configuracoes':  loadConfiguracoes(); break
+    case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); break
   }
 }
 
@@ -1122,6 +1122,83 @@ async function salvarConfiguracoes(e) {
     })
   })
 })
+
+// ── Slots de Ranking ─────────────────────────────────────────────────────────
+
+const DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo']
+
+async function loadSlotsRanking() {
+  const tbody = document.getElementById('tbody-slots-ranking')
+  if (!tbody) return
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>'
+  try {
+    const slots = await api('/admin/slots-ranking')
+    if (!slots.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5;padding:1rem">Nenhum horário cadastrado.</td></tr>'
+      return
+    }
+    tbody.innerHTML = slots.map(s => `
+      <tr>
+        <td>${DIAS_SEMANA[s.dia_semana] ?? s.dia_semana}</td>
+        <td>${s.hora_inicio.slice(0,5)}</td>
+        <td>${s.hora_fim.slice(0,5)}</td>
+        <td>
+          <span style="font-size:.78rem;padding:.2rem .5rem;border-radius:.35rem;background:${s.ativo ? 'rgba(111,207,151,.15)' : 'rgba(240,80,80,.12)'};color:${s.ativo ? '#6fcf97' : '#f08080'}">
+            ${s.ativo ? 'Ativo' : 'Inativo'}
+          </span>
+        </td>
+        <td style="display:flex;gap:.4rem">
+          <button class="btn-xs" onclick="toggleSlotRanking(${s.id},${s.ativo})" title="${s.ativo ? 'Desativar' : 'Ativar'}">${s.ativo ? 'Pausar' : 'Ativar'}</button>
+          <button class="btn-xs danger" onclick="deletarSlotRanking(${s.id})">Excluir</button>
+        </td>
+      </tr>`).join('')
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f08080;padding:1rem">Erro ao carregar.</td></tr>'
+  }
+}
+
+function abrirModalSlotRanking() {
+  document.getElementById('sr-erro').style.display = 'none'
+  document.getElementById('modal-slot-ranking').style.display = 'flex'
+}
+function fecharModalSlotRanking() {
+  document.getElementById('modal-slot-ranking').style.display = 'none'
+}
+
+async function salvarSlotRanking() {
+  const erEl = document.getElementById('sr-erro')
+  erEl.style.display = 'none'
+  const dia = parseInt(document.getElementById('sr-dia').value)
+  const inicio = document.getElementById('sr-inicio').value
+  const fim = document.getElementById('sr-fim').value
+  if (!inicio || !fim) { erEl.textContent = 'Informe horário de início e fim.'; erEl.style.display = 'block'; return }
+  if (inicio >= fim) { erEl.textContent = 'Hora de início deve ser anterior à hora de fim.'; erEl.style.display = 'block'; return }
+  try {
+    await api('/admin/slots-ranking', { method: 'POST', body: { dia_semana: dia, hora_inicio: inicio, hora_fim: fim } })
+    fecharModalSlotRanking()
+    loadSlotsRanking()
+    toast('Horário de ranking adicionado!')
+  } catch(e) {
+    erEl.textContent = e?.detail || 'Erro ao salvar.'; erEl.style.display = 'block'
+  }
+}
+
+async function toggleSlotRanking(id, ativo) {
+  if (!confirm(ativo ? 'Desativar este horário de ranking?' : 'Ativar este horário de ranking?')) return
+  try {
+    await api(`/admin/slots-ranking/${id}/toggle`, { method: 'PATCH' })
+    loadSlotsRanking()
+  } catch { toast('Erro ao atualizar.', true) }
+}
+
+async function deletarSlotRanking(id) {
+  if (!confirm('Excluir este horário de ranking?')) return
+  try {
+    await api(`/admin/slots-ranking/${id}`, { method: 'DELETE' })
+    loadSlotsRanking()
+    toast('Horário excluído.')
+  } catch { toast('Erro ao excluir.', true) }
+}
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 

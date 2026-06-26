@@ -530,7 +530,67 @@
           <tbody id="tbody-parcelas"></tbody>
         </table>
       </div>
+
+      <!-- ── Slots de Ranking ── -->
+      <div class="card" style="max-width:600px;margin-top:1.5rem">
+        <div class="section-header">
+          <p class="form-section-label" style="margin:0">Horários Reservados para o Ranking</p>
+          <button class="btn-xs primary" onclick="abrirModalSlotRanking()">+ Adicionar</button>
+        </div>
+        <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">
+          Nesses horários, o aluguel público só é permitido nas 6 horas que antecedem o jogo, caso o slot esteja livre.
+        </p>
+        <table class="admin-table" id="tbl-slots-ranking">
+          <thead>
+            <tr>
+              <th>Dia</th><th>Início</th><th>Fim</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-slots-ranking">
+            <tr><td colspan="5" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
+
+    <!-- Modal Slot Ranking -->
+    <div id="modal-slot-ranking" class="modal-overlay" style="display:none">
+      <div class="modal-card" style="max-width:360px">
+        <div class="modal-header">
+          <h3>Adicionar Horário de Ranking</h3>
+          <button class="modal-close" onclick="fecharModalSlotRanking()">×</button>
+        </div>
+        <div style="padding:1rem">
+          <div class="form-row">
+            <label>Dia da semana</label>
+            <select id="sr-dia">
+              <option value="0">Segunda-feira</option>
+              <option value="1">Terça-feira</option>
+              <option value="2">Quarta-feira</option>
+              <option value="3">Quinta-feira</option>
+              <option value="4">Sexta-feira</option>
+              <option value="5">Sábado</option>
+              <option value="6">Domingo</option>
+            </select>
+          </div>
+          <div class="form-grid-2" style="margin-top:.75rem">
+            <div class="form-row">
+              <label>Hora início</label>
+              <input type="time" id="sr-inicio" value="07:00" />
+            </div>
+            <div class="form-row">
+              <label>Hora fim</label>
+              <input type="time" id="sr-fim" value="09:00" />
+            </div>
+          </div>
+          <div id="sr-erro" class="erro-msg" style="display:none;margin-top:.75rem"></div>
+          <div style="display:flex;gap:.5rem;margin-top:1rem">
+            <button class="btn-xs" onclick="fecharModalSlotRanking()">Cancelar</button>
+            <button class="btn-xs primary" onclick="salvarSlotRanking()">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redefinir Senha — Roma Tênis</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/landing.css" />
+  <style>
+    .reset-wrap { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:2rem 1.25rem; }
+    .reset-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:calc(var(--r)*2); padding:2.5rem 2rem;
+      width:100%; max-width:400px; box-shadow:0 12px 40px rgba(0,0,0,.4);
+    }
+    .r-logo { text-align:center; margin-bottom:1.5rem; }
+    .r-logo svg { width:140px; height:auto; display:block; margin:0 auto; }
+    .r-card-title { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:700; text-align:center; margin-bottom:.35rem; }
+    .r-card-sub { font-size:.85rem; color:var(--muted); text-align:center; margin-bottom:1.75rem; }
+    .r-field { margin-bottom:1.1rem; }
+    .r-field label { display:block; font-size:.75rem; font-weight:600; color:var(--muted); margin-bottom:.35rem; letter-spacing:.04em; }
+    .r-field input {
+      width:100%; background:rgba(255,255,255,.06); border:1px solid var(--border);
+      border-radius:var(--r); padding:.7rem .9rem; color:var(--text);
+      font-family:'Inter',sans-serif; font-size:.9rem; outline:none;
+      transition:border-color .2s; color-scheme:dark;
+    }
+    .r-field input:focus { border-color:var(--accent); }
+    .r-btn {
+      width:100%; background:var(--accent); color:#fff; border:none;
+      border-radius:var(--r); padding:.8rem; font-family:'Inter',sans-serif;
+      font-size:.95rem; font-weight:700; cursor:pointer; margin-top:.5rem; transition:background .2s;
+    }
+    .r-btn:hover { background:var(--accent-h); }
+    .r-btn:disabled { opacity:.5; cursor:default; }
+    .r-erro { color:#f08080; font-size:.82rem; background:rgba(240,80,80,.1); border-radius:var(--r); padding:.55rem .8rem; margin-bottom:.75rem; }
+    .r-ok { color:#6fcf97; font-size:.85rem; background:rgba(111,207,151,.1); border-radius:var(--r); padding:.65rem .9rem; text-align:center; margin-bottom:1rem; }
+    .back-link { display:block; text-align:center; font-size:.82rem; color:var(--muted); margin-top:1.25rem; }
+    .back-link a { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="reset-wrap">
+    <div class="reset-card">
+      <div class="r-logo">
+        <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
+          <text x="150" y="68" text-anchor="middle" font-family="'Cinzel',Georgia,serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+          <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
+          <text x="150" y="102" text-anchor="middle" font-family="'Inter',sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
+        </svg>
+      </div>
+
+      <!-- Tela: Carregar -->
+      <div id="tela-loading" style="text-align:center;padding:1rem 0;color:var(--muted);font-size:.9rem">Aguarde…</div>
+
+      <!-- Tela: Solicitar reset (sem token) -->
+      <div id="tela-solicitar" hidden>
+        <p class="r-card-title">Esqueci minha senha</p>
+        <p class="r-card-sub">Informe seu e-mail e enviaremos um link para você criar uma nova senha.</p>
+        <p class="r-erro" id="sol-erro" hidden></p>
+        <div class="r-field">
+          <label for="inp-email-reset">E-mail cadastrado</label>
+          <input id="inp-email-reset" type="email" placeholder="seu@email.com" autocomplete="email" />
+        </div>
+        <button class="r-btn" id="btn-solicitar">Enviar link de redefinição</button>
+        <p class="back-link"><a href="/app/">Voltar ao login</a></p>
+      </div>
+
+      <!-- Tela: Link enviado -->
+      <div id="tela-enviado" hidden>
+        <p class="r-ok">📧 Link enviado! Verifique sua caixa de entrada (e o spam).</p>
+        <p style="font-size:.85rem;color:var(--muted);text-align:center">
+          O link expira em 1 hora. Se não receber, verifique se o e-mail está correto.
+        </p>
+        <p class="back-link"><a href="/app/">Voltar ao login</a></p>
+      </div>
+
+      <!-- Tela: Token inválido -->
+      <div id="tela-invalido" hidden>
+        <p class="r-erro" style="margin:0">Este link é inválido ou expirou. Solicite um novo.</p>
+        <button class="r-btn" onclick="mostrar('solicitar')" style="margin-top:1rem">Solicitar novo link</button>
+        <p class="back-link"><a href="/app/">Voltar ao login</a></p>
+      </div>
+
+      <!-- Tela: Nova senha (com token válido) -->
+      <div id="tela-nova-senha" hidden>
+        <p class="r-card-title">Nova senha</p>
+        <p class="r-card-sub" id="reset-nome-msg">Escolha uma senha segura.</p>
+        <p class="r-erro" id="reset-erro" hidden></p>
+        <div class="r-field">
+          <label for="inp-nova-senha">Nova senha</label>
+          <input id="inp-nova-senha" type="password" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <div class="r-field">
+          <label for="inp-confirmar-senha">Confirmar nova senha</label>
+          <input id="inp-confirmar-senha" type="password" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+        <button class="r-btn" id="btn-redefinir">Salvar nova senha</button>
+      </div>
+
+      <!-- Tela: Sucesso -->
+      <div id="tela-sucesso" hidden>
+        <p class="r-ok">✅ Senha redefinida com sucesso!</p>
+        <p style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:1.25rem">
+          Você já pode entrar com a nova senha.
+        </p>
+        <a href="/app/" class="r-btn" style="display:block;text-align:center;text-decoration:none">Ir para o App</a>
+        <p class="back-link"><a href="/">Início</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token  = params.get("token") || "";
+
+    const telas = ["loading","solicitar","enviado","invalido","nova-senha","sucesso"];
+    function mostrar(id) {
+      telas.forEach(t => {
+        const el = document.getElementById("tela-" + t);
+        if (el) el.hidden = (t !== id);
+      });
+    }
+
+    async function init() {
+      if (!token) { mostrar("solicitar"); return; }
+      try {
+        const r = await fetch(`/api/v1/auth/validar-reset?token=${encodeURIComponent(token)}`);
+        if (!r.ok) { mostrar("invalido"); return; }
+        const d = await r.json();
+        if (d.nome) document.getElementById("reset-nome-msg").textContent = `Olá, ${d.nome}! Escolha uma nova senha.`;
+        mostrar("nova-senha");
+      } catch { mostrar("invalido"); }
+    }
+
+    // Solicitar reset
+    document.getElementById("btn-solicitar").addEventListener("click", async () => {
+      const email = document.getElementById("inp-email-reset").value.trim();
+      const erroEl = document.getElementById("sol-erro");
+      erroEl.hidden = true;
+      if (!email) { erroEl.textContent = "Informe seu e-mail."; erroEl.hidden = false; return; }
+
+      const btn = document.getElementById("btn-solicitar");
+      btn.disabled = true; btn.textContent = "Enviando…";
+      try {
+        await fetch("/api/v1/auth/esqueci-senha", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        mostrar("enviado");  // sempre mostrar sucesso (não revelar se e-mail existe)
+      } catch {
+        erroEl.textContent = "Erro de conexão. Tente novamente.";
+        erroEl.hidden = false;
+        btn.disabled = false; btn.textContent = "Enviar link de redefinição";
+      }
+    });
+
+    // Redefinir senha
+    document.getElementById("btn-redefinir").addEventListener("click", async () => {
+      const nova = document.getElementById("inp-nova-senha").value;
+      const confirmar = document.getElementById("inp-confirmar-senha").value;
+      const erroEl = document.getElementById("reset-erro");
+      erroEl.hidden = true;
+
+      if (!nova || nova.length < 6) { erroEl.textContent = "A senha deve ter pelo menos 6 caracteres."; erroEl.hidden = false; return; }
+      if (nova !== confirmar) { erroEl.textContent = "As senhas não coincidem."; erroEl.hidden = false; return; }
+
+      const btn = document.getElementById("btn-redefinir");
+      btn.disabled = true; btn.textContent = "Salvando…";
+      try {
+        const r = await fetch("/api/v1/auth/redefinir-senha", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, nova_senha: nova }),
+        });
+        if (!r.ok) {
+          const d = await r.json();
+          erroEl.textContent = d.detail || "Erro ao redefinir a senha.";
+          erroEl.hidden = false;
+          btn.disabled = false; btn.textContent = "Salvar nova senha";
+          return;
+        }
+        mostrar("sucesso");
+      } catch {
+        erroEl.textContent = "Erro de conexão. Tente novamente.";
+        erroEl.hidden = false;
+        btn.disabled = false; btn.textContent = "Salvar nova senha";
+      }
+    });
+
+    // Enter nos inputs
+    ["inp-email-reset"].forEach(id => {
+      document.getElementById(id)?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("btn-solicitar").click(); });
+    });
+    ["inp-nova-senha","inp-confirmar-senha"].forEach(id => {
+      document.getElementById(id)?.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("btn-redefinir").click(); });
+    });
+
+    init();
+  </script>
+</body>
+</html>

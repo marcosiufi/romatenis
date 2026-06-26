@@ -155,57 +155,150 @@
         <p class="section-label">Aluguel Avulso</p>
         <h2 class="section-title">Reserve sua Quadra</h2>
         <div class="accent-line"></div>
-        <p class="section-sub">Sem necessidade de assinatura. Escolha a data e o horário, pague online e receba a confirmação na hora.</p>
+        <p class="section-sub">Sem necessidade de assinatura. Escolha a data e o horário, pague via PIX e receba a confirmação na hora.</p>
         <br>
-        <p class="section-sub" style="font-size:.85rem">Associados têm prioridade no agendamento e desconto exclusivo na hora avulsa.</p>
+        <p class="section-sub" style="font-size:.85rem">Associados têm prioridade no agendamento e acesso exclusivo nos horários do ranking.</p>
       </div>
 
       <div class="agendar-widget reveal">
-        <h3>Verificar Disponibilidade</h3>
 
-        <div class="aw-notice">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span>O agendamento online com pagamento estará disponível em breve. Por enquanto, entre em contato pelo WhatsApp para reservar.</span>
+        <!-- Passo 1: data + grade de horários -->
+        <div id="bk-step-data">
+          <h3>Verificar disponibilidade</h3>
+          <div class="aw-field">
+            <label>Data desejada</label>
+            <input type="date" id="bk-data" />
+          </div>
+          <div class="aw-field">
+            <label>Modalidade</label>
+            <select id="bk-tipo">
+              <option value="simples">Simples</option>
+              <option value="duplas">Duplas</option>
+            </select>
+          </div>
+          <div id="bk-loading" hidden style="text-align:center;padding:.75rem 0;color:var(--muted);font-size:.85rem">
+            Verificando horários…
+          </div>
+          <div id="bk-slots-wrap" hidden>
+            <p style="font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.04em;margin-bottom:.45rem;text-transform:uppercase">Horários disponíveis</p>
+            <div id="bk-slots-grid" class="slots-grid"></div>
+            <div class="slots-legenda">
+              <span class="leg-dot disp"></span> Disponível &nbsp;
+              <span class="leg-dot ocup"></span> Ocupado &nbsp;
+              <span class="leg-dot rank"></span> Ranking
+            </div>
+          </div>
+          <p id="bk-sem-slots" hidden style="font-size:.85rem;color:var(--muted);text-align:center;padding:.75rem 0">
+            Sem horários disponíveis para esta data.
+          </p>
+          <p id="bk-erro-data" hidden style="font-size:.82rem;color:#f08080;margin-top:.5rem"></p>
         </div>
 
-        <div class="aw-field">
-          <label>Data desejada</label>
-          <input type="date" id="aw-data" />
-        </div>
-        <div class="aw-field">
-          <label>Horário preferido</label>
-          <select id="aw-hora">
-            <option value="">Selecione…</option>
-            <option>08:00</option><option>09:00</option><option>10:00</option>
-            <option>11:00</option><option>14:00</option><option>15:00</option>
-            <option>16:00</option><option>17:00</option><option>18:00</option>
-            <option>19:00</option><option>20:00</option>
-          </select>
-        </div>
-        <div class="aw-field">
-          <label>Modalidade</label>
-          <select id="aw-tipo">
-            <option value="simples">Simples</option>
-            <option value="duplas">Duplas</option>
-          </select>
+        <!-- Passo 2: horário selecionado + botão Reserve -->
+        <div id="bk-step-confirmar" hidden>
+          <button class="bk-back" onclick="bkVoltarSlots()">← Escolher outro horário</button>
+          <div class="bk-resumo" id="bk-slot-resumo"></div>
+          <button class="btn-land btn-primary" id="bk-btn-reservar"
+                  style="width:100%;margin-top:1.25rem;font-size:1rem;padding:.85rem;letter-spacing:.02em">
+            Reserve Agora
+          </button>
+          <p style="text-align:center;font-size:.75rem;color:var(--muted);margin-top:.55rem">
+            Pagamento seguro via PIX
+          </p>
         </div>
 
-        <a id="aw-whatsapp-btn" href="#" target="_blank" rel="noopener"
-           class="btn-land btn-primary" style="width:100%;margin-top:.5rem">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.557 4.11 1.527 5.835L0 24l6.345-1.507A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.005-1.374l-.36-.213-3.767.895.952-3.656-.234-.375A9.818 9.818 0 1 1 12 21.818z"/>
-          </svg>
-          Consultar pelo WhatsApp
-        </a>
-        <p style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:.6rem">Resposta em até 30 minutos</p>
       </div>
-
     </div>
   </div>
 </section>
+
+<!-- ── Modal de Reserva ────────────────────────────────────────────────────── -->
+<div id="bk-modal" class="bm-overlay" hidden aria-modal="true">
+  <div class="bm-card">
+    <button class="bm-fechar" onclick="bkFecharModal()" aria-label="Fechar">×</button>
+
+    <!-- Autenticação -->
+    <div id="bm-auth">
+      <p class="bm-title" id="bm-auth-titulo">Criar conta para reservar</p>
+      <div id="bm-slot-ref" class="bk-resumo bk-resumo-sm" style="margin-bottom:1.1rem"></div>
+      <div class="bm-tabs">
+        <button class="bm-tab active" id="bm-tab-cad" onclick="bkAba('cad')">Criar conta</button>
+        <button class="bm-tab" id="bm-tab-login" onclick="bkAba('login')">Já tenho conta</button>
+      </div>
+
+      <div id="bm-f-cad">
+        <div class="aw-field"><label>Nome completo *</label><input id="bm-nome" type="text" autocomplete="name" /></div>
+        <div class="aw-field"><label>E-mail *</label><input id="bm-email" type="email" autocomplete="email" /></div>
+        <div class="aw-field"><label>WhatsApp *</label><input id="bm-tel" type="tel" placeholder="11 9 0000-0000" /></div>
+        <div class="aw-field"><label>CPF <span style="opacity:.6;font-weight:400">(opcional)</span></label><input id="bm-cpf" type="text" placeholder="000.000.000-00" /></div>
+        <div class="aw-field"><label>Senha * <span style="opacity:.6;font-weight:400">(mín. 6 caracteres)</span></label><input id="bm-senha" type="password" /></div>
+        <div class="aw-field"><label>Confirmar senha *</label><input id="bm-senha2" type="password" /></div>
+        <p class="bm-erro" id="bm-cad-erro" hidden></p>
+        <button class="btn-land btn-primary" id="bm-btn-cad" style="width:100%;margin-top:.25rem">Criar conta e continuar</button>
+      </div>
+
+      <div id="bm-f-login" hidden>
+        <div class="aw-field"><label>E-mail</label><input id="bm-login-email" type="email" autocomplete="email" /></div>
+        <div class="aw-field"><label>Senha</label><input id="bm-login-senha" type="password" autocomplete="current-password" /></div>
+        <p class="bm-erro" id="bm-login-erro" hidden></p>
+        <button class="btn-land btn-primary" id="bm-btn-login" style="width:100%;margin-top:.25rem">Entrar e continuar</button>
+        <p style="text-align:center;font-size:.8rem;margin-top:.85rem">
+          <a href="/redefinir-senha" style="color:var(--muted);text-decoration:underline">Esqueci minha senha</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Confirmação -->
+    <div id="bm-confirmar" hidden>
+      <p class="bm-title">Confirmar Reserva</p>
+      <div id="bm-conf-resumo" class="bk-resumo" style="margin:.85rem 0 1.25rem"></div>
+      <p class="bm-erro" id="bm-res-erro" hidden></p>
+      <button class="btn-land btn-primary" id="bm-btn-confirmar"
+              style="width:100%;font-size:1rem;padding:.85rem">
+        Confirmar e Gerar PIX
+      </button>
+      <button onclick="bkFecharModal()"
+              style="width:100%;margin-top:.6rem;background:none;border:1px solid var(--border);color:var(--muted);padding:.65rem;border-radius:var(--r);cursor:pointer;font-family:'Inter',sans-serif;font-size:.85rem">
+        Cancelar
+      </button>
+    </div>
+
+    <!-- PIX -->
+    <div id="bm-pix" hidden>
+      <p class="bm-title">Pague via PIX</p>
+      <div id="bm-pix-resumo" class="bk-resumo" style="margin:.65rem 0 1rem"></div>
+      <p style="font-size:.84rem;color:var(--muted);margin-bottom:1rem">
+        Escaneie o QR Code ou copie o código abaixo. A reserva é confirmada após o pagamento.
+      </p>
+      <div id="bm-pix-qr" style="text-align:center;margin-bottom:1rem"></div>
+      <div class="aw-field">
+        <label>Código PIX — Copia e Cola</label>
+        <div style="display:flex;gap:.5rem">
+          <input id="bm-pix-cod" type="text" readonly style="flex:1;font-size:.76rem" />
+          <button id="bm-btn-copiar" onclick="bkCopiarPix()"
+                  style="background:var(--accent);color:#fff;border:none;border-radius:var(--r);padding:.4rem .9rem;cursor:pointer;font-size:.82rem;font-family:'Inter',sans-serif;white-space:nowrap">
+            Copiar
+          </button>
+        </div>
+      </div>
+      <p style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:.6rem">
+        Confirmação enviada por e-mail após o pagamento.
+      </p>
+      <button onclick="bkFecharModal()" class="btn-land btn-ghost" style="width:100%;margin-top:1.1rem">Fechar</button>
+    </div>
+
+    <!-- Sucesso sem PIX -->
+    <div id="bm-ok" hidden>
+      <div style="text-align:center;padding:1rem 0 .5rem">
+        <div style="font-size:2.75rem;margin-bottom:.6rem">✅</div>
+        <p class="bm-title" style="margin-bottom:.5rem">Reserva confirmada!</p>
+        <div id="bm-ok-resumo" class="bk-resumo" style="margin:.75rem 0;text-align:left"></div>
+        <p id="bm-ok-msg" style="font-size:.84rem;color:var(--muted)"></p>
+      </div>
+      <button onclick="bkFecharModal()" class="btn-land btn-ghost" style="width:100%;margin-top:1.25rem">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Planos ─────────────────────────────────────────────────────────────── -->
 <section class="planos-section" id="planos">
@@ -388,29 +481,6 @@ const observer = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-// ── WhatsApp link builder ──────────────────────────────────────────────────
-// TODO: substitua pelo número real (apenas dígitos, com código do país 55)
-const WA_NUMBER = '5511999999999';
-const WA_BASE   = `https://wa.me/${WA_NUMBER}`;
-
-function buildWhatsAppMsg() {
-  const data  = document.getElementById('aw-data').value;
-  const hora  = document.getElementById('aw-hora').value;
-  const tipo  = document.getElementById('aw-tipo').value;
-  let msg = 'Olá! Gostaria de verificar disponibilidade para aluguel de quadra no Roma Tênis.';
-  if (data) msg += `\nData: ${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}`;
-  if (hora) msg += `\nHorário: ${hora}`;
-  if (tipo) msg += `\nModalidade: ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
-  return WA_BASE + '?text=' + encodeURIComponent(msg);
-}
-
-document.getElementById('aw-whatsapp-btn').addEventListener('click', function(e) {
-  e.preventDefault();
-  window.open(buildWhatsAppMsg(), '_blank', 'noopener');
-});
-
-document.getElementById('footer-whatsapp').href = WA_BASE;
-
 // ── Carregar preços da API ─────────────────────────────────────────────────
 function fmtR(v) {
   return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -440,8 +510,190 @@ fetch('/api/v1/subscriptions/precos')
   })
   .catch(() => {});
 
-// ── Definir data mínima no widget de agendamento ───────────────────────────
-document.getElementById('aw-data').min = new Date().toISOString().split('T')[0];
+// ── Booking Widget ─────────────────────────────────────────────────────────
+let bkSlot = null, bkData = null, bkTipo = 'simples', bkPreco = 0;
+
+const bkDataEl = document.getElementById('bk-data');
+bkDataEl.min = new Date().toISOString().split('T')[0];
+
+bkDataEl.addEventListener('change', () => { bkData = bkDataEl.value; if (bkData) bkBuscarSlots(); });
+document.getElementById('bk-tipo').addEventListener('change', function() { bkTipo = this.value; if (bkSlot) bkRenderResumo('bk-slot-resumo'); });
+
+async function bkBuscarSlots() {
+  ['bk-slots-wrap','bk-sem-slots','bk-erro-data'].forEach(id => document.getElementById(id).hidden = true);
+  document.getElementById('bk-loading').hidden = false;
+  bkSlot = null;
+  document.getElementById('bk-step-confirmar').hidden = true;
+  document.getElementById('bk-step-data').hidden = false;
+  try {
+    const r = await fetch(`/api/v1/public/disponibilidade?data=${bkData}`);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    bkPreco = d.preco_hora;
+    bkRenderSlots(d.slots);
+  } catch {
+    const e = document.getElementById('bk-erro-data');
+    e.textContent = 'Erro ao buscar horários. Tente novamente.'; e.hidden = false;
+  } finally { document.getElementById('bk-loading').hidden = true; }
+}
+
+function bkRenderSlots(slots) {
+  const grid = document.getElementById('bk-slots-grid');
+  grid.innerHTML = '';
+  const algumDisp = slots.some(s => s.status === 'disponivel');
+  if (!algumDisp) { document.getElementById('bk-sem-slots').hidden = false; return; }
+  slots.forEach(s => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'slot-btn ' + s.status;
+    btn.textContent = s.hora_inicio;
+    if (s.motivo) btn.title = s.motivo;
+    if (s.status === 'disponivel') btn.addEventListener('click', () => bkSelecionarSlot(s, btn));
+    else btn.disabled = true;
+    grid.appendChild(btn);
+  });
+  document.getElementById('bk-slots-wrap').hidden = false;
+}
+
+function bkSelecionarSlot(slot, el) {
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selecionado'));
+  el.classList.add('selecionado');
+  bkSlot = slot;
+  bkRenderResumo('bk-slot-resumo');
+  document.getElementById('bk-step-data').hidden = true;
+  document.getElementById('bk-step-confirmar').hidden = false;
+}
+
+function bkVoltarSlots() {
+  bkSlot = null;
+  document.getElementById('bk-step-confirmar').hidden = true;
+  document.getElementById('bk-step-data').hidden = false;
+}
+
+function bkRenderResumo(targetId) {
+  if (!bkSlot || !bkData) return;
+  const dataBr = new Date(bkData + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' });
+  document.getElementById(targetId).innerHTML = `
+    <div class="bk-r-data">${dataBr} · ${bkTipo === 'duplas' ? 'Duplas' : 'Simples'}</div>
+    <div class="bk-r-hora">${bkSlot.hora_inicio} – ${bkSlot.hora_fim}</div>
+    <div class="bk-r-preco">R$ ${fmtR(bkPreco)} / hora</div>`;
+}
+
+document.getElementById('bk-btn-reservar').addEventListener('click', bkAbrirModal);
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function bkAbrirModal() {
+  if (!bkSlot) return;
+  ['bm-slot-ref','bm-conf-resumo','bm-pix-resumo','bm-ok-resumo'].forEach(id => bkRenderResumo(id));
+  document.getElementById('bk-modal').hidden = false;
+  document.body.style.overflow = 'hidden';
+  if (localStorage.getItem('access_token')) bkPasso('confirmar');
+  else { bkPasso('auth'); bkAba('cad'); }
+}
+
+function bkFecharModal() {
+  document.getElementById('bk-modal').hidden = true;
+  document.body.style.overflow = '';
+  ['bm-cad-erro','bm-login-erro','bm-res-erro'].forEach(id => {
+    const el = document.getElementById(id); if (el) { el.hidden = true; el.textContent = ''; }
+  });
+}
+
+function bkPasso(p) {
+  ['auth','confirmar','pix','ok'].forEach(n => document.getElementById('bm-' + n).hidden = n !== p);
+}
+
+function bkAba(aba) {
+  document.getElementById('bm-f-cad').hidden = aba !== 'cad';
+  document.getElementById('bm-f-login').hidden = aba !== 'login';
+  document.getElementById('bm-tab-cad').classList.toggle('active', aba === 'cad');
+  document.getElementById('bm-tab-login').classList.toggle('active', aba === 'login');
+  document.getElementById('bm-auth-titulo').textContent = aba === 'cad' ? 'Criar conta para reservar' : 'Entrar na sua conta';
+}
+
+document.getElementById('bm-btn-cad').addEventListener('click', async () => {
+  const erEl = document.getElementById('bm-cad-erro'); erEl.hidden = true;
+  const nome = document.getElementById('bm-nome').value.trim();
+  const email = document.getElementById('bm-email').value.trim();
+  const tel = document.getElementById('bm-tel').value.trim();
+  const cpf = document.getElementById('bm-cpf').value.trim() || null;
+  const senha = document.getElementById('bm-senha').value;
+  const senha2 = document.getElementById('bm-senha2').value;
+  if (!nome) { erEl.textContent = 'Informe seu nome completo.'; erEl.hidden = false; return; }
+  if (!email) { erEl.textContent = 'Informe seu e-mail.'; erEl.hidden = false; return; }
+  if (!tel) { erEl.textContent = 'Informe seu WhatsApp.'; erEl.hidden = false; return; }
+  if (senha.length < 6) { erEl.textContent = 'A senha deve ter pelo menos 6 caracteres.'; erEl.hidden = false; return; }
+  if (senha !== senha2) { erEl.textContent = 'As senhas não coincidem.'; erEl.hidden = false; return; }
+  const btn = document.getElementById('bm-btn-cad');
+  btn.disabled = true; btn.textContent = 'Criando conta…';
+  try {
+    const r = await fetch('/api/v1/public/cadastro', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome, email, senha, telefone:tel, cpf}) });
+    const d = await r.json();
+    if (!r.ok) { erEl.textContent = d.detail || 'Erro ao criar conta.'; erEl.hidden = false; return; }
+    localStorage.setItem('access_token', d.access_token);
+    localStorage.setItem('refresh_token', d.refresh_token);
+    bkPasso('confirmar');
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = 'Criar conta e continuar'; }
+});
+
+document.getElementById('bm-btn-login').addEventListener('click', async () => {
+  const erEl = document.getElementById('bm-login-erro'); erEl.hidden = true;
+  const email = document.getElementById('bm-login-email').value.trim();
+  const senha = document.getElementById('bm-login-senha').value;
+  if (!email || !senha) { erEl.textContent = 'Informe e-mail e senha.'; erEl.hidden = false; return; }
+  const btn = document.getElementById('bm-btn-login');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try {
+    const r = await fetch('/api/v1/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, senha}) });
+    const d = await r.json();
+    if (!r.ok) { erEl.textContent = d.detail || 'E-mail ou senha incorretos.'; erEl.hidden = false; return; }
+    localStorage.setItem('access_token', d.access_token);
+    localStorage.setItem('refresh_token', d.refresh_token);
+    bkPasso('confirmar');
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = 'Entrar e continuar'; }
+});
+
+document.getElementById('bm-btn-confirmar').addEventListener('click', async () => {
+  const erEl = document.getElementById('bm-res-erro'); erEl.hidden = true;
+  const btn = document.getElementById('bm-btn-confirmar');
+  btn.disabled = true; btn.textContent = 'Confirmando…';
+  try {
+    const token = localStorage.getItem('access_token');
+    const r = await fetch('/api/v1/public/reserva', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      if (r.status === 401) { localStorage.removeItem('access_token'); bkPasso('auth'); bkAba('login'); document.getElementById('bm-login-erro').textContent = 'Sessão expirada. Faça login novamente.'; document.getElementById('bm-login-erro').hidden = false; return; }
+      erEl.textContent = d.detail || 'Erro ao criar reserva.'; erEl.hidden = false; return;
+    }
+    if (d.pix_copia_cola) {
+      document.getElementById('bm-pix-cod').value = d.pix_copia_cola;
+      if (d.pix_qrcode) document.getElementById('bm-pix-qr').innerHTML = `<img src="data:image/png;base64,${d.pix_qrcode}" alt="QR Code PIX" style="max-width:190px;border-radius:8px;margin:0 auto;display:block" />`;
+      bkPasso('pix');
+    } else {
+      document.getElementById('bm-ok-msg').textContent = d.msg || 'Sua reserva foi registrada!';
+      bkPasso('ok');
+    }
+    bkBuscarSlots(); // atualiza disponibilidade
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = 'Confirmar e Gerar PIX'; }
+});
+
+function bkCopiarPix() {
+  const cod = document.getElementById('bm-pix-cod').value;
+  navigator.clipboard.writeText(cod).then(() => {
+    const btn = document.getElementById('bm-btn-copiar');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => btn.textContent = 'Copiar', 2000);
+  });
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') bkFecharModal(); });
+document.getElementById('bk-modal').addEventListener('click', function(e) { if (e.target === this) bkFecharModal(); });
 </script>
 </body>
 </html>
