@@ -155,6 +155,46 @@ async def enviar_reset_senha(nome: str, email: str, link_reset: str) -> None:
     )
 
 
+async def enviar_convocacao_lista_espera(nome: str, email: str, horas: int, link: str) -> None:
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">
+        Uma vaga no <strong>Programa de Ranking Roma Tênis</strong> acabou de abrir!
+        Você está na fila de espera e foi convocado(a) para confirmar sua participação.
+    </p>
+    <p style="color:#555;line-height:1.6">
+        Você tem <strong>{horas} horas</strong> para acessar o site e contratar seu plano.
+        Caso não haja confirmação nesse prazo, a vaga passará ao próximo da lista.
+    </p>
+    {_btn("Garantir minha vaga", link)}
+    <p style="color:#888;font-size:0.85rem;margin-top:1rem">
+        Se não tiver mais interesse, ignore este e-mail.
+    </p>"""
+    await send_email(
+        email,
+        "🎾 Sua vaga no ranking está disponível! — Roma Tênis",
+        _html_base("Vaga Disponível no Ranking", corpo),
+    )
+
+
+async def enviar_confirmacao_lista_espera(nome: str, email: str, posicao: int) -> None:
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">
+        Você entrou na <strong>lista de espera</strong> do Programa de Ranking Roma Tênis.
+        Sua posição atual é <strong>#  {posicao}</strong>.
+    </p>
+    <p style="color:#555;line-height:1.6">
+        Você será notificado por e-mail quando uma vaga ficar disponível.
+        Assim que for convocado(a), terá 48 horas para confirmar e contratar seu plano.
+    </p>"""
+    await send_email(
+        email,
+        "⏳ Você está na lista de espera — Roma Tênis",
+        _html_base("Lista de Espera do Ranking", corpo),
+    )
+
+
 async def enviar_aviso_pausa(nome: str, email: str, data_retorno: str | None) -> None:
     retorno = f"com retorno previsto em <strong>{data_retorno}</strong>" if data_retorno else ""
     corpo = f"""

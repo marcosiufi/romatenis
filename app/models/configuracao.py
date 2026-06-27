@@ -23,6 +23,9 @@ class Configuracao(Base):
     hora_abertura: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     hora_fechamento: Mapped[int] = mapped_column(Integer, nullable=False, default=22)
 
+    # Limite de jogadores no ranking
+    limite_ranking: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+
     @classmethod
     async def get(cls, db: AsyncSession) -> "Configuracao":
         """Retorna a única linha de config, criando com defaults se não existir."""

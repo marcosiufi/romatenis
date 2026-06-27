@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 
 from app.core.auth import get_current_admin
 from app.core.database import get_db
+from app.models.lista_espera import ListaEspera, StatusListaEspera
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.payment import Payment
 from app.models.configuracao import Configuracao
@@ -523,3 +524,58 @@ async def deletar_horario_especial(
         raise HTTPException(404, "Não encontrado.")
     await db.delete(he)
     await db.commit()
+
+
+# ── Lista de Espera ───────────────────────────────────────────────────────────
+
+@router.get("/lista-espera")
+async def admin_lista_espera(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.services.subscription_service import SubscriptionService
+    svc = SubscriptionService(db)
+    fila = await svc.listar_fila_espera()
+    vagas = await svc.vagas_ranking()
+    return {"fila": fila, "vagas": vagas}
+
+
+@router.delete("/lista-espera/{entrada_id}", status_code=204)
+async def admin_remover_lista_espera(
+    entrada_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.services.subscription_service import SubscriptionError, SubscriptionService
+    svc = SubscriptionService(db)
+    try:
+        await svc.admin_remover_da_fila(entrada_id)
+    except SubscriptionError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.post("/lista-espera/{entrada_id}/convocar")
+async def admin_convocar_lista_espera(
+    entrada_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.services.subscription_service import SubscriptionError, SubscriptionService
+    svc = SubscriptionService(db)
+    try:
+        await svc.admin_convocar_da_fila(entrada_id)
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
+    return {"ok": True}
+
+
+@router.post("/verificar-convocacoes-expiradas")
+async def verificar_convocacoes_expiradas(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.services.subscription_service import SubscriptionService
+    svc = SubscriptionService(db)
+    n = await svc.verificar_convocacoes_expiradas()
+    return {"expiradas": n}
+

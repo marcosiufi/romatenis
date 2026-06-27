@@ -158,6 +158,7 @@ function switchTab(tab) {
     case 'locacoes':       loadLocacoes(); break
     case 'matchmaking':    loadInvitations(); break
     case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); break
+    case 'lista-espera':   loadListaEspera(); break
   }
 }
 
@@ -1384,6 +1385,89 @@ async function deletarHorarioEspecial(id) {
     loadHorariosEspeciais()
   } catch(e) {
     toast(e?.message || 'Erro ao excluir.', true)
+  }
+}
+
+// ── Lista de Espera ───────────────────────────────────────────────────────────
+
+async function loadListaEspera() {
+  const wrap = document.getElementById('le-tabela-wrap')
+  const badge = document.getElementById('le-vagas-badge')
+  const aviso = document.getElementById('le-aviso-vagas')
+  wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>'
+  try {
+    const r = await apiFetch('/admin/lista-espera')
+    const { fila, vagas } = r
+
+    badge.textContent = `${vagas.ocupadas}/${vagas.limite} vagas ocupadas · ${vagas.disponiveis} disponível(is)`
+
+    if (vagas.disponiveis > 0 && fila.length > 0) {
+      aviso.style.display = 'block'
+      aviso.textContent = `Há ${vagas.disponiveis} vaga(s) disponível(is) e ${fila.length} pessoa(s) na fila. Convoque manualmente ou aguarde a convocação automática.`
+    } else {
+      aviso.style.display = 'none'
+    }
+
+    if (!fila.length) {
+      wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Nenhuma pessoa na lista de espera.</p>'
+      return
+    }
+
+    const rows = fila.map(e => {
+      const statusLabel = { aguardando: 'Aguardando', convocado: 'Convocado' }[e.status] || e.status
+      const statusColor = e.status === 'convocado' ? '#e0a040' : '#4ab870'
+      const dtInscricao = new Date(e.data_inscricao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      const dtExpira = e.data_expiracao_convocacao
+        ? new Date(e.data_expiracao_convocacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '—'
+      return `<tr>
+        <td style="text-align:center;font-weight:700;font-size:1.1rem">#${e.posicao}</td>
+        <td>${e.player_nome}</td>
+        <td style="color:var(--clr-text-muted);font-size:.85rem">${e.player_email}</td>
+        <td style="color:var(--clr-text-muted);font-size:.85rem">${e.player_telefone || '—'}</td>
+        <td style="color:${statusColor};font-weight:600">${statusLabel}</td>
+        <td style="font-size:.82rem">${dtInscricao}</td>
+        <td style="font-size:.82rem">${e.status === 'convocado' ? dtExpira : '—'}</td>
+        <td>
+          <div style="display:flex;gap:.4rem">
+            ${e.status === 'aguardando' ? `<button class="btn-xs primary" onclick="leConvocar(${e.id})" title="Convocar agora">Convocar</button>` : ''}
+            <button class="btn-xs danger" onclick="leRemover(${e.id})" title="Remover da lista">Remover</button>
+          </div>
+        </td>
+      </tr>`
+    }).join('')
+
+    wrap.innerHTML = `<table class="admin-table" style="min-width:900px">
+      <thead><tr>
+        <th>#</th><th>Nome</th><th>E-mail</th><th>Telefone</th>
+        <th>Status</th><th>Inscrito em</th><th>Convocação expira</th><th>Ações</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`
+  } catch (e) {
+    wrap.innerHTML = `<p style="color:#e74c3c;text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
+  }
+}
+
+async function leConvocar(id) {
+  if (!confirm('Convocar este jogador agora? Ele receberá e-mail com 48h para confirmar.')) return
+  try {
+    await apiFetch(`/admin/lista-espera/${id}/convocar`, { method: 'POST' })
+    showToast('Jogador convocado! E-mail enviado.', 'success')
+    loadListaEspera()
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error')
+  }
+}
+
+async function leRemover(id) {
+  if (!confirm('Remover este jogador da lista de espera?')) return
+  try {
+    await apiFetch(`/admin/lista-espera/${id}`, { method: 'DELETE' })
+    showToast('Removido da lista de espera.', 'success')
+    loadListaEspera()
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error')
   }
 }
 

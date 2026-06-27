@@ -21,11 +21,12 @@ from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSession
 from app.models.booking import Booking, StatusReserva
+from app.models.lista_espera import ListaEspera, StatusListaEspera
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
 from app.models.configuracao import Configuracao
 from app.models.player import NivelJogador, Player, StatusJogador
@@ -64,6 +65,12 @@ METODO_MAP: dict[FormaPagamento, MetodoPagamento] = {
 
 class SubscriptionError(ValueError):
     pass
+
+
+class RankingCheioError(Exception):
+    def __init__(self, limite: int) -> None:
+        self.limite = limite
+        super().__init__("ranking_cheio")
 
 
 @dataclass
@@ -214,6 +221,10 @@ class SubscriptionService:
         """Primeira contratação pelo próprio jogador a partir da landing page."""
         if await self._get_ativa(player.id):
             raise SubscriptionError("Você já possui uma assinatura ativa.")
+
+        config = await Configuracao.get(self.db)
+        if await self._ranking_cheio(config.limite_ranking):
+            raise RankingCheioError(config.limite_ranking)
         config = await Configuracao.get(self.db)
         meses = PLANO_MESES[plano]
         precos_totais = {
@@ -473,6 +484,9 @@ class SubscriptionService:
                 sub = await self.db.get(Subscription, payment.subscription_id)
                 if sub:
                     sub.status = StatusAssinatura.CANCELADA
+                    await self.db.commit()
+                    await self.notificar_proximo_na_fila()
+                    return
 
         await self.db.commit()
 
@@ -496,6 +510,7 @@ class SubscriptionService:
                 player.data_inativacao = agora  # início do período de 7 dias
         if subs:
             await self.db.commit()
+            await self.notificar_proximo_na_fila()
         return len(subs)
 
     async def expirar_renovacao(self) -> int:
@@ -564,6 +579,192 @@ class SubscriptionService:
         if enviados:
             await self.db.commit()
         return enviados
+
+    # ── Lista de Espera ───────────────────────────────────────────────────────
+
+    async def entrar_na_lista_espera(self, player: Player) -> ListaEspera:
+        from app.core.config import settings as cfg
+
+        # Verifica se já está na fila (aguardando ou convocado)
+        existente = await self.db.execute(
+            select(ListaEspera).where(
+                ListaEspera.player_id == player.id,
+                ListaEspera.status.in_([StatusListaEspera.AGUARDANDO, StatusListaEspera.CONVOCADO]),
+            )
+        )
+        if existente.scalar_one_or_none():
+            raise SubscriptionError("Você já está na lista de espera.")
+
+        if await self._get_ativa(player.id):
+            raise SubscriptionError("Você já possui uma assinatura ativa.")
+
+        agora = datetime.now(timezone.utc)
+        entrada = ListaEspera(
+            player_id=player.id,
+            status=StatusListaEspera.AGUARDANDO,
+            data_inscricao=agora,
+        )
+        self.db.add(entrada)
+        await self.db.commit()
+        await self.db.refresh(entrada)
+
+        posicao = await self._posicao_na_fila(entrada.id)
+        try:
+            await email_service.enviar_confirmacao_lista_espera(player.nome, player.email, posicao)
+        except Exception:
+            pass
+
+        return entrada
+
+    async def sair_da_lista_espera(self, player: Player) -> None:
+        result = await self.db.execute(
+            select(ListaEspera).where(
+                ListaEspera.player_id == player.id,
+                ListaEspera.status.in_([StatusListaEspera.AGUARDANDO, StatusListaEspera.CONVOCADO]),
+            )
+        )
+        entrada = result.scalar_one_or_none()
+        if not entrada:
+            raise SubscriptionError("Você não está na lista de espera.")
+        entrada.status = StatusListaEspera.REMOVIDO
+        await self.db.commit()
+
+    async def minha_posicao_lista(self, player: Player) -> dict | None:
+        result = await self.db.execute(
+            select(ListaEspera).where(
+                ListaEspera.player_id == player.id,
+                ListaEspera.status.in_([StatusListaEspera.AGUARDANDO, StatusListaEspera.CONVOCADO]),
+            )
+        )
+        entrada = result.scalar_one_or_none()
+        if not entrada:
+            return None
+        posicao = await self._posicao_na_fila(entrada.id)
+        return {
+            "id": entrada.id,
+            "status": entrada.status.value,
+            "posicao": posicao,
+            "data_inscricao": entrada.data_inscricao.isoformat(),
+            "data_expiracao_convocacao": entrada.data_expiracao_convocacao.isoformat() if entrada.data_expiracao_convocacao else None,
+        }
+
+    async def listar_fila_espera(self) -> list[dict]:
+        result = await self.db.execute(
+            select(ListaEspera)
+            .where(ListaEspera.status.in_([StatusListaEspera.AGUARDANDO, StatusListaEspera.CONVOCADO]))
+            .order_by(ListaEspera.data_inscricao.asc())
+        )
+        entradas = list(result.scalars().all())
+        items = []
+        for pos, entrada in enumerate(entradas, 1):
+            player = await self.db.get(Player, entrada.player_id)
+            items.append({
+                "id": entrada.id,
+                "posicao": pos,
+                "status": entrada.status.value,
+                "data_inscricao": entrada.data_inscricao.isoformat(),
+                "data_expiracao_convocacao": entrada.data_expiracao_convocacao.isoformat() if entrada.data_expiracao_convocacao else None,
+                "player_id": entrada.player_id,
+                "player_nome": player.nome if player else "—",
+                "player_email": player.email if player else "—",
+                "player_telefone": player.telefone if player else "—",
+            })
+        return items
+
+    async def admin_remover_da_fila(self, entrada_id: int) -> None:
+        entrada = await self.db.get(ListaEspera, entrada_id)
+        if not entrada:
+            raise SubscriptionError("Entrada não encontrada.")
+        entrada.status = StatusListaEspera.REMOVIDO
+        await self.db.commit()
+        # Após remover, notifica o próximo
+        await self.notificar_proximo_na_fila()
+
+    async def admin_convocar_da_fila(self, entrada_id: int) -> None:
+        entrada = await self.db.get(ListaEspera, entrada_id, options=[])
+        if not entrada or entrada.status not in (StatusListaEspera.AGUARDANDO, StatusListaEspera.CONVOCADO):
+            raise SubscriptionError("Entrada não encontrada ou já processada.")
+        await self._convocar_entrada(entrada)
+        await self.db.commit()
+
+    async def notificar_proximo_na_fila(self) -> None:
+        """Convoca o primeiro AGUARDANDO da lista quando uma vaga abre."""
+        result = await self.db.execute(
+            select(ListaEspera)
+            .where(ListaEspera.status == StatusListaEspera.AGUARDANDO)
+            .order_by(ListaEspera.data_inscricao.asc())
+            .limit(1)
+        )
+        proximo = result.scalar_one_or_none()
+        if proximo:
+            await self._convocar_entrada(proximo)
+            await self.db.commit()
+
+    async def verificar_convocacoes_expiradas(self) -> int:
+        """Expira convocações não atendidas em 48h e convoca o próximo."""
+        agora = datetime.now(timezone.utc)
+        result = await self.db.execute(
+            select(ListaEspera).where(
+                ListaEspera.status == StatusListaEspera.CONVOCADO,
+                ListaEspera.data_expiracao_convocacao <= agora,
+            )
+        )
+        expirados = list(result.scalars().all())
+        for entrada in expirados:
+            entrada.status = StatusListaEspera.EXPIRADO
+        if expirados:
+            await self.db.commit()
+            await self.notificar_proximo_na_fila()
+        return len(expirados)
+
+    async def vagas_ranking(self) -> dict:
+        config = await Configuracao.get(self.db)
+        ocupadas = await self._contar_ativos()
+        return {
+            "limite": config.limite_ranking,
+            "ocupadas": ocupadas,
+            "disponiveis": max(0, config.limite_ranking - ocupadas),
+            "cheio": ocupadas >= config.limite_ranking,
+        }
+
+    async def _convocar_entrada(self, entrada: ListaEspera) -> None:
+        from app.core.config import settings as cfg
+        agora = datetime.now(timezone.utc)
+        entrada.status = StatusListaEspera.CONVOCADO
+        entrada.data_convocacao = agora
+        entrada.data_expiracao_convocacao = agora + timedelta(hours=48)
+        player = await self.db.get(Player, entrada.player_id)
+        if player:
+            link = f"{cfg.DOMAIN}/"
+            try:
+                await email_service.enviar_convocacao_lista_espera(player.nome, player.email, 48, link)
+            except Exception:
+                pass
+
+    async def _posicao_na_fila(self, entrada_id: int) -> int:
+        result = await self.db.execute(
+            select(ListaEspera)
+            .where(
+                ListaEspera.status.in_([StatusListaEspera.AGUARDANDO, StatusListaEspera.CONVOCADO]),
+                ListaEspera.id <= entrada_id,
+            )
+            .order_by(ListaEspera.data_inscricao.asc())
+        )
+        return len(list(result.scalars().all()))
+
+    async def _ranking_cheio(self, limite: int) -> bool:
+        ocupadas = await self._contar_ativos()
+        return ocupadas >= limite
+
+    async def _contar_ativos(self) -> int:
+        return (
+            await self.db.scalar(
+                select(func.count(Subscription.id)).where(
+                    Subscription.status == StatusAssinatura.ATIVA,
+                    Subscription.data_expiracao > datetime.now(timezone.utc),
+                )
+            )
+        ) or 0
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 

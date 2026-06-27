@@ -346,6 +346,7 @@
     <button data-tab="locacoes" onclick="switchTab('locacoes')">Locações</button>
     <button data-tab="matchmaking" onclick="switchTab('matchmaking')">Matchmaking</button>
     <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
+    <button data-tab="lista-espera" onclick="switchTab('lista-espera')">Lista de Espera</button>
   </nav>
 
   <main>
@@ -655,6 +656,21 @@
         </div>
       </div>
     </div>
+
+    <!-- Lista de Espera -->
+    <section id="sec-lista-espera" class="admin-section">
+      <div class="section-header">
+        <h2>Lista de Espera do Ranking</h2>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <span id="le-vagas-badge" style="font-size:.85rem;color:var(--clr-text-muted)"></span>
+          <button class="btn-xs sec" onclick="loadListaEspera()">↺ Atualizar</button>
+        </div>
+      </div>
+      <div id="le-aviso-vagas" style="display:none;margin-bottom:1rem;padding:.75rem 1rem;background:rgba(74,184,112,.12);border:1px solid rgba(74,184,112,.3);border-radius:8px;color:#4ab870;font-size:.9rem"></div>
+      <div id="le-tabela-wrap">
+        <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
+      </div>
+    </section>
   </main>
 
   <!-- Modal Feriado / Horário Especial -->

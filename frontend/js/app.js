@@ -272,22 +272,39 @@ async function carregarPerfil() {
   const el = document.getElementById("perfil-info");
   el.innerHTML = "<p style='opacity:.5;font-size:.85rem'>Carregando…</p>";
   try {
-    const [p, sub, pixPendente] = await Promise.all([
+    const [p, sub, pixPendente, filaPos] = await Promise.all([
       apiFetch("/auth/me"),
       apiFetch("/subscriptions/minha-ativa").catch(() => null),
       apiFetch("/subscriptions/pix-pendente").catch(() => null),
+      apiFetch("/subscriptions/lista-espera/minha-posicao").catch(() => null),
     ]);
     if (!p) return;
 
     const nivel = p.nivel === "nao_classificado" ? "Não classificado" : `Nível ${p.nivel}`;
 
-    const subHtml = sub
-      ? _subCardHtml(sub, pixPendente)
-      : `<div class="sub-card sub-card--sem">
+    let subHtml;
+    if (sub) {
+      subHtml = _subCardHtml(sub, pixPendente);
+    } else if (filaPos) {
+      const statusLabel = filaPos.status === "convocado" ? "🎉 Convocado!" : "⏳ Na lista de espera";
+      const statusColor = filaPos.status === "convocado" ? "#4ab870" : "#e0a040";
+      const expiracaoHtml = filaPos.status === "convocado" && filaPos.data_expiracao_convocacao
+        ? `<p style="font-size:.78rem;color:#e0a040;margin-bottom:.5rem">Sua vaga expira em: <strong>${new Date(filaPos.data_expiracao_convocacao).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></p>`
+        : "";
+      subHtml = `<div class="sub-card" style="border-left:3px solid ${statusColor}">
+        <p style="font-weight:700;color:${statusColor};margin-bottom:.3rem">${statusLabel}</p>
+        <p style="font-size:.82rem;opacity:.8;margin-bottom:.25rem">Posição na fila: <strong>#${filaPos.posicao}</strong></p>
+        ${expiracaoHtml}
+        <p style="font-size:.78rem;opacity:.7;margin-bottom:.5rem">${filaPos.status === "convocado" ? "Uma vaga está disponível! Acesse o site e contrate seu plano agora." : "Você será notificado por e-mail quando uma vaga do ranking abrir."}</p>
+        <button class="btn btn-secundario" style="width:100%;font-size:.8rem" onclick="sairDaFila()">Sair da lista de espera</button>
+      </div>`;
+    } else {
+      subHtml = `<div class="sub-card sub-card--sem">
            <p style="font-weight:600;margin-bottom:.4rem">Sem assinatura ativa</p>
            <p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Contrate um plano para ter acesso ao ranking e agendamentos.</p>
            <button class="btn btn-primario" style="width:100%" onclick="abrirRenovarUI()">Contratar Plano</button>
          </div>`;
+    }
 
     const contratoHtml = !p.contrato_assinado && p.contrato_link_assinatura
       ? `<div class="sub-card" style="border-left:3px solid #e0a040;margin-bottom:.75rem">
@@ -408,6 +425,14 @@ async function carregarPerfil() {
   } catch {
     el.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar perfil.</p>";
   }
+}
+
+async function sairDaFila() {
+  if (!confirm("Deseja sair da lista de espera?")) return;
+  try {
+    await apiFetch("/subscriptions/lista-espera", { method: "DELETE" });
+    carregarPerfil();
+  } catch (e) { alert(e.message); }
 }
 
 function copiarPixJogador() {

@@ -470,6 +470,23 @@
       <button onclick="plPasso('app')" class="btn-land btn-ghost" style="width:100%;margin-top:1.25rem">Como usar o App →</button>
     </div>
 
+    <!-- Ranking cheio → lista de espera -->
+    <div id="pl-s-fila" hidden>
+      <div style="text-align:center;padding:.75rem 0 .5rem">
+        <div style="font-size:2.2rem;margin-bottom:.5rem">⏳</div>
+        <p class="bm-title">Ranking no limite</p>
+      </div>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:1rem;text-align:center;line-height:1.6">
+        O Programa de Ranking Roma Tênis atingiu seu limite de
+        <strong id="pl-fila-limite">30</strong> jogadores.<br>
+        Você pode entrar na lista de espera e será notificado por e-mail quando uma vaga abrir.
+      </p>
+      <p id="pl-fila-posicao" style="text-align:center;font-weight:700;color:var(--cor-terracota);font-size:1rem;margin-bottom:1rem;display:none"></p>
+      <p id="pl-fila-erro" style="color:var(--cor-erro);font-size:.85rem;text-align:center;margin-bottom:.75rem;display:none"></p>
+      <button id="pl-btn-entrar-fila" class="btn-land btn-primary" style="width:100%;margin-bottom:.6rem" onclick="plEntrarNaFila()">Entrar na lista de espera</button>
+      <button onclick="plFecharModal()" class="btn-land btn-ghost" style="width:100%">Fechar</button>
+    </div>
+
     <!-- Boas-vindas + instruções do app -->
     <div id="pl-s-app" hidden>
       <div style="text-align:center;padding:.75rem 0 .25rem">
@@ -767,7 +784,7 @@ function plFecharModal() {
 }
 
 function plPasso(p) {
-  ['regras','auth','plano','resultado','app'].forEach(n => document.getElementById('pl-s-' + n).hidden = n !== p);
+  ['regras','auth','plano','resultado','app','fila'].forEach(n => document.getElementById('pl-s-' + n).hidden = n !== p);
   if (p === 'plano') plRenderResumo();
 }
 
@@ -884,7 +901,15 @@ async function plConfirmar() {
     const d = await r.json();
     if (!r.ok) {
       if (r.status === 401) { plPasso('auth'); plAba('login'); document.getElementById('pl-login-erro').textContent = 'Sessão expirada. Faça login novamente.'; document.getElementById('pl-login-erro').hidden = false; return; }
-      erEl.textContent = d.detail || 'Erro ao processar contratação.'; erEl.hidden = false; return;
+      if (r.status === 409 && d.detail?.code === 'ranking_cheio') {
+        document.getElementById('pl-fila-limite').textContent = d.detail.limite || 30;
+        document.getElementById('pl-fila-posicao').style.display = 'none';
+        document.getElementById('pl-fila-erro').style.display = 'none';
+        document.getElementById('pl-btn-entrar-fila').disabled = false;
+        document.getElementById('pl-btn-entrar-fila').textContent = 'Entrar na lista de espera';
+        plPasso('fila'); return;
+      }
+      erEl.textContent = typeof d.detail === 'string' ? d.detail : 'Erro ao processar contratação.'; erEl.hidden = false; return;
     }
     const temContrato = !!d.contrato_link;
     const temPix = !!d.pix_copia_e_cola;
@@ -905,6 +930,24 @@ async function plConfirmar() {
     plPasso('resultado');
   } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
   finally { btn.disabled = false; btn.textContent = 'Confirmar e Contratar'; }
+}
+
+async function plEntrarNaFila() {
+  const btn = document.getElementById('pl-btn-entrar-fila');
+  const erEl = document.getElementById('pl-fila-erro');
+  const posEl = document.getElementById('pl-fila-posicao');
+  btn.disabled = true; btn.textContent = 'Aguarde…'; erEl.style.display = 'none';
+  try {
+    const token = localStorage.getItem('access_token');
+    const r = await fetch('/api/v1/subscriptions/lista-espera', {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const d = await r.json();
+    if (!r.ok) { erEl.textContent = typeof d.detail === 'string' ? d.detail : 'Erro ao entrar na lista.'; erEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar na lista de espera'; return; }
+    posEl.textContent = `✓ Você está na posição #${d.posicao} da lista de espera. Você receberá um e-mail quando uma vaga abrir.`;
+    posEl.style.display = 'block';
+    btn.style.display = 'none';
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar na lista de espera'; }
 }
 
 function plCopiarPix() {

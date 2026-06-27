@@ -15,7 +15,7 @@ from app.schemas.subscription import (
     SubscriptionOut,
     SubscriptionRenovar,
 )
-from app.services.subscription_service import SubscriptionError, SubscriptionService
+from app.services.subscription_service import RankingCheioError, SubscriptionError, SubscriptionService
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
@@ -136,6 +136,8 @@ async def contratar_plano(
     """Contratação de novo plano pelo próprio jogador (landing page)."""
     try:
         res = await svc.contratar(player, body.plano, body.forma_pagamento)
+    except RankingCheioError as e:
+        raise HTTPException(409, detail={"code": "ranking_cheio", "limite": e.limite})
     except SubscriptionError as e:
         raise HTTPException(422, str(e))
     out = SubscriptionCreateOut.model_validate(res.subscription)
@@ -144,6 +146,47 @@ async def contratar_plano(
     out.pix_copia_e_cola = res.pix_copia_e_cola
     out.contrato_link = res.contrato_link
     return out
+
+
+# ── Lista de espera ───────────────────────────────────────────────────────────
+
+@router.post("/lista-espera")
+async def entrar_lista_espera(
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    try:
+        entrada = await svc.entrar_na_lista_espera(player)
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
+    posicao = await svc._posicao_na_fila(entrada.id)
+    return {"ok": True, "posicao": posicao}
+
+
+@router.delete("/lista-espera")
+async def sair_lista_espera(
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    try:
+        await svc.sair_da_lista_espera(player)
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
+    return {"ok": True}
+
+
+@router.get("/lista-espera/minha-posicao")
+async def minha_posicao_lista(
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    return await svc.minha_posicao_lista(player)
+
+
+@router.get("/vagas-ranking")
+async def vagas_ranking(db=Depends(get_db)):
+    svc = SubscriptionService(db)
+    return await svc.vagas_ranking()
 
 
 @router.get("/minhas", response_model=list[SubscriptionOut])

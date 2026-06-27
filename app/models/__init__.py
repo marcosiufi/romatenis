@@ -9,6 +9,7 @@ from app.models.match_invitation import MatchInvitation, MatchInvitationPlayer
 from app.models.feriado import Feriado
 from app.models.configuracao import Configuracao
 from app.models.slot_ranking import SlotRanking
+from app.models.lista_espera import ListaEspera, StatusListaEspera
 
 __all__ = [
     "Player",
@@ -24,4 +25,6 @@ __all__ = [
     "Feriado",
     "Configuracao",
     "SlotRanking",
+    "ListaEspera",
+    "StatusListaEspera",
 ]

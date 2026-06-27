@@ -1,4 +1,4 @@
-const CACHE_NAME = "romatenis-v31";
+const CACHE_NAME = "romatenis-v32";
 const STATIC_ASSETS = ["/", "/app/", "/css/style.css", "/css/landing.css", "/js/app.js", "/app/manifest.json", "/admin/", "/admin/js/admin.js", "/redefinir-senha"];
 
 self.addEventListener("install", (event) => {
