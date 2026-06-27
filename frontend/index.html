@@ -344,13 +344,11 @@
 <!-- ── Modal Contratar Plano ──────────────────────────────────────────────── -->
 <div id="pl-modal" class="bm-overlay" hidden aria-modal="true">
   <div class="bm-card" style="max-width:500px">
-    <div class="modal-header" style="margin-bottom:.75rem">
-      <h3 id="pl-modal-titulo" style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;margin:0">Contratar Plano</h3>
-      <button class="modal-close" onclick="plFecharModal()" aria-label="Fechar">×</button>
-    </div>
+    <button class="bm-fechar" onclick="plFecharModal()" aria-label="Fechar">×</button>
 
     <!-- Regras do Ranking -->
     <div id="pl-s-regras">
+      <p id="pl-modal-titulo" class="bm-title" style="margin-bottom:.5rem">Contratar Plano</p>
       <p style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem">Leia com atenção antes de contratar:</p>
       <div class="pl-regras-scroll">
         <ul class="pl-regras-list">
@@ -368,24 +366,27 @@
     <div id="pl-s-auth" hidden>
       <p id="pl-auth-titulo" class="bm-title">Criar conta para contratar</p>
       <div class="bm-tabs">
-        <button id="pl-tab-cad" class="bm-tab active" onclick="plAba('cad')">Cadastro</button>
-        <button id="pl-tab-login" class="bm-tab" onclick="plAba('login')">Entrar</button>
+        <button id="pl-tab-cad" class="bm-tab active" onclick="plAba('cad')">Criar conta</button>
+        <button id="pl-tab-login" class="bm-tab" onclick="plAba('login')">Já tenho conta</button>
       </div>
       <div id="pl-f-cad">
-        <div class="bm-field"><label>Nome completo</label><input id="pl-nome" type="text" class="bm-input" placeholder="Seu nome" autocomplete="name" /></div>
-        <div class="bm-field"><label>E-mail</label><input id="pl-email" type="email" class="bm-input" placeholder="email@exemplo.com" autocomplete="email" /></div>
-        <div class="bm-field"><label>WhatsApp</label><input id="pl-tel" type="tel" class="bm-input" placeholder="(11) 99999-9999" autocomplete="tel" /></div>
-        <div class="bm-field"><label>CPF</label><input id="pl-cpf" type="text" class="bm-input" placeholder="000.000.000-00" /></div>
-        <div class="bm-field"><label>Senha</label><input id="pl-senha" type="password" class="bm-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password" /></div>
-        <div class="bm-field"><label>Confirmar senha</label><input id="pl-senha2" type="password" class="bm-input" placeholder="Repita a senha" autocomplete="new-password" /></div>
+        <div class="aw-field"><label>Nome completo *</label><input id="pl-nome" type="text" autocomplete="name" /></div>
+        <div class="aw-field"><label>E-mail *</label><input id="pl-email" type="email" autocomplete="email" /></div>
+        <div class="aw-field"><label>WhatsApp *</label><input id="pl-tel" type="tel" placeholder="11 9 0000-0000" /></div>
+        <div class="aw-field"><label>CPF <span style="opacity:.6;font-weight:400">(opcional)</span></label><input id="pl-cpf" type="text" placeholder="000.000.000-00" /></div>
+        <div class="aw-field"><label>Senha * <span style="opacity:.6;font-weight:400">(mín. 6 caracteres)</span></label><input id="pl-senha" type="password" /></div>
+        <div class="aw-field"><label>Confirmar senha *</label><input id="pl-senha2" type="password" /></div>
         <p id="pl-cad-erro" hidden class="bm-erro"></p>
-        <button id="pl-btn-cad" class="btn-land btn-primary" style="width:100%">Criar conta e continuar</button>
+        <button id="pl-btn-cad" class="btn-land btn-primary" style="width:100%;margin-top:.25rem">Criar conta e continuar</button>
       </div>
       <div id="pl-f-login" hidden>
-        <div class="bm-field"><label>E-mail</label><input id="pl-login-email" type="email" class="bm-input" placeholder="email@exemplo.com" autocomplete="email" /></div>
-        <div class="bm-field"><label>Senha</label><input id="pl-login-senha" type="password" class="bm-input" placeholder="Sua senha" autocomplete="current-password" /></div>
+        <div class="aw-field"><label>E-mail</label><input id="pl-login-email" type="email" autocomplete="email" /></div>
+        <div class="aw-field"><label>Senha</label><input id="pl-login-senha" type="password" autocomplete="current-password" /></div>
         <p id="pl-login-erro" hidden class="bm-erro"></p>
-        <button id="pl-btn-login" class="btn-land btn-primary" style="width:100%">Entrar e continuar</button>
+        <button id="pl-btn-login" class="btn-land btn-primary" style="width:100%;margin-top:.25rem">Entrar e continuar</button>
+        <p style="text-align:center;font-size:.8rem;margin-top:.85rem">
+          <a href="/redefinir-senha" style="color:var(--muted);text-decoration:underline">Esqueci minha senha</a>
+        </p>
       </div>
     </div>
 
