@@ -89,13 +89,17 @@ async def disponibilidade(
 
     inicio_dia = datetime.combine(data, time(0, 0), tzinfo=FUSO_BR)
     fim_dia = inicio_dia + timedelta(days=1)
+    cutoff_pag = agora_br - timedelta(minutes=10)
     bookings_dia = (
         await db.execute(
             select(Booking).where(
                 and_(
                     or_(
                         Booking.status == StatusReserva.CONFIRMADA,
-                        Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                        and_(
+                            Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                            Booking.criado_em >= cutoff_pag,
+                        ),
                     ),
                     Booking.data_hora_inicio >= inicio_dia,
                     Booking.data_hora_inicio < fim_dia,
@@ -243,12 +247,16 @@ async def reservar(
         )
     ).scalars().all()
 
+    cutoff_pag_r = agora_br - timedelta(minutes=10)
     existente = await db.scalar(
         select(Booking).where(
             and_(
                 or_(
                     Booking.status == StatusReserva.CONFIRMADA,
-                    Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                    and_(
+                        Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                        Booking.criado_em >= cutoff_pag_r,
+                    ),
                 ),
                 Booking.data_hora_inicio < slot_fim,
                 Booking.data_hora_fim > slot_ini,

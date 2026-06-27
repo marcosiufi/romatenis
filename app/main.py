@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,11 +41,56 @@ async def _scheduler_loop() -> None:
         await asyncio.sleep(3600)
 
 
+async def _expirar_reservas_loop() -> None:
+    """A cada 2 min: cancela reservas de locação pendentes há mais de 10 min."""
+    from sqlalchemy import and_, or_, select
+    from app.core.database import async_session_factory
+    from app.models.booking import Booking, StatusReserva, TipoReserva
+    from app.models.payment import Payment, StatusPagamento
+    from app.services.asaas_client import AsaasClient
+
+    await asyncio.sleep(30)
+    while True:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+            async with async_session_factory() as db:
+                expiradas = (await db.execute(
+                    select(Booking).where(
+                        and_(
+                            Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                            Booking.tipo == TipoReserva.LOCACAO_AVULSA,
+                            Booking.criado_em <= cutoff,
+                        )
+                    )
+                )).scalars().all()
+
+                for booking in expiradas:
+                    booking.status = StatusReserva.CANCELADA
+                    payment = await db.scalar(
+                        select(Payment).where(Payment.booking_id == booking.id)
+                    )
+                    if payment and payment.gateway_id and payment.status == StatusPagamento.PENDENTE:
+                        try:
+                            await AsaasClient().cancelar_cobranca(payment.gateway_id)
+                        except Exception:
+                            pass
+                        payment.status = StatusPagamento.FALHOU
+
+                if expiradas:
+                    await db.commit()
+                    logger.info("Reservas expiradas canceladas: %d", len(expiradas))
+        except Exception as exc:
+            logger.error("Expirar reservas error: %s", exc)
+        await asyncio.sleep(120)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    task = asyncio.create_task(_scheduler_loop())
+    task1 = asyncio.create_task(_scheduler_loop())
+    task2 = asyncio.create_task(_expirar_reservas_loop())
     yield
-    task.cancel()
+    task1.cancel()
+    task2.cancel()
 
 
 app = FastAPI(

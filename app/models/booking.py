@@ -1,7 +1,7 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, pg_enum
@@ -39,6 +39,11 @@ class Booking(Base):
     cliente_locacao_telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"), nullable=True, unique=True)
+
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False,
+        default=lambda: datetime.now(timezone.utc), server_default=func.now(),
+    )
 
     # Preenchido apenas para locação avulsa
     valor: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)

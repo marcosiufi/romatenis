@@ -105,6 +105,12 @@ class AsaasClient:
             r.raise_for_status()
             return r.json()
 
+    async def cancelar_cobranca(self, payment_id: str) -> None:
+        async with _cliente() as c:
+            r = await c.delete(f"/payments/{payment_id}")
+            if not r.is_success and r.status_code != 404:
+                raise AsaasError(f"Asaas DELETE /payments {r.status_code}: {r.text}")
+
     async def solicitar_antecipacao(self, payment_id: str) -> dict:
         async with _cliente() as c:
             r = await c.post("/anticipations", json={"payment": payment_id})
