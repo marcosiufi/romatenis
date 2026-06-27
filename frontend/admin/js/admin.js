@@ -1174,12 +1174,12 @@ async function salvarSlotRanking() {
   if (!inicio || !fim) { erEl.textContent = 'Informe horário de início e fim.'; erEl.style.display = 'block'; return }
   if (inicio >= fim) { erEl.textContent = 'Hora de início deve ser anterior à hora de fim.'; erEl.style.display = 'block'; return }
   try {
-    await api('/admin/slots-ranking', { method: 'POST', body: { dia_semana: dia, hora_inicio: inicio, hora_fim: fim } })
+    await api('/admin/slots-ranking', { method: 'POST', body: JSON.stringify({ dia_semana: dia, hora_inicio: inicio, hora_fim: fim }) })
     fecharModalSlotRanking()
     loadSlotsRanking()
     toast('Horário de ranking adicionado!')
   } catch(e) {
-    erEl.textContent = e?.detail || 'Erro ao salvar.'; erEl.style.display = 'block'
+    erEl.textContent = e?.message || 'Erro ao salvar.'; erEl.style.display = 'block'
   }
 }
 
