@@ -21,6 +21,7 @@ class FormaPagamento(str, enum.Enum):
 
 
 class StatusAssinatura(str, enum.Enum):
+    PENDENTE = "pendente"   # aguardando contrato + pagamento
     ATIVA = "ativa"
     PAUSADA = "pausada"
     EXPIRADA = "expirada"

@@ -82,9 +82,9 @@ async def autentique_webhook(
         player.contrato_assinado = True
         player.contrato_assinado_em = datetime.now(timezone.utc)
 
-        # Se pagamento já confirmado → ATIVO; senão → PAGAMENTO
+        # Se pagamento já confirmado → ativa subscription e ATIVO; senão → PAGAMENTO
         from app.models.payment import Payment, StatusPagamento
-        from app.models.subscription import Subscription
+        from app.models.subscription import Subscription, StatusAssinatura
         pay_result = await db.execute(
             select(Payment)
             .join(Subscription, Payment.subscription_id == Subscription.id)
@@ -93,7 +93,11 @@ async def autentique_webhook(
                 Payment.status == StatusPagamento.PAGO,
             )
         )
-        if pay_result.scalar_one_or_none():
+        pago = pay_result.scalar_one_or_none()
+        if pago and pago.subscription_id:
+            sub = await db.get(Subscription, pago.subscription_id)
+            if sub and sub.status == StatusAssinatura.PENDENTE:
+                sub.status = StatusAssinatura.ATIVA
             player.status = "ativo"
         else:
             player.status = "pagamento"

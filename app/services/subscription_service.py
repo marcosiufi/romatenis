@@ -148,7 +148,7 @@ class SubscriptionService:
             valor_total_ciclo=valor_total,
             forma_pagamento=forma_pagamento,
             parcelas=parcelas,
-            status=StatusAssinatura.ATIVA,
+            status=StatusAssinatura.PENDENTE,
             data_inicio_ciclo=now_br,
             data_expiracao=expiracao,
             gateway_subscription_id=cobranca["id"],
@@ -436,10 +436,11 @@ class SubscriptionService:
             if payment.subscription_id:
                 sub = await self.db.get(Subscription, payment.subscription_id, options=[selectinload(Subscription.player)])
                 if sub and sub.player:
-                    # Atualiza status do jogador conforme contrato
                     if sub.player.contrato_assinado:
+                        sub.status = StatusAssinatura.ATIVA
                         sub.player.status = StatusJogador.ATIVO.value
                     else:
+                        # Pagamento confirmado mas contrato ainda não assinado
                         sub.player.status = StatusJogador.PAGAMENTO.value
                     data_str = sub.data_expiracao.astimezone(FUSO_BR).strftime("%d/%m/%Y")
                     await email_service.enviar_confirmacao_pagamento(

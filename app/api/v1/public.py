@@ -140,11 +140,21 @@ async def disponibilidade(
 
 class CadastroPublicoIn(BaseModel):
     nome: str
+    apelido: str
     email: EmailStr
     senha: str
     telefone: str
     cpf: str
-    data_nascimento: date | None = None
+    data_nascimento: date
+    # endereço
+    cep: str
+    rua: str
+    numero: str
+    bairro: str
+    cidade: str
+    estado: str
+    pais: str = "Brasil"
+    complemento: str | None = None
 
     @field_validator("cpf")
     @classmethod
@@ -162,6 +172,22 @@ class CadastroPublicoIn(BaseModel):
             raise ValueError("CPF inválido.")
         return cpf
 
+    @field_validator("cep")
+    @classmethod
+    def cep_valido(cls, v: str) -> str:
+        cep = re.sub(r"\D", "", v)
+        if len(cep) != 8:
+            raise ValueError("CEP inválido.")
+        return cep
+
+    @field_validator("estado")
+    @classmethod
+    def estado_sigla(cls, v: str) -> str:
+        v = v.strip().upper()
+        if len(v) != 2:
+            raise ValueError("Estado deve ser a sigla com 2 letras (ex: SP).")
+        return v
+
     @field_validator("senha")
     @classmethod
     def senha_minima(cls, v: str) -> str:
@@ -169,12 +195,12 @@ class CadastroPublicoIn(BaseModel):
             raise ValueError("A senha deve ter pelo menos 6 caracteres.")
         return v
 
-    @field_validator("nome")
+    @field_validator("nome", "apelido", "rua", "numero", "bairro", "cidade")
     @classmethod
-    def nome_nao_vazio(cls, v: str) -> str:
+    def nao_vazio(cls, v: str) -> str:
         v = v.strip()
         if not v:
-            raise ValueError("Nome é obrigatório.")
+            raise ValueError("Campo obrigatório.")
         return v
 
 
@@ -187,14 +213,25 @@ async def cadastro_publico(
         raise HTTPException(status_code=409, detail="E-mail já cadastrado.")
     if await db.scalar(select(Player).where(Player.telefone == body.telefone)):
         raise HTTPException(status_code=409, detail="Telefone já cadastrado.")
+    if await db.scalar(select(Player).where(Player.cpf == body.cpf)):
+        raise HTTPException(status_code=409, detail="CPF já cadastrado.")
 
     player = Player(
         nome=body.nome.strip(),
+        apelido=body.apelido.strip(),
         email=body.email,
         telefone=body.telefone,
         senha_hash=hash_password(body.senha),
         cpf=body.cpf,
         data_nascimento=body.data_nascimento,
+        cep=body.cep,
+        rua=body.rua.strip(),
+        numero=body.numero.strip(),
+        complemento=body.complemento.strip() if body.complemento else None,
+        bairro=body.bairro.strip(),
+        cidade=body.cidade.strip(),
+        estado=body.estado,
+        pais=body.pais or "Brasil",
         status=StatusJogador.INATIVO.value,
         is_admin=False,
     )
