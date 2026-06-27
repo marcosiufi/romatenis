@@ -6,6 +6,7 @@ Create Date: 2026-06-27
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM as PgENUM
 
 revision = "0019"
 down_revision = "0018"
@@ -28,10 +29,10 @@ def upgrade() -> None:
         sa.Column("player_id", sa.Integer(), sa.ForeignKey("players.id"), nullable=False),
         sa.Column(
             "status",
-            sa.Enum(
+            PgENUM(
                 "aguardando", "convocado", "expirado", "ativado", "removido",
                 name="statuslistaespera",
-                create_type=False,  # já criado acima com IF NOT EXISTS
+                create_type=False,
             ),
             nullable=False,
             server_default="aguardando",
