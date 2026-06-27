@@ -1133,41 +1133,60 @@ async function salvarConfiguracoes(e) {
 // ── Locações de Quadra ───────────────────────────────────────────────────────
 
 async function loadLocacoes() {
-  const tbody = document.getElementById('tbody-locacoes')
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>'
+  const lista = document.getElementById('lista-locacoes')
+  lista.innerHTML = '<p style="opacity:.5;text-align:center;padding:1rem">Carregando…</p>'
   try {
     const locacoes = await api('/admin/locacoes')
     if (!locacoes.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.5;padding:1rem">Nenhuma locação registrada.</td></tr>'
+      lista.innerHTML = '<p style="opacity:.5;text-align:center;padding:1rem">Nenhuma locação registrada.</p>'
       return
     }
-    tbody.innerHTML = locacoes.map(l => {
-      const ini = new Date(l.data_hora_inicio)
-      const fim = new Date(l.data_hora_fim)
-      const datFmt = ini.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-      const horIni = ini.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      const horFim = fim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      const stCls  = l.status === 'confirmada' ? 'b-confirmado' : 'b-cancelado'
-      const pgCls  = l.pagamento_status === 'pago' ? 'b-confirmado'
-                   : l.pagamento_status === 'falhou' ? 'b-falhou'
-                   : l.pagamento_status ? 'b-pendente' : 'bnc'
-      const pgLabel = l.pagamento_status
-        ? `<span class="badge ${pgCls}">${l.pagamento_status}</span>${l.pagamento_metodo ? ' <small style="opacity:.6">'+l.pagamento_metodo+'</small>' : ''}`
-        : '<span class="badge bnc">sem pgto</span>'
-      const cancelBtn = l.status === 'confirmada'
-        ? `<button class="btn-xs" style="background:var(--clr-danger,#c0392b);color:#fff" onclick="cancelarLocacao(${l.id})">Cancelar</button>`
+
+    const _stMap = {
+      confirmada:            { cls: 'b-confirmado', label: 'Confirmada' },
+      aguardando_pagamento:  { cls: 'b-aguardando', label: 'Ag. Pagamento' },
+      cancelada:             { cls: 'b-cancelado',  label: 'Cancelada' },
+    }
+    const _pgMap = {
+      pago:    { cls: 'b-confirmado', label: 'Pago' },
+      pendente:{ cls: 'b-pendente',   label: 'Pendente' },
+      falhou:  { cls: 'b-falhou',     label: 'Falhou' },
+    }
+
+    lista.innerHTML = locacoes.map(l => {
+      const ini   = new Date(l.data_hora_inicio)
+      const fim   = new Date(l.data_hora_fim)
+      const dia   = ini.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+      const hIni  = ini.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      const hFim  = fim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+      const st  = _stMap[l.status]  || { cls: 'bnc', label: l.status }
+      const pg  = l.pagamento_status ? (_pgMap[l.pagamento_status] || { cls: 'bnc', label: l.pagamento_status }) : null
+      const pgMetodo = l.pagamento_metodo ? `<small style="opacity:.6"> · ${l.pagamento_metodo}</small>` : ''
+
+      const cancelBtn = l.status !== 'cancelada'
+        ? `<button class="btn-xs" style="background:var(--clr-danger,#c0392b);color:#fff;white-space:nowrap" onclick="cancelarLocacao(${l.id})">Cancelar</button>`
         : ''
-      return `<tr>
-        <td>${datFmt}<br><small style="opacity:.6">${horIni} – ${horFim}</small></td>
-        <td>${l.jogador_nome || '—'}<br><small style="opacity:.6">${l.jogador_email || ''}</small></td>
-        <td>R$ ${Number(l.valor).toFixed(2).replace('.', ',')}</td>
-        <td>${pgLabel}</td>
-        <td><span class="badge ${stCls}">${l.status}</span></td>
-        <td>${cancelBtn}</td>
-      </tr>`
+
+      return `<div class="locacao-card">
+        <div class="lc-data">
+          <div class="lc-dia">${dia}</div>
+          <div class="lc-hora">${hIni} – ${hFim}</div>
+        </div>
+        <div class="lc-jogador">
+          <div class="lc-nome">${l.jogador_nome || '—'}</div>
+          <div class="lc-email">${l.jogador_email || ''}</div>
+        </div>
+        <div class="lc-valor">R$ ${Number(l.valor).toFixed(2).replace('.', ',')}</div>
+        <div class="lc-badges">
+          <span class="badge ${st.cls}">${st.label}</span>
+          ${pg ? `<span class="badge ${pg.cls}">${pg.label}${pgMetodo}</span>` : '<span class="badge bnc">Sem pgto</span>'}
+        </div>
+        <div class="lc-actions">${cancelBtn}</div>
+      </div>`
     }).join('')
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--clr-danger,red);padding:.5rem">Erro ao carregar: ${e.message}</td></tr>`
+    lista.innerHTML = `<p style="color:var(--clr-danger,red);padding:.5rem">Erro ao carregar: ${e.message}</p>`
   }
 }
 

@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, field_validator
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import (
@@ -93,7 +93,10 @@ async def disponibilidade(
         await db.execute(
             select(Booking).where(
                 and_(
-                    Booking.status == StatusReserva.CONFIRMADA,
+                    or_(
+                        Booking.status == StatusReserva.CONFIRMADA,
+                        Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                    ),
                     Booking.data_hora_inicio >= inicio_dia,
                     Booking.data_hora_inicio < fim_dia,
                 )
@@ -243,7 +246,10 @@ async def reservar(
     existente = await db.scalar(
         select(Booking).where(
             and_(
-                Booking.status == StatusReserva.CONFIRMADA,
+                or_(
+                    Booking.status == StatusReserva.CONFIRMADA,
+                    Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
+                ),
                 Booking.data_hora_inicio < slot_fim,
                 Booking.data_hora_fim > slot_ini,
             )
@@ -264,7 +270,7 @@ async def reservar(
         data_hora_inicio=slot_ini,
         data_hora_fim=slot_fim,
         tipo=TipoReserva.LOCACAO_AVULSA,
-        status=StatusReserva.CONFIRMADA,
+        status=StatusReserva.AGUARDANDO_PAGAMENTO,
         jogador_responsavel_id=player.id,
         valor=valor,
     )
@@ -276,7 +282,7 @@ async def reservar(
     pix_qrcode = None
     invoice_url = None
     asaas_payment_id = None
-    msg = "Reserva confirmada! Entre em contato para acertar o pagamento."
+    msg = "Pré-reserva criada! Entre em contato para confirmar o pagamento e garantir o horário."
 
     try:
         from app.services.asaas_client import AsaasClient, AsaasError
@@ -305,13 +311,13 @@ async def reservar(
 
         if body.metodo_pagamento == "cartao":
             invoice_url = charge.get("invoiceUrl")
-            msg = "Reserva confirmada! Clique no botão para pagar com cartão."
+            msg = "Pré-reserva criada! Pague com cartão no link abaixo. O horário será confirmado após a aprovação do pagamento."
         else:
             if asaas_payment_id:
                 qr = await asaas.get_pix_qrcode(asaas_payment_id)
                 pix_copia_cola = qr.get("payload")
                 pix_qrcode = qr.get("encodedImage")
-            msg = "Reserva confirmada! Pague via PIX abaixo para garantir o horário."
+            msg = "Pré-reserva criada! Pague via PIX abaixo. O horário será confirmado assim que o pagamento for identificado."
 
         payment = Payment(
             booking_id=booking.id,

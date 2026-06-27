@@ -14,6 +14,7 @@ class TipoReserva(str, enum.Enum):
 
 
 class StatusReserva(str, enum.Enum):
+    AGUARDANDO_PAGAMENTO = "aguardando_pagamento"
     CONFIRMADA = "confirmada"
     CANCELADA = "cancelada"
 
