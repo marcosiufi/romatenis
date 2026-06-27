@@ -96,8 +96,8 @@ async def disponibilidade(
 
         if _ocupado(hora):
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="ocupado", motivo="Horário já reservado"))
-        elif _ranking(hora):
-            slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="bloqueado_ranking", motivo="Reservado para o ranking"))
+        elif _ranking(hora) and agora_br < slot_ini - timedelta(hours=6):
+            slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="bloqueado_ranking", motivo="Reservado para o ranking — disponível 6h antes"))
         else:
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="disponivel"))
 
@@ -225,10 +225,10 @@ async def reservar(
 
     t = time(hora, 0)
     is_ranking = any(s.hora_inicio <= t < s.hora_fim for s in slots_ranking)
-    if is_ranking:
+    if is_ranking and agora_br < slot_ini - timedelta(hours=6):
         raise HTTPException(
             status_code=409,
-            detail="Este horário está reservado para o ranking e não pode ser alugado.",
+            detail="Este horário está reservado para o ranking e só pode ser alugado nas 6 horas que antecedem o jogo.",
         )
 
     cfg = await Configuracao.get(db)
