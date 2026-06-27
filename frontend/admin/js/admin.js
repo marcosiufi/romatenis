@@ -159,6 +159,7 @@ function switchTab(tab) {
     case 'matchmaking':    loadInvitations(); break
     case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); break
     case 'lista-espera':   loadListaEspera(); break
+    case 'contrato':       loadContrato(); break
   }
 }
 
@@ -1468,6 +1469,112 @@ async function leRemover(id) {
     loadListaEspera()
   } catch (e) {
     showToast('Erro: ' + e.message, 'error')
+  }
+}
+
+// ── Contrato ─────────────────────────────────────────────────────────────────
+
+let _contratoClausulas = []
+
+async function loadContrato() {
+  const wrap = document.getElementById('contrato-clausulas-wrap')
+  wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>'
+  try {
+    _contratoClausulas = await api('/admin/contrato/clausulas')
+    _renderContrato()
+  } catch (e) {
+    wrap.innerHTML = `<p style="color:#e74c3c;text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
+  }
+}
+
+function _renderContrato() {
+  const wrap = document.getElementById('contrato-clausulas-wrap')
+  if (!_contratoClausulas.length) {
+    wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Nenhuma cláusula cadastrada. Clique em "+ Adicionar Cláusula".</p>'
+    return
+  }
+  wrap.innerHTML = _contratoClausulas.map((c, i) => `
+    <div class="contrato-clausula-card" data-idx="${i}" style="
+      background:var(--clr-surface);border:1px solid var(--clr-border);
+      border-radius:8px;padding:1rem;margin-bottom:.75rem;
+    ">
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+        <span style="font-size:.75rem;color:var(--clr-text-muted);min-width:2.5rem">#${i + 1}</span>
+        <input
+          class="ct-titulo"
+          value="${_escHtml(c.titulo)}"
+          style="flex:1;background:rgba(255,255,255,0.07);border:1px solid var(--clr-border);
+                 border-radius:4px;padding:.35rem .6rem;color:var(--clr-text);font-size:.9rem;font-weight:600"
+          placeholder="Título da cláusula"
+        >
+        <label style="display:flex;align-items:center;gap:.3rem;font-size:.8rem;cursor:pointer;white-space:nowrap">
+          <input type="checkbox" class="ct-ativo" ${c.ativo ? 'checked' : ''} style="cursor:pointer">
+          Ativa
+        </label>
+        <div style="display:flex;gap:.25rem">
+          <button class="btn-xs sec" onclick="contratoMover(${i},-1)" title="Subir" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button class="btn-xs sec" onclick="contratoMover(${i},1)" title="Descer" ${i === _contratoClausulas.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="btn-xs danger" onclick="contratoRemover(${i})" title="Remover">✕</button>
+        </div>
+      </div>
+      <textarea
+        class="ct-texto"
+        rows="5"
+        style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--clr-border);
+               border-radius:4px;padding:.5rem .6rem;color:var(--clr-text);font-size:.85rem;
+               resize:vertical;line-height:1.5"
+        placeholder="Texto da cláusula…"
+      >${_escHtml(c.texto)}</textarea>
+    </div>
+  `).join('')
+}
+
+function _escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+function _coletarClausulas() {
+  const cards = document.querySelectorAll('.contrato-clausula-card')
+  return Array.from(cards).map(card => ({
+    titulo: card.querySelector('.ct-titulo').value.trim(),
+    texto:  card.querySelector('.ct-texto').value.trim(),
+    ativo:  card.querySelector('.ct-ativo').checked,
+  }))
+}
+
+function contratoMover(idx, dir) {
+  _contratoClausulas = _coletarClausulas()
+  const novo = idx + dir
+  if (novo < 0 || novo >= _contratoClausulas.length) return
+  ;[_contratoClausulas[idx], _contratoClausulas[novo]] = [_contratoClausulas[novo], _contratoClausulas[idx]]
+  _renderContrato()
+}
+
+function contratoRemover(idx) {
+  if (!confirm('Remover esta cláusula?')) return
+  _contratoClausulas = _coletarClausulas()
+  _contratoClausulas.splice(idx, 1)
+  _renderContrato()
+}
+
+function contratoAddClausula() {
+  _contratoClausulas = _coletarClausulas()
+  _contratoClausulas.push({ titulo: '', texto: '', ativo: true })
+  _renderContrato()
+  // Scroll para o novo card
+  const cards = document.querySelectorAll('.contrato-clausula-card')
+  if (cards.length) cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+async function salvarContrato() {
+  const clausulas = _coletarClausulas()
+  if (!clausulas.length) { showToast('Adicione ao menos uma cláusula.', 'error'); return }
+  try {
+    const r = await api('/admin/contrato/clausulas', { method: 'PUT', body: JSON.stringify(clausulas) })
+    showToast(`Contrato salvo! ${r.total} cláusula(s).`, 'success')
+    await loadContrato()
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error')
   }
 }
 

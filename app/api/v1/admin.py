@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from app.core.auth import get_current_admin
 from app.core.database import get_db
 from app.models.lista_espera import ListaEspera, StatusListaEspera
+from app.models.contrato import ContratoClausula
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.payment import Payment
 from app.models.configuracao import Configuracao
@@ -578,4 +579,52 @@ async def verificar_convocacoes_expiradas(
     svc = SubscriptionService(db)
     n = await svc.verificar_convocacoes_expiradas()
     return {"expiradas": n}
+
+
+# ── Contrato ─────────────────────────────────────────────────────────────────
+
+class ClausulaIn(BaseModel):
+    titulo: str
+    texto: str
+    ativo: bool = True
+
+
+@router.get("/contrato/clausulas")
+async def listar_clausulas(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    rows = (await db.execute(
+        select(ContratoClausula).order_by(ContratoClausula.ordem)
+    )).scalars().all()
+    return [
+        {"id": r.id, "ordem": r.ordem, "titulo": r.titulo, "texto": r.texto, "ativo": r.ativo}
+        for r in rows
+    ]
+
+
+@router.put("/contrato/clausulas")
+async def salvar_clausulas(
+    clausulas: list[ClausulaIn],
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Substitui todas as cláusulas pela lista recebida (mantém a ordem da lista)."""
+    # Remove todas existentes
+    existing = (await db.execute(select(ContratoClausula))).scalars().all()
+    for row in existing:
+        await db.delete(row)
+    await db.flush()
+
+    # Insere as novas na ordem recebida
+    for i, c in enumerate(clausulas, start=1):
+        db.add(ContratoClausula(
+            ordem=i,
+            titulo=c.titulo.strip(),
+            texto=c.texto.strip(),
+            ativo=c.ativo,
+        ))
+
+    await db.commit()
+    return {"ok": True, "total": len(clausulas)}
 

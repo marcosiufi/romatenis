@@ -10,6 +10,7 @@ from app.models.feriado import Feriado
 from app.models.configuracao import Configuracao
 from app.models.slot_ranking import SlotRanking
 from app.models.lista_espera import ListaEspera, StatusListaEspera
+from app.models.contrato import ContratoClausula
 
 __all__ = [
     "Player",
@@ -27,4 +28,5 @@ __all__ = [
     "SlotRanking",
     "ListaEspera",
     "StatusListaEspera",
+    "ContratoClausula",
 ]

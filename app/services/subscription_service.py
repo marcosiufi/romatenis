@@ -194,13 +194,25 @@ class SubscriptionService:
         now_utc = datetime.now(timezone.utc)
         if not player.contrato_assinado:
             from app.services.autentique_client import AutentiqueClient, AutentiqueError
+            from app.models.contrato import ContratoClausula
             client = AutentiqueClient()
+            # Carrega cláusulas editáveis do banco
+            _res = await self.db.execute(
+                select(ContratoClausula)
+                .where(ContratoClausula.ativo == True)
+                .order_by(ContratoClausula.ordem)
+            )
+            _clausulas = [
+                {"titulo": c.titulo, "texto": c.texto}
+                for c in _res.scalars()
+            ]
             try:
                 doc_id, link = await client.enviar_contrato(
                     nome=player.nome,
                     email=player.email,
                     cpf=player.cpf,
                     telefone=player.telefone,
+                    clausulas=_clausulas or None,
                 )
                 player.contrato_autentique_id = doc_id
                 player.contrato_link_assinatura = link
