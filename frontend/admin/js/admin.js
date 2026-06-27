@@ -1396,7 +1396,7 @@ async function loadListaEspera() {
   const aviso = document.getElementById('le-aviso-vagas')
   wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>'
   try {
-    const r = await apiFetch('/admin/lista-espera')
+    const r = await api('/admin/lista-espera')
     const { fila, vagas } = r
 
     badge.textContent = `${vagas.ocupadas}/${vagas.limite} vagas ocupadas · ${vagas.disponiveis} disponível(is)`
@@ -1452,7 +1452,7 @@ async function loadListaEspera() {
 async function leConvocar(id) {
   if (!confirm('Convocar este jogador agora? Ele receberá e-mail com 48h para confirmar.')) return
   try {
-    await apiFetch(`/admin/lista-espera/${id}/convocar`, { method: 'POST' })
+    await api(`/admin/lista-espera/${id}/convocar`, { method: 'POST' })
     showToast('Jogador convocado! E-mail enviado.', 'success')
     loadListaEspera()
   } catch (e) {
@@ -1463,7 +1463,7 @@ async function leConvocar(id) {
 async function leRemover(id) {
   if (!confirm('Remover este jogador da lista de espera?')) return
   try {
-    await apiFetch(`/admin/lista-espera/${id}`, { method: 'DELETE' })
+    await api(`/admin/lista-espera/${id}`, { method: 'DELETE' })
     showToast('Removido da lista de espera.', 'success')
     loadListaEspera()
   } catch (e) {

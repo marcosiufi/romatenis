@@ -14,10 +14,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Cria o enum manualmente com IF NOT EXISTS para ser idempotente
+    # Cria o enum com tratamento de duplicata (PostgreSQL nao suporta IF NOT EXISTS em CREATE TYPE)
     op.execute(
-        "CREATE TYPE IF NOT EXISTS statuslistaespera AS ENUM "
-        "('aguardando', 'convocado', 'expirado', 'ativado', 'removido')"
+        "DO $$ BEGIN "
+        "CREATE TYPE statuslistaespera AS ENUM "
+        "('aguardando', 'convocado', 'expirado', 'ativado', 'removido'); "
+        "EXCEPTION WHEN duplicate_object THEN NULL; "
+        "END $$"
     )
     op.create_table(
         "lista_espera",
