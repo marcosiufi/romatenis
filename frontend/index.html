@@ -176,6 +176,15 @@
               <button type="button" class="mod-btn" data-value="duplas" onclick="bkSetModalidade(this)">Duplas</button>
             </div>
           </div>
+          <div class="aw-field">
+            <label>Duração</label>
+            <div class="duracao-toggle">
+              <button type="button" class="dur-btn active" data-horas="1" onclick="bkSetNumHoras(this)">1h</button>
+              <button type="button" class="dur-btn" data-horas="2" onclick="bkSetNumHoras(this)">2h</button>
+              <button type="button" class="dur-btn" data-horas="3" onclick="bkSetNumHoras(this)">3h</button>
+              <button type="button" class="dur-btn" data-horas="4" onclick="bkSetNumHoras(this)">4h</button>
+            </div>
+          </div>
           <div id="bk-loading" hidden style="text-align:center;padding:.75rem 0;color:var(--muted);font-size:.85rem">
             Verificando horários…
           </div>
@@ -553,7 +562,7 @@ fetch('/api/v1/subscriptions/precos')
   .catch(() => {});
 
 // ── Booking Widget ─────────────────────────────────────────────────────────
-let bkSlot = null, bkData = null, bkTipo = 'simples', bkPreco = 0, bkPmt = 'pix';
+let bkSlot = null, bkData = null, bkTipo = 'simples', bkPreco = 0, bkPmt = 'pix', bkNumHoras = 1, bkSlotsData = [];
 
 const bkDataEl = document.getElementById('bk-data');
 bkDataEl.min = new Date().toISOString().split('T')[0];
@@ -593,6 +602,7 @@ async function bkBuscarSlots() {
     if (!r.ok) throw new Error();
     const d = await r.json();
     bkPreco = d.preco_hora;
+    bkSlotsData = d.slots;
     bkRenderSlots(d.slots);
   } catch {
     const e = document.getElementById('bk-erro-data');
@@ -618,10 +628,35 @@ function bkRenderSlots(slots) {
   document.getElementById('bk-slots-wrap').hidden = false;
 }
 
+function bkSetNumHoras(el) {
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  bkNumHoras = parseInt(el.dataset.horas);
+  if (bkSlot) {
+    bkSlot = null;
+    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selecionado'));
+    document.getElementById('bk-step-confirmar').hidden = true;
+    document.getElementById('bk-step-data').hidden = false;
+  }
+}
+
 function bkSelecionarSlot(slot, el) {
+  const idx = bkSlotsData.indexOf(slot);
+  for (let i = 1; i < bkNumHoras; i++) {
+    const next = bkSlotsData[idx + i];
+    if (!next || next.status !== 'disponivel') {
+      const erEl = document.getElementById('bk-erro-data');
+      erEl.textContent = `Não há ${bkNumHoras}h consecutivas disponíveis a partir das ${slot.hora_inicio}.`;
+      erEl.hidden = false;
+      setTimeout(() => { erEl.hidden = true; erEl.textContent = ''; }, 4000);
+      return;
+    }
+  }
   document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selecionado'));
-  el.classList.add('selecionado');
-  bkSlot = slot;
+  const allBtns = document.querySelectorAll('#bk-slots-grid .slot-btn');
+  for (let i = 0; i < bkNumHoras; i++) allBtns[idx + i]?.classList.add('selecionado');
+  const horaIni = parseInt(slot.hora_inicio.split(':')[0]);
+  bkSlot = { ...slot, hora_fim: `${String(horaIni + bkNumHoras).padStart(2,'0')}:00` };
   bkRenderResumo('bk-slot-resumo');
   document.getElementById('bk-step-data').hidden = true;
   document.getElementById('bk-step-confirmar').hidden = false;
@@ -629,6 +664,7 @@ function bkSelecionarSlot(slot, el) {
 
 function bkVoltarSlots() {
   bkSlot = null;
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selecionado'));
   document.getElementById('bk-step-confirmar').hidden = true;
   document.getElementById('bk-step-data').hidden = false;
 }
@@ -636,10 +672,14 @@ function bkVoltarSlots() {
 function bkRenderResumo(targetId) {
   if (!bkSlot || !bkData) return;
   const dataBr = new Date(bkData + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' });
+  const total = bkPreco * bkNumHoras;
+  const precoHtml = bkNumHoras > 1
+    ? `R$ ${fmtR(bkPreco)}/h × ${bkNumHoras}h = <strong>R$ ${fmtR(total)}</strong>`
+    : `<strong>R$ ${fmtR(total)}</strong>`;
   document.getElementById(targetId).innerHTML = `
     <div class="bk-r-data">${dataBr} · ${bkTipo === 'duplas' ? 'Duplas' : 'Simples'}</div>
     <div class="bk-r-hora">${bkSlot.hora_inicio} – ${bkSlot.hora_fim}</div>
-    <div class="bk-r-preco">R$ ${fmtR(bkPreco)} / hora</div>`;
+    <div class="bk-r-preco">${precoHtml}</div>`;
 }
 
 document.getElementById('bk-btn-reservar').addEventListener('click', bkAbrirModal);
@@ -731,7 +771,7 @@ document.getElementById('bm-btn-confirmar').addEventListener('click', async () =
     const token = localStorage.getItem('access_token');
     const r = await fetch('/api/v1/public/reserva', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo, metodo_pagamento:bkPmt }),
+      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo, metodo_pagamento:bkPmt, num_horas:bkNumHoras }),
     });
     const d = await r.json();
     if (!r.ok) {

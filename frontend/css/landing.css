@@ -423,6 +423,17 @@ img, svg { display: block; }
 .mod-btn.active { background: rgba(193,80,46,.12); border-color: var(--accent); color: var(--text); font-weight: 600; }
 .mod-btn:hover:not(.active) { border-color: rgba(240,235,228,.25); color: var(--text); }
 
+/* ── Toggle duração (1h / 2h / 3h / 4h) ─────────────────────────────────── */
+.duracao-toggle { display: flex; gap: .4rem; }
+.dur-btn {
+  flex: 1; padding: .45rem .25rem; border-radius: var(--r);
+  font-family: 'Inter', sans-serif; font-size: .85rem; font-weight: 500;
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--muted);
+}
+.dur-btn.active { background: rgba(193,80,46,.12); border-color: var(--accent); color: var(--text); font-weight: 600; }
+.dur-btn:hover:not(.active) { border-color: rgba(240,235,228,.25); color: var(--text); }
+
 /* ── Toggle pagamento (PIX / Cartão) ────────────────────────────────────── */
 .pmt-toggle { display: flex; gap: .4rem; margin-bottom: .2rem; }
 .pmt-btn {

@@ -123,7 +123,9 @@ async def disponibilidade(
         h_fmt = f"{hora:02d}:00"
         hf_fmt = f"{hora + 1:02d}:00"
 
-        if _ocupado(hora):
+        if slot_ini < agora_br:
+            slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="ocupado", motivo="Horário já passou"))
+        elif _ocupado(hora):
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="ocupado", motivo="Horário já reservado"))
         elif _ranking(hora) and agora_br < slot_ini - timedelta(hours=6):
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="bloqueado_ranking", motivo="Reservado para o ranking — disponível 6h antes"))
@@ -196,6 +198,14 @@ class ReservaIn(BaseModel):
     hora_inicio: str   # "HH:00"
     tipo: Literal["simples", "duplas"] = "simples"
     metodo_pagamento: Literal["pix", "cartao"] = "pix"
+    num_horas: int = 1
+
+    @field_validator("num_horas")
+    @classmethod
+    def num_horas_valido(cls, v: int) -> int:
+        if not 1 <= v <= 4:
+            raise ValueError("Número de horas deve ser entre 1 e 4.")
+        return v
 
 
 class PixOut(BaseModel):
@@ -224,7 +234,7 @@ async def reservar(
         raise HTTPException(status_code=422, detail="Hora inválida. Use o formato HH:00.")
 
     cfg = await Configuracao.get(db)
-    valor = float(cfg.preco_locacao_hora)
+    valor = float(cfg.preco_locacao_hora) * body.num_horas
     especial_r = await db.scalar(select(HorarioEspecial).where(HorarioEspecial.data == body.data))
     if especial_r and especial_r.fechado:
         raise HTTPException(status_code=409, detail=f"A quadra está fechada nesta data — {especial_r.descricao}.")
@@ -234,7 +244,11 @@ async def reservar(
         raise HTTPException(status_code=400, detail="Horário fora do funcionamento.")
 
     slot_ini = datetime.combine(body.data, time(hora, 0), tzinfo=FUSO_BR)
-    slot_fim = slot_ini + timedelta(hours=1)
+    if body.data == agora_br.date() and slot_ini < agora_br:
+        raise HTTPException(status_code=400, detail="Este horário já passou.")
+    slot_fim = slot_ini + timedelta(hours=body.num_horas)
+    if hora + body.num_horas > hora_fe:
+        raise HTTPException(status_code=400, detail=f"A duração selecionada excede o fechamento da quadra ({hora_fe:02d}:00).")
 
     # Verificar disponibilidade
     dia_semana = body.data.weekday()
@@ -266,13 +280,14 @@ async def reservar(
     if existente:
         raise HTTPException(status_code=409, detail="Horário já reservado.")
 
-    t = time(hora, 0)
-    is_ranking = any(s.hora_inicio <= t < s.hora_fim for s in slots_ranking)
-    if is_ranking and agora_br < slot_ini - timedelta(hours=6):
-        raise HTTPException(
-            status_code=409,
-            detail="Este horário está reservado para o ranking e só pode ser alugado nas 6 horas que antecedem o jogo.",
-        )
+    for h in range(hora, hora + body.num_horas):
+        t_h = time(h, 0)
+        slot_h = datetime.combine(body.data, t_h, tzinfo=FUSO_BR)
+        if any(s.hora_inicio <= t_h < s.hora_fim for s in slots_ranking) and agora_br < slot_h - timedelta(hours=6):
+            raise HTTPException(
+                status_code=409,
+                detail=f"O horário das {h:02d}:00 está reservado para o ranking e só pode ser alugado nas 6 horas anteriores ao jogo.",
+            )
 
     booking = Booking(
         data_hora_inicio=slot_ini,
@@ -307,7 +322,7 @@ async def reservar(
 
         billing_type = "CREDIT_CARD" if body.metodo_pagamento == "cartao" else "PIX"
         data_venc = body.data.isoformat()
-        descricao = f"Locação Roma Tênis — {body.data.strftime('%d/%m/%Y')} {hora:02d}h"
+        descricao = f"Locação Roma Tênis — {body.data.strftime('%d/%m/%Y')} {hora:02d}h às {(hora + body.num_horas):02d}h"
         charge = await asaas.criar_cobranca(
             customer_id=customer_id,
             valor=valor,
