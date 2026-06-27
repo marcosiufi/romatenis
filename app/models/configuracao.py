@@ -1,4 +1,4 @@
-from sqlalchemy import Numeric, select
+from sqlalchemy import Integer, Numeric, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,10 @@ class Configuracao(Base):
 
     # Locação avulsa
     preco_locacao_hora: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=120.00)
+
+    # Horário de funcionamento
+    hora_abertura: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
+    hora_fechamento: Mapped[int] = mapped_column(Integer, nullable=False, default=22)
 
     @classmethod
     async def get(cls, db: AsyncSession) -> "Configuracao":

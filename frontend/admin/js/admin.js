@@ -155,6 +155,7 @@ function switchTab(tab) {
     case 'partidas':     loadMatches(); break
     case 'temporada':    loadSeasons(); break
     case 'assinaturas':    loadAssinaturas(); break
+    case 'locacoes':       loadLocacoes(); break
     case 'matchmaking':    loadInvitations(); break
     case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); break
   }
@@ -1027,7 +1028,9 @@ async function loadConfiguracoes() {
     document.getElementById('cfg-trimestral').value  = cfg.preco_trimestral
     document.getElementById('cfg-semestral').value   = cfg.preco_semestral
     document.getElementById('cfg-anual').value       = cfg.preco_anual
-    document.getElementById('cfg-locacao').value     = cfg.preco_locacao_hora
+    document.getElementById('cfg-locacao').value           = cfg.preco_locacao_hora
+    document.getElementById('cfg-hora-abertura').value     = cfg.hora_abertura ?? 7
+    document.getElementById('cfg-hora-fechamento').value   = cfg.hora_fechamento ?? 22
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
   } catch (err) {
@@ -1086,6 +1089,8 @@ async function salvarConfiguracoes(e) {
         preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
         preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
         preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
+        hora_abertura:     parseInt(document.getElementById('cfg-hora-abertura').value) || 7,
+        hora_fechamento:   parseInt(document.getElementById('cfg-hora-fechamento').value) || 22,
       }),
     })
     // Recarrega _precos para atualizar o modal de assinatura
@@ -1097,6 +1102,8 @@ async function salvarConfiguracoes(e) {
       preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
       preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
       preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
+      hora_abertura:     parseInt(document.getElementById('cfg-hora-abertura').value) || 7,
+      hora_fechamento:   parseInt(document.getElementById('cfg-hora-fechamento').value) || 22,
     }
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
@@ -1122,6 +1129,58 @@ async function salvarConfiguracoes(e) {
     })
   })
 })
+
+// ── Locações de Quadra ───────────────────────────────────────────────────────
+
+async function loadLocacoes() {
+  const tbody = document.getElementById('tbody-locacoes')
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>'
+  try {
+    const locacoes = await api('/admin/locacoes')
+    if (!locacoes.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.5;padding:1rem">Nenhuma locação registrada.</td></tr>'
+      return
+    }
+    tbody.innerHTML = locacoes.map(l => {
+      const ini = new Date(l.data_hora_inicio)
+      const fim = new Date(l.data_hora_fim)
+      const datFmt = ini.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      const horIni = ini.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      const horFim = fim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      const stCls  = l.status === 'confirmada' ? 'b-confirmado' : 'b-cancelado'
+      const pgCls  = l.pagamento_status === 'pago' ? 'b-confirmado'
+                   : l.pagamento_status === 'falhou' ? 'b-falhou'
+                   : l.pagamento_status ? 'b-pendente' : 'bnc'
+      const pgLabel = l.pagamento_status
+        ? `<span class="badge ${pgCls}">${l.pagamento_status}</span>${l.pagamento_metodo ? ' <small style="opacity:.6">'+l.pagamento_metodo+'</small>' : ''}`
+        : '<span class="badge bnc">sem pgto</span>'
+      const cancelBtn = l.status === 'confirmada'
+        ? `<button class="btn-xs" style="background:var(--clr-danger,#c0392b);color:#fff" onclick="cancelarLocacao(${l.id})">Cancelar</button>`
+        : ''
+      return `<tr>
+        <td>${datFmt}<br><small style="opacity:.6">${horIni} – ${horFim}</small></td>
+        <td>${l.jogador_nome || '—'}<br><small style="opacity:.6">${l.jogador_email || ''}</small></td>
+        <td>R$ ${Number(l.valor).toFixed(2).replace('.', ',')}</td>
+        <td>${pgLabel}</td>
+        <td><span class="badge ${stCls}">${l.status}</span></td>
+        <td>${cancelBtn}</td>
+      </tr>`
+    }).join('')
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--clr-danger,red);padding:.5rem">Erro ao carregar: ${e.message}</td></tr>`
+  }
+}
+
+async function cancelarLocacao(id) {
+  if (!confirm('Cancelar esta locação de quadra?')) return
+  try {
+    await api(`/admin/locacoes/${id}/cancelar`, { method: 'PATCH' })
+    toast('Locação cancelada.')
+    loadLocacoes()
+  } catch (e) {
+    toast(e.message || 'Erro ao cancelar.', true)
+  }
+}
 
 // ── Slots de Ranking ─────────────────────────────────────────────────────────
 

@@ -7,7 +7,8 @@ from sqlalchemy import func, select
 
 from app.core.auth import get_current_admin
 from app.core.database import get_db
-from app.models.booking import Booking, StatusReserva
+from app.models.booking import Booking, StatusReserva, TipoReserva
+from app.models.payment import Payment
 from app.models.configuracao import Configuracao
 from app.models.slot_ranking import SlotRanking
 from app.models.match import Match, StatusPartida
@@ -183,6 +184,8 @@ class ConfiguracaoIn(BaseModel):
     preco_semestral: float
     preco_anual: float
     preco_locacao_hora: float
+    hora_abertura: int = 7
+    hora_fechamento: int = 22
 
 
 @router.get("/configuracoes")
@@ -197,6 +200,8 @@ async def get_configuracoes(
         "preco_semestral":    float(cfg.preco_semestral),
         "preco_anual":        float(cfg.preco_anual),
         "preco_locacao_hora": float(cfg.preco_locacao_hora),
+        "hora_abertura":      cfg.hora_abertura,
+        "hora_fechamento":    cfg.hora_fechamento,
     }
 
 
@@ -212,6 +217,8 @@ async def put_configuracoes(
     cfg.preco_semestral    = body.preco_semestral
     cfg.preco_anual        = body.preco_anual
     cfg.preco_locacao_hora = body.preco_locacao_hora
+    cfg.hora_abertura      = body.hora_abertura
+    cfg.hora_fechamento    = body.hora_fechamento
     await db.commit()
     return {"ok": True}
 
@@ -352,3 +359,62 @@ async def deletar_slot_ranking(
         raise HTTPException(404, "Slot não encontrado.")
     await db.delete(slot)
     await db.commit()
+
+
+# ── Locações de Quadra ────────────────────────────────────────────────────────
+
+class LocacaoOut(BaseModel):
+    id: int
+    data_hora_inicio: datetime
+    data_hora_fim: datetime
+    status: str
+    valor: float
+    jogador_nome: str | None = None
+    jogador_email: str | None = None
+    pagamento_status: str | None = None
+    pagamento_metodo: str | None = None
+
+
+@router.get("/locacoes", response_model=list[LocacaoOut])
+async def listar_locacoes(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    rows = (await db.execute(
+        select(Booking, Player, Payment)
+        .outerjoin(Player, Booking.jogador_responsavel_id == Player.id)
+        .outerjoin(Payment, Payment.booking_id == Booking.id)
+        .where(Booking.tipo == TipoReserva.LOCACAO_AVULSA)
+        .order_by(Booking.data_hora_inicio.desc())
+        .limit(200)
+    )).all()
+    return [
+        LocacaoOut(
+            id=b.id,
+            data_hora_inicio=b.data_hora_inicio,
+            data_hora_fim=b.data_hora_fim,
+            status=b.status.value,
+            valor=float(b.valor or 0),
+            jogador_nome=p.nome if p else b.cliente_locacao_nome,
+            jogador_email=p.email if p else None,
+            pagamento_status=pay.status.value if pay else None,
+            pagamento_metodo=pay.metodo.value if pay else None,
+        )
+        for b, p, pay in rows
+    ]
+
+
+@router.patch("/locacoes/{booking_id}/cancelar")
+async def cancelar_locacao(
+    booking_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    booking = await db.get(Booking, booking_id)
+    if not booking or booking.tipo != TipoReserva.LOCACAO_AVULSA:
+        raise HTTPException(404, "Locação não encontrada.")
+    if booking.status == StatusReserva.CANCELADA:
+        raise HTTPException(400, "Locação já está cancelada.")
+    booking.status = StatusReserva.CANCELADA
+    await db.commit()
+    return {"ok": True}

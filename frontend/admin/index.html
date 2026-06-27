@@ -192,6 +192,10 @@
       padding: 1rem;
     }
     .modal-overlay.open { display: flex; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .modal-header h3 { font-size: 1rem; font-weight: 700; margin: 0; }
+    .modal-close { background: none; border: none; color: var(--clr-text-muted); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: .15rem .4rem; border-radius: .3rem; }
+    .modal-close:hover { background: rgba(255,255,255,.1); color: var(--clr-text); }
     .modal {
       background: var(--clr-bg);
       border-radius: 0.75rem;
@@ -325,6 +329,7 @@
     <button data-tab="partidas" onclick="switchTab('partidas')">Partidas</button>
     <button data-tab="temporada" onclick="switchTab('temporada')">Temporada</button>
     <button data-tab="assinaturas" onclick="switchTab('assinaturas')">Assinaturas</button>
+    <button data-tab="locacoes" onclick="switchTab('locacoes')">Locações</button>
     <button data-tab="matchmaking" onclick="switchTab('matchmaking')">Matchmaking</button>
     <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
   </nav>
@@ -475,6 +480,31 @@
       </div>
     </section>
 
+    <!-- Locações de Quadra -->
+    <section id="sec-locacoes" class="admin-section">
+      <div class="section-header">
+        <h2>Locações de Quadra</h2>
+        <button class="btn-xs" onclick="loadLocacoes()">↻ Atualizar</button>
+      </div>
+      <div class="card" style="max-width:900px">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data / Hora</th>
+              <th>Jogador</th>
+              <th>Valor</th>
+              <th>Pagamento</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-locacoes">
+            <tr><td colspan="6" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Configurações -->
     <section id="sec-configuracoes" class="admin-section">
       <div class="section-header">
@@ -514,6 +544,19 @@
             <label>Valor por hora (R$)</label>
             <input type="number" id="cfg-locacao" step="0.01" min="0" required>
           </div>
+
+          <p class="form-section-label" style="margin-top:1rem">Horário de Funcionamento</p>
+          <div style="display:flex;gap:1rem;max-width:280px">
+            <div class="form-row" style="flex:1">
+              <label>Abertura (h)</label>
+              <input type="number" id="cfg-hora-abertura" min="0" max="23" required>
+            </div>
+            <div class="form-row" style="flex:1">
+              <label>Fechamento (h)</label>
+              <input type="number" id="cfg-hora-fechamento" min="1" max="24" required>
+            </div>
+          </div>
+          <small style="color:var(--clr-text-muted);font-size:.72rem">Ex.: abertura 7 = 07:00, fechamento 22 = 22:00 (slots de 7h até 21h)</small>
 
           <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.5rem"></div>
           <div style="margin-top:1.25rem">

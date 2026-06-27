@@ -24,8 +24,6 @@ from app.schemas.player import TokenResponse
 
 router = APIRouter(prefix="/public", tags=["public"])
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
-_HORA_ABERTURA = 7
-_HORA_FECHAMENTO = 22
 
 
 # ── Disponibilidade ───────────────────────────────────────────────────────────
@@ -54,6 +52,8 @@ async def disponibilidade(
 
     cfg = await Configuracao.get(db)
     preco = float(cfg.preco_locacao_hora)
+    hora_abertura = cfg.hora_abertura
+    hora_fechamento = cfg.hora_fechamento
 
     dia_semana = data.weekday()  # 0=segunda, 6=domingo
     slots_ranking = (
@@ -89,7 +89,7 @@ async def disponibilidade(
         return any(s.hora_inicio <= t < s.hora_fim for s in slots_ranking)
 
     slots_out: list[SlotOut] = []
-    for hora in range(_HORA_ABERTURA, _HORA_FECHAMENTO):
+    for hora in range(hora_abertura, hora_fechamento):
         slot_ini = datetime.combine(data, time(hora, 0), tzinfo=FUSO_BR)
         h_fmt = f"{hora:02d}:00"
         hf_fmt = f"{hora + 1:02d}:00"
@@ -194,7 +194,9 @@ async def reservar(
     except (ValueError, IndexError):
         raise HTTPException(status_code=422, detail="Hora inválida. Use o formato HH:00.")
 
-    if hora < _HORA_ABERTURA or hora >= _HORA_FECHAMENTO:
+    cfg = await Configuracao.get(db)
+    valor = float(cfg.preco_locacao_hora)
+    if hora < cfg.hora_abertura or hora >= cfg.hora_fechamento:
         raise HTTPException(status_code=400, detail="Horário fora do funcionamento.")
 
     slot_ini = datetime.combine(body.data, time(hora, 0), tzinfo=FUSO_BR)
@@ -230,9 +232,6 @@ async def reservar(
             status_code=409,
             detail="Este horário está reservado para o ranking e só pode ser alugado nas 6 horas que antecedem o jogo.",
         )
-
-    cfg = await Configuracao.get(db)
-    valor = float(cfg.preco_locacao_hora)
 
     booking = Booking(
         data_hora_inicio=slot_ini,
