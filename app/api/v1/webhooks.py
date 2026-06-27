@@ -7,17 +7,13 @@ POST /matchmaking/executar    — dispara matchmaking para uma data (admin)
 GET  /matchmaking/convites    — lista convites ativos (admin)
 """
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.core.auth import get_current_admin
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.booking import Booking, StatusReserva
 from app.models.match import TipoPartida
 from app.models.match_invitation import MatchInvitation, StatusRodadaMatchmaking
-from app.models.payment import Payment, StatusPagamento
 from app.models.player import Player
 from app.services.matchmaking_service import MatchmakingService
 from pydantic import BaseModel
@@ -25,44 +21,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 router = APIRouter(tags=["webhooks"])
-
-_ASAAS_PAID_EVENTS = {"PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"}
-_ASAAS_FAIL_EVENTS = {"PAYMENT_OVERDUE", "PAYMENT_DELETED", "PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK"}
-
-
-# ── Webhook Asaas (pagamentos) ────────────────────────────────────────────────
-
-@router.post("/webhooks/asaas")
-async def asaas_webhook(
-    body: dict,
-    asaas_token: str | None = Header(default=None, alias="asaas-access-token"),
-    db=Depends(get_db),
-):
-    if settings.ASAAS_WEBHOOK_TOKEN and asaas_token != settings.ASAAS_WEBHOOK_TOKEN:
-        raise HTTPException(401, "Token inválido")
-
-    event = body.get("event", "")
-    gateway_id = body.get("payment", {}).get("id")
-    if not gateway_id:
-        return {"ok": True}
-
-    payment = await db.scalar(select(Payment).where(Payment.gateway_id == gateway_id))
-    if not payment:
-        return {"ok": True}
-
-    if event in _ASAAS_PAID_EVENTS:
-        payment.status = StatusPagamento.PAGO
-        payment.data_pagamento = datetime.now(timezone.utc)
-        if payment.booking_id:
-            booking = await db.get(Booking, payment.booking_id)
-            if booking and booking.status == StatusReserva.AGUARDANDO_PAGAMENTO:
-                booking.status = StatusReserva.CONFIRMADA
-    elif event in _ASAAS_FAIL_EVENTS:
-        payment.status = StatusPagamento.FALHOU
-
-    await db.commit()
-    return {"ok": True}
-
 
 def _mm_svc(db=Depends(get_db)) -> MatchmakingService:
     return MatchmakingService(db)

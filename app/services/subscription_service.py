@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSession
+from app.models.booking import Booking, StatusReserva
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
 from app.models.configuracao import Configuracao
 from app.models.player import NivelJogador, Player, StatusJogador
@@ -409,6 +410,10 @@ class SubscriptionService:
         if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED") or asaas_status in ("RECEIVED", "CONFIRMED"):
             payment.status = StatusPagamento.PAGO
             payment.data_pagamento = datetime.now(timezone.utc)
+            if payment.booking_id:
+                booking = await self.db.get(Booking, payment.booking_id)
+                if booking and booking.status == StatusReserva.AGUARDANDO_PAGAMENTO:
+                    booking.status = StatusReserva.CONFIRMADA
             if payment.subscription_id:
                 sub = await self.db.get(Subscription, payment.subscription_id, options=[selectinload(Subscription.player)])
                 if sub and sub.player:
