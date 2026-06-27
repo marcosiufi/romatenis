@@ -341,6 +341,130 @@
   </div>
 </div>
 
+<!-- ── Modal Contratar Plano ──────────────────────────────────────────────── -->
+<div id="pl-modal" class="bm-overlay" hidden aria-modal="true">
+  <div class="bm-card" style="max-width:500px">
+    <div class="modal-header" style="margin-bottom:.75rem">
+      <h3 id="pl-modal-titulo" style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;margin:0">Contratar Plano</h3>
+      <button class="modal-close" onclick="plFecharModal()" aria-label="Fechar">×</button>
+    </div>
+
+    <!-- Regras do Ranking -->
+    <div id="pl-s-regras">
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem">Leia com atenção antes de contratar:</p>
+      <div class="pl-regras-scroll">
+        <ul class="pl-regras-list">
+          <li><strong>Horários do ranking</strong><br>Seg–Sex: 06h–08h e 17h–22h · Sáb: 06h–22h · Dom/feriado: 06h–12h</li>
+          <li><strong>Antecedência para reservas</strong><br>Com 6h ou mais: reserva normal · Última hora (menos de 1h): qualquer slot livre · Entre 1h e 6h: bloqueado para novas reservas</li>
+          <li><strong>Limite semanal de partidas</strong><br>3 partidas de simples + 2 de duplas = 5 partidas/semana (segunda a domingo)</li>
+          <li><strong>Solicitação de pausa</strong><br>Motivo obrigatório — aceita apenas por doença ou lesão comprovada. Disponível nos planos trimestral, semestral e anual. Até 15 dias por solicitação.</li>
+          <li><strong>Política de cancelamento</strong><br>Cancelamento disponível a qualquer momento. Planos semestral e anual: reembolso de 30% das mensalidades restantes a pagar. Planos mensal e trimestral: sem reembolso.</li>
+        </ul>
+      </div>
+      <button onclick="plAposRegras()" class="btn-land btn-primary" style="width:100%;margin-top:1.25rem">Li e aceito as regras →</button>
+    </div>
+
+    <!-- Auth -->
+    <div id="pl-s-auth" hidden>
+      <p id="pl-auth-titulo" class="bm-title">Criar conta para contratar</p>
+      <div class="bm-tabs">
+        <button id="pl-tab-cad" class="bm-tab active" onclick="plAba('cad')">Cadastro</button>
+        <button id="pl-tab-login" class="bm-tab" onclick="plAba('login')">Entrar</button>
+      </div>
+      <div id="pl-f-cad">
+        <div class="bm-field"><label>Nome completo</label><input id="pl-nome" type="text" class="bm-input" placeholder="Seu nome" autocomplete="name" /></div>
+        <div class="bm-field"><label>E-mail</label><input id="pl-email" type="email" class="bm-input" placeholder="email@exemplo.com" autocomplete="email" /></div>
+        <div class="bm-field"><label>WhatsApp</label><input id="pl-tel" type="tel" class="bm-input" placeholder="(11) 99999-9999" autocomplete="tel" /></div>
+        <div class="bm-field"><label>CPF</label><input id="pl-cpf" type="text" class="bm-input" placeholder="000.000.000-00" /></div>
+        <div class="bm-field"><label>Senha</label><input id="pl-senha" type="password" class="bm-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password" /></div>
+        <div class="bm-field"><label>Confirmar senha</label><input id="pl-senha2" type="password" class="bm-input" placeholder="Repita a senha" autocomplete="new-password" /></div>
+        <p id="pl-cad-erro" hidden class="bm-erro"></p>
+        <button id="pl-btn-cad" class="btn-land btn-primary" style="width:100%">Criar conta e continuar</button>
+      </div>
+      <div id="pl-f-login" hidden>
+        <div class="bm-field"><label>E-mail</label><input id="pl-login-email" type="email" class="bm-input" placeholder="email@exemplo.com" autocomplete="email" /></div>
+        <div class="bm-field"><label>Senha</label><input id="pl-login-senha" type="password" class="bm-input" placeholder="Sua senha" autocomplete="current-password" /></div>
+        <p id="pl-login-erro" hidden class="bm-erro"></p>
+        <button id="pl-btn-login" class="btn-land btn-primary" style="width:100%">Entrar e continuar</button>
+      </div>
+    </div>
+
+    <!-- Confirmar plano + pagamento -->
+    <div id="pl-s-plano" hidden>
+      <p class="bm-title">Confirmar Assinatura</p>
+      <div id="pl-resumo-plano" class="bk-resumo"></div>
+      <div class="bm-field" style="margin-top:1rem">
+        <label>Forma de pagamento</label>
+        <div class="modalidade-toggle">
+          <button class="mod-btn active" data-pmt="pix_avista" onclick="plSetPmt(this)">PIX <span style="font-size:.72rem;opacity:.8">(5% off)</span></button>
+          <button class="mod-btn" data-pmt="cartao_parcelado" onclick="plSetPmt(this)">Cartão de Crédito</button>
+        </div>
+      </div>
+      <p id="pl-res-erro" hidden class="bm-erro" style="margin-top:.5rem"></p>
+      <button id="pl-btn-confirmar" onclick="plConfirmar()" class="btn-land btn-primary" style="width:100%;margin-top:1.25rem">Confirmar e Contratar</button>
+    </div>
+
+    <!-- Resultado: contrato + pagamento -->
+    <div id="pl-s-resultado" hidden>
+      <p class="bm-title">Próximos Passos</p>
+      <div id="pl-contrato-bloco" hidden>
+        <div class="pl-step-row">
+          <span class="pl-step-num">1</span>
+          <div>
+            <p class="pl-step-titulo">Assine o Contrato Digital</p>
+            <p class="pl-step-desc">O link de assinatura também foi enviado para seu e-mail.</p>
+            <a id="pl-contrato-link" href="#" target="_blank" class="btn-land btn-ghost" style="display:block;text-align:center;margin-top:.6rem">Assinar Contrato →</a>
+          </div>
+        </div>
+      </div>
+      <div id="pl-pix-bloco" hidden>
+        <div class="pl-step-row">
+          <span class="pl-step-num" id="pl-pix-step-num">2</span>
+          <div style="width:100%">
+            <p class="pl-step-titulo">Pague via PIX</p>
+            <div id="pl-pix-qr" style="text-align:center;margin:.5rem 0"></div>
+            <textarea id="pl-pix-cod" readonly class="bm-input" style="font-size:.72rem;height:3.5rem;resize:none"></textarea>
+            <button onclick="plCopiarPix()" id="pl-btn-copiar-pix" class="btn-land btn-ghost" style="width:100%;margin-top:.5rem">Copiar código PIX</button>
+          </div>
+        </div>
+      </div>
+      <div id="pl-cartao-bloco" hidden>
+        <div class="pl-step-row">
+          <span class="pl-step-num" id="pl-cartao-step-num">2</span>
+          <div>
+            <p class="pl-step-titulo">Pague com Cartão</p>
+            <p class="pl-step-desc">Página segura da Asaas para inserir os dados do cartão.</p>
+            <a id="pl-cartao-link" href="#" target="_blank" class="btn-land btn-primary" style="display:block;text-align:center;margin-top:.6rem">Pagar com Cartão →</a>
+          </div>
+        </div>
+      </div>
+      <button onclick="plPasso('app')" class="btn-land btn-ghost" style="width:100%;margin-top:1.25rem">Como usar o App →</button>
+    </div>
+
+    <!-- Boas-vindas + instruções do app -->
+    <div id="pl-s-app" hidden>
+      <div style="text-align:center;padding:.75rem 0 .25rem">
+        <div style="font-size:2.5rem;margin-bottom:.4rem">🎾</div>
+        <p class="bm-title">Bem-vindo ao Roma Tênis!</p>
+      </div>
+      <div class="pl-app-guide">
+        <p style="font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:.6rem">Como usar o sistema:</p>
+        <ol style="font-size:.83rem;color:var(--muted);line-height:1.75;padding-left:1.1rem;margin:0">
+          <li>Acesse <strong>romatenis.com.br/app</strong> no navegador do celular e adicione à tela inicial (funciona como app)</li>
+          <li>Faça login com o e-mail e senha que você cadastrou agora</li>
+          <li>Após a assinatura do contrato e confirmação do pagamento, seu acesso será ativado pelo administrador</li>
+          <li>Na aba <strong>Agenda</strong> visualize e reserve seus horários de partida</li>
+          <li>Em <strong>Ranking</strong> acompanhe sua pontuação e histórico de partidas</li>
+          <li>Em <strong>Assinatura</strong> gerencie seu plano, solicite pausas e acompanhe pagamentos</li>
+        </ol>
+      </div>
+      <a href="/app/" class="btn-land btn-primary" style="display:block;text-align:center;width:100%;margin-top:1.25rem">Ir para o App</a>
+      <button onclick="plFecharModal()" class="btn-land btn-ghost" style="width:100%;margin-top:.6rem">Fechar</button>
+    </div>
+
+  </div>
+</div>
+
 <!-- ── Planos ─────────────────────────────────────────────────────────────── -->
 <section class="planos-section" id="planos">
   <div class="container">
@@ -360,11 +484,11 @@
         <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-mensal">–</span><span class="periodo">/mês</span></div>
         <p class="plano-total" id="pix-mensal"></p>
         <ul class="plano-features">
-          <li>Acesso ilimitado à quadra</li>
+          <li>5 jogos/semana no ranking (3 simples + 2 duplas)</li>
           <li>Participação no ranking</li>
           <li>Agendamento online</li>
         </ul>
-        <a href="/app/" class="btn-land btn-ghost plano-cta">Contratar Plano</a>
+        <button type="button" class="btn-land btn-ghost plano-cta" onclick="plAbrirModal('mensal')">Contratar Plano</button>
       </div>
 
       <div class="plano-card reveal">
@@ -374,12 +498,12 @@
         <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-trimestral">–</span><span class="periodo">/mês</span></div>
         <p class="plano-total" id="pix-trimestral"></p>
         <ul class="plano-features">
-          <li>Acesso ilimitado à quadra</li>
+          <li>5 jogos/semana no ranking (3 simples + 2 duplas)</li>
           <li>Participação no ranking</li>
           <li>Agendamento online</li>
           <li>Solicitação de pausa</li>
         </ul>
-        <a href="/app/" class="btn-land btn-ghost plano-cta">Contratar Plano</a>
+        <button type="button" class="btn-land btn-ghost plano-cta" onclick="plAbrirModal('trimestral')">Contratar Plano</button>
       </div>
 
       <div class="plano-card destaque reveal">
@@ -389,12 +513,12 @@
         <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-semestral">–</span><span class="periodo">/mês</span></div>
         <p class="plano-total" id="pix-semestral"></p>
         <ul class="plano-features">
-          <li>Acesso ilimitado à quadra</li>
+          <li>5 jogos/semana no ranking (3 simples + 2 duplas)</li>
           <li>Participação no ranking</li>
           <li>Agendamento online</li>
           <li>Solicitação de pausa</li>
         </ul>
-        <a href="/app/" class="btn-land btn-primary plano-cta">Contratar Plano</a>
+        <button type="button" class="btn-land btn-primary plano-cta" onclick="plAbrirModal('semestral')">Contratar Plano</button>
       </div>
 
       <div class="plano-card reveal">
@@ -404,13 +528,13 @@
         <div class="plano-preco"><span class="cifrao">R$</span><span class="valor" id="preco-anual">–</span><span class="periodo">/mês</span></div>
         <p class="plano-total" id="pix-anual"></p>
         <ul class="plano-features">
-          <li>Acesso ilimitado à quadra</li>
+          <li>5 jogos/semana no ranking (3 simples + 2 duplas)</li>
           <li>Participação no ranking</li>
           <li>Agendamento online</li>
           <li>Solicitação de pausa</li>
           <li>Melhor custo-benefício</li>
         </ul>
-        <a href="/app/" class="btn-land btn-ghost plano-cta">Contratar Plano</a>
+        <button type="button" class="btn-land btn-ghost plano-cta" onclick="plAbrirModal('anual')">Contratar Plano</button>
       </div>
     </div>
   </div>
@@ -547,9 +671,11 @@ fetch('/api/v1/subscriptions/precos')
       { key: 'semestral',   idValor: 'preco-semestral',   idPix: 'pix-semestral' },
       { key: 'anual',       idValor: 'preco-anual',       idPix: 'pix-anual' },
     ];
+    window.__plPrecos = {};
     planos.forEach(({ key, idValor, idPix }) => {
       const d = p[key];
       if (!d) return;
+      window.__plPrecos[key] = d;
       const elV = document.getElementById(idValor);
       const elP = document.getElementById(idPix);
       if (elV) elV.textContent = fmtR(d.valor_mensal);
@@ -560,6 +686,155 @@ fetch('/api/v1/subscriptions/precos')
     });
   })
   .catch(() => {});
+
+// ── Modal Contratar Plano ──────────────────────────────────────────────────
+const _PL_NOMES = { mensal:'Mensal', trimestral:'Trimestral', semestral:'Semestral', anual:'Anual' };
+const _PL_MESES = { mensal:1, trimestral:3, semestral:6, anual:12 };
+let plPlano = null, plPmt = 'pix_avista';
+
+function plAbrirModal(plano) {
+  plPlano = plano;
+  document.getElementById('pl-modal-titulo').textContent = `Plano ${_PL_NOMES[plano]}`;
+  document.getElementById('pl-modal').hidden = false;
+  document.body.style.overflow = 'hidden';
+  ['pl-cad-erro','pl-login-erro','pl-res-erro'].forEach(id => {
+    const el = document.getElementById(id); if (el) { el.hidden = true; el.textContent = ''; }
+  });
+  plPmt = 'pix_avista';
+  document.querySelectorAll('#pl-s-plano .mod-btn').forEach(b => b.classList.toggle('active', b.dataset.pmt === 'pix_avista'));
+  plPasso('regras');
+}
+
+function plFecharModal() {
+  document.getElementById('pl-modal').hidden = true;
+  document.body.style.overflow = '';
+}
+
+function plPasso(p) {
+  ['regras','auth','plano','resultado','app'].forEach(n => document.getElementById('pl-s-' + n).hidden = n !== p);
+  if (p === 'plano') plRenderResumo();
+}
+
+function plAposRegras() {
+  if (localStorage.getItem('access_token')) plPasso('plano');
+  else { plPasso('auth'); plAba('cad'); }
+}
+
+function plAba(aba) {
+  document.getElementById('pl-f-cad').hidden = aba !== 'cad';
+  document.getElementById('pl-f-login').hidden = aba !== 'login';
+  document.getElementById('pl-tab-cad').classList.toggle('active', aba === 'cad');
+  document.getElementById('pl-tab-login').classList.toggle('active', aba === 'login');
+  document.getElementById('pl-auth-titulo').textContent = aba === 'cad' ? 'Criar conta para contratar' : 'Entrar na sua conta';
+}
+
+function plSetPmt(el) {
+  document.querySelectorAll('#pl-s-plano .mod-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  plPmt = el.dataset.pmt;
+  plRenderResumo();
+}
+
+function plRenderResumo() {
+  const p = (window.__plPrecos || {})[plPlano] || {};
+  const meses = _PL_MESES[plPlano] || 1;
+  const valorTotal = p.valor_total || 0;
+  const valorMensal = p.valor_mensal || 0;
+  const valorFinal = plPmt === 'pix_avista' ? valorTotal * 0.95 : valorTotal;
+  const descPmt = plPmt === 'pix_avista' ? 'PIX à vista (5% desc)' : `Cartão${meses > 1 ? ' ' + meses + 'x' : ''}`;
+  document.getElementById('pl-resumo-plano').innerHTML = `
+    <div class="bk-r-data">Plano ${_PL_NOMES[plPlano]} — ${meses} ${meses === 1 ? 'mês' : 'meses'}</div>
+    <div class="bk-r-hora" style="font-size:1rem">R$ ${fmtR(valorMensal)}/mês</div>
+    <div class="bk-r-preco">${descPmt}: <strong>R$ ${fmtR(valorFinal)}</strong></div>`;
+}
+
+document.getElementById('pl-btn-cad').addEventListener('click', async () => {
+  const erEl = document.getElementById('pl-cad-erro'); erEl.hidden = true;
+  const nome = document.getElementById('pl-nome').value.trim();
+  const email = document.getElementById('pl-email').value.trim();
+  const tel = document.getElementById('pl-tel').value.trim();
+  const cpf = document.getElementById('pl-cpf').value.trim() || null;
+  const senha = document.getElementById('pl-senha').value;
+  const senha2 = document.getElementById('pl-senha2').value;
+  if (!nome) { erEl.textContent = 'Informe seu nome completo.'; erEl.hidden = false; return; }
+  if (!email) { erEl.textContent = 'Informe seu e-mail.'; erEl.hidden = false; return; }
+  if (!tel) { erEl.textContent = 'Informe seu WhatsApp.'; erEl.hidden = false; return; }
+  if (senha.length < 6) { erEl.textContent = 'A senha deve ter pelo menos 6 caracteres.'; erEl.hidden = false; return; }
+  if (senha !== senha2) { erEl.textContent = 'As senhas não coincidem.'; erEl.hidden = false; return; }
+  const btn = document.getElementById('pl-btn-cad');
+  btn.disabled = true; btn.textContent = 'Criando conta…';
+  try {
+    const r = await fetch('/api/v1/public/cadastro', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nome, email, senha, telefone:tel, cpf }) });
+    const d = await r.json();
+    if (!r.ok) { erEl.textContent = d.detail || 'Erro ao criar conta.'; erEl.hidden = false; return; }
+    localStorage.setItem('access_token', d.access_token);
+    localStorage.setItem('refresh_token', d.refresh_token);
+    plPasso('plano');
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = 'Criar conta e continuar'; }
+});
+
+document.getElementById('pl-btn-login').addEventListener('click', async () => {
+  const erEl = document.getElementById('pl-login-erro'); erEl.hidden = true;
+  const email = document.getElementById('pl-login-email').value.trim();
+  const senha = document.getElementById('pl-login-senha').value;
+  if (!email || !senha) { erEl.textContent = 'Informe e-mail e senha.'; erEl.hidden = false; return; }
+  const btn = document.getElementById('pl-btn-login');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try {
+    const r = await fetch('/api/v1/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, senha }) });
+    const d = await r.json();
+    if (!r.ok) { erEl.textContent = d.detail || 'E-mail ou senha incorretos.'; erEl.hidden = false; return; }
+    localStorage.setItem('access_token', d.access_token);
+    localStorage.setItem('refresh_token', d.refresh_token);
+    plPasso('plano');
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = 'Entrar e continuar'; }
+});
+
+async function plConfirmar() {
+  const erEl = document.getElementById('pl-res-erro'); erEl.hidden = true;
+  const btn = document.getElementById('pl-btn-confirmar');
+  btn.disabled = true; btn.textContent = 'Processando…';
+  try {
+    const token = localStorage.getItem('access_token');
+    const r = await fetch('/api/v1/subscriptions/contratar', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body: JSON.stringify({ plano: plPlano, forma_pagamento: plPmt }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      if (r.status === 401) { plPasso('auth'); plAba('login'); document.getElementById('pl-login-erro').textContent = 'Sessão expirada. Faça login novamente.'; document.getElementById('pl-login-erro').hidden = false; return; }
+      erEl.textContent = d.detail || 'Erro ao processar contratação.'; erEl.hidden = false; return;
+    }
+    const temContrato = !!d.contrato_link;
+    const temPix = !!d.pix_copia_e_cola;
+    const temCartao = !!d.payment_link && !temPix;
+    document.getElementById('pl-contrato-bloco').hidden = !temContrato;
+    document.getElementById('pl-pix-bloco').hidden = !temPix;
+    document.getElementById('pl-cartao-bloco').hidden = !temCartao;
+    if (temContrato) document.getElementById('pl-contrato-link').href = d.contrato_link;
+    if (temPix) {
+      document.getElementById('pl-pix-cod').value = d.pix_copia_e_cola;
+      document.getElementById('pl-pix-step-num').textContent = temContrato ? '2' : '1';
+      if (d.pix_qrcode_base64) document.getElementById('pl-pix-qr').innerHTML = `<img src="data:image/png;base64,${d.pix_qrcode_base64}" style="max-width:160px;border-radius:8px;margin:.5rem auto;display:block"/>`;
+    }
+    if (temCartao) {
+      document.getElementById('pl-cartao-link').href = d.payment_link;
+      document.getElementById('pl-cartao-step-num').textContent = temContrato ? '2' : '1';
+    }
+    plPasso('resultado');
+  } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = 'Confirmar e Contratar'; }
+}
+
+function plCopiarPix() {
+  navigator.clipboard.writeText(document.getElementById('pl-pix-cod').value).then(() => {
+    const btn = document.getElementById('pl-btn-copiar-pix');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = 'Copiar código PIX'; }, 2000);
+  });
+}
 
 // ── Booking Widget ─────────────────────────────────────────────────────────
 let bkSlot = null, bkData = null, bkTipo = 'simples', bkPreco = 0, bkPmt = 'pix', bkNumHoras = 1, bkSlotsData = [];

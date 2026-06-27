@@ -461,3 +461,15 @@ img, svg { display: block; }
 .bm-tab { background: none; border: none; padding: .5rem .85rem; font-family: 'Inter', sans-serif; font-size: .85rem; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s; }
 .bm-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .bm-erro { color: #f08080; font-size: .82rem; background: rgba(240,80,80,.1); border-radius: var(--r); padding: .5rem .75rem; margin-bottom: .75rem; }
+
+/* ── Modal Contratar Plano ───────────────────────────────────────────────── */
+.pl-regras-scroll { max-height: 260px; overflow-y: auto; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: var(--r); padding: .85rem 1rem; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.pl-regras-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .85rem; }
+.pl-regras-list li { font-size: .82rem; color: var(--muted); line-height: 1.55; border-left: 2px solid var(--accent); padding-left: .65rem; }
+.pl-regras-list li strong { color: var(--text); display: block; margin-bottom: .15rem; font-size: .84rem; }
+.pl-step-row { display: flex; gap: .85rem; align-items: flex-start; padding: .9rem 0; border-top: 1px solid var(--border); }
+.pl-step-row:first-child { border-top: none; padding-top: 0; }
+.pl-step-num { flex-shrink: 0; width: 1.7rem; height: 1.7rem; background: var(--accent); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; font-family: 'Inter', sans-serif; margin-top: .1rem; }
+.pl-step-titulo { font-size: .9rem; font-weight: 600; color: var(--text); margin: 0 0 .25rem; }
+.pl-step-desc { font-size: .8rem; color: var(--muted); margin: 0; }
+.pl-app-guide { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: var(--r); padding: .9rem 1rem; }

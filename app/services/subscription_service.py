@@ -73,6 +73,7 @@ class AssinaturaResult:
     payment_link: str | None = field(default=None)
     pix_qrcode_base64: str | None = field(default=None)
     pix_copia_e_cola: str | None = field(default=None)
+    contrato_link: str | None = field(default=None)
 
 
 class SubscriptionService:
@@ -198,14 +199,32 @@ class SubscriptionService:
                 player.contrato_link_assinatura = link
                 player.contrato_enviado_em = now_utc
                 player.contrato_assinado = False
+                result.contrato_link = link
             except AutentiqueError as e:
                 logger.error("Erro ao enviar contrato automático: %s", e)
             player.status = StatusJogador.ASSINATURA.value
         else:
+            result.contrato_link = player.contrato_link_assinatura
             player.status = StatusJogador.PAGAMENTO.value
 
         await self.db.commit()
         return result
+
+    async def contratar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento) -> "AssinaturaResult":
+        """Primeira contratação pelo próprio jogador a partir da landing page."""
+        if await self._get_ativa(player.id):
+            raise SubscriptionError("Você já possui uma assinatura ativa.")
+        config = await Configuracao.get(self.db)
+        meses = PLANO_MESES[plano]
+        precos_totais = {
+            PlanoAssinatura.MENSAL:     float(config.preco_mensal),
+            PlanoAssinatura.TRIMESTRAL: float(config.preco_trimestral),
+            PlanoAssinatura.SEMESTRAL:  float(config.preco_semestral),
+            PlanoAssinatura.ANUAL:      float(config.preco_anual),
+        }
+        valor_mensal_unitario = round(precos_totais[plano] / meses, 2)
+        parcelas = PLANO_PARCELAS[plano]
+        return await self.criar_assinatura(player.id, plano, forma_pagamento, valor_mensal_unitario, parcelas)
 
     async def renovar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento) -> "AssinaturaResult":
         """Jogador renova sua própria assinatura (expirada ou expirando em ≤7 dias)."""

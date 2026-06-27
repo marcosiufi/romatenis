@@ -59,6 +59,7 @@ class SubscriptionCreateOut(SubscriptionOut):
     payment_link: str | None = None
     pix_qrcode_base64: str | None = None
     pix_copia_e_cola: str | None = None
+    contrato_link: str | None = None
 
 
 class SubscriptionAdminOut(SubscriptionOut):

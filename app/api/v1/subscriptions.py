@@ -127,6 +127,25 @@ async def precos(db=Depends(get_db)):
 
 # ── Player ────────────────────────────────────────────────────────────────────
 
+@router.post("/contratar", response_model=SubscriptionCreateOut)
+async def contratar_plano(
+    body: SubscriptionRenovar,
+    player: Player = Depends(get_current_player),
+    svc: SubscriptionService = Depends(_svc),
+):
+    """Contratação de novo plano pelo próprio jogador (landing page)."""
+    try:
+        res = await svc.contratar(player, body.plano, body.forma_pagamento)
+    except SubscriptionError as e:
+        raise HTTPException(422, str(e))
+    out = SubscriptionCreateOut.model_validate(res.subscription)
+    out.payment_link = res.payment_link
+    out.pix_qrcode_base64 = res.pix_qrcode_base64
+    out.pix_copia_e_cola = res.pix_copia_e_cola
+    out.contrato_link = res.contrato_link
+    return out
+
+
 @router.get("/minhas", response_model=list[SubscriptionOut])
 async def listar_minhas(
     player: Player = Depends(get_current_player),
