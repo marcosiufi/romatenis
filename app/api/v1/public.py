@@ -1,4 +1,5 @@
 """Endpoints públicos: disponibilidade de quadra, cadastro e reserva avulsa."""
+import re
 from datetime import date, datetime, time, timedelta
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
@@ -142,8 +143,24 @@ class CadastroPublicoIn(BaseModel):
     email: EmailStr
     senha: str
     telefone: str
-    cpf: str | None = None
+    cpf: str
     data_nascimento: date | None = None
+
+    @field_validator("cpf")
+    @classmethod
+    def cpf_valido(cls, v: str) -> str:
+        cpf = re.sub(r"\D", "", v)
+        if len(cpf) != 11 or len(set(cpf)) == 1:
+            raise ValueError("CPF inválido.")
+        soma = sum(int(cpf[j]) * (10 - j) for j in range(9))
+        d1 = 0 if soma % 11 < 2 else 11 - soma % 11
+        if d1 != int(cpf[9]):
+            raise ValueError("CPF inválido.")
+        soma = sum(int(cpf[j]) * (11 - j) for j in range(10))
+        d2 = 0 if soma % 11 < 2 else 11 - soma % 11
+        if d2 != int(cpf[10]):
+            raise ValueError("CPF inválido.")
+        return cpf
 
     @field_validator("senha")
     @classmethod

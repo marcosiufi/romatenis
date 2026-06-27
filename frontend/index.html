@@ -239,7 +239,7 @@
         <div class="aw-field"><label>Nome completo *</label><input id="bm-nome" type="text" autocomplete="name" /></div>
         <div class="aw-field"><label>E-mail *</label><input id="bm-email" type="email" autocomplete="email" /></div>
         <div class="aw-field"><label>WhatsApp *</label><input id="bm-tel" type="tel" placeholder="11 9 0000-0000" /></div>
-        <div class="aw-field"><label>CPF <span style="opacity:.6;font-weight:400">(opcional)</span></label><input id="bm-cpf" type="text" placeholder="000.000.000-00" /></div>
+        <div class="aw-field"><label>CPF *</label><input id="bm-cpf" type="text" placeholder="000.000.000-00" /></div>
         <div class="aw-field"><label>Senha * <span style="opacity:.6;font-weight:400">(mín. 6 caracteres)</span></label><input id="bm-senha" type="password" /></div>
         <div class="aw-field"><label>Confirmar senha *</label><input id="bm-senha2" type="password" /></div>
         <p class="bm-erro" id="bm-cad-erro" hidden></p>
@@ -373,7 +373,7 @@
         <div class="aw-field"><label>Nome completo *</label><input id="pl-nome" type="text" autocomplete="name" /></div>
         <div class="aw-field"><label>E-mail *</label><input id="pl-email" type="email" autocomplete="email" /></div>
         <div class="aw-field"><label>WhatsApp *</label><input id="pl-tel" type="tel" placeholder="11 9 0000-0000" /></div>
-        <div class="aw-field"><label>CPF <span style="opacity:.6;font-weight:400">(opcional)</span></label><input id="pl-cpf" type="text" placeholder="000.000.000-00" /></div>
+        <div class="aw-field"><label>CPF *</label><input id="pl-cpf" type="text" placeholder="000.000.000-00" /></div>
         <div class="aw-field"><label>Senha * <span style="opacity:.6;font-weight:400">(mín. 6 caracteres)</span></label><input id="pl-senha" type="password" /></div>
         <div class="aw-field"><label>Confirmar senha *</label><input id="pl-senha2" type="password" /></div>
         <p id="pl-cad-erro" hidden class="bm-erro"></p>
@@ -658,6 +658,19 @@ const observer = new IntersectionObserver((entries) => {
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
 // ── Carregar preços da API ─────────────────────────────────────────────────
+function validarCPF(v) {
+  const cpf = v.replace(/\D/g, '');
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  let soma = 0;
+  for (let j = 0; j < 9; j++) soma += parseInt(cpf[j]) * (10 - j);
+  const d1 = soma % 11 < 2 ? 0 : 11 - soma % 11;
+  if (d1 !== parseInt(cpf[9])) return false;
+  soma = 0;
+  for (let j = 0; j < 10; j++) soma += parseInt(cpf[j]) * (11 - j);
+  const d2 = soma % 11 < 2 ? 0 : 11 - soma % 11;
+  return d2 === parseInt(cpf[10]);
+}
+
 function fmtR(v) {
   return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -754,12 +767,14 @@ document.getElementById('pl-btn-cad').addEventListener('click', async () => {
   const nome = document.getElementById('pl-nome').value.trim();
   const email = document.getElementById('pl-email').value.trim();
   const tel = document.getElementById('pl-tel').value.trim();
-  const cpf = document.getElementById('pl-cpf').value.trim() || null;
+  const cpf = document.getElementById('pl-cpf').value.trim();
   const senha = document.getElementById('pl-senha').value;
   const senha2 = document.getElementById('pl-senha2').value;
   if (!nome) { erEl.textContent = 'Informe seu nome completo.'; erEl.hidden = false; return; }
   if (!email) { erEl.textContent = 'Informe seu e-mail.'; erEl.hidden = false; return; }
   if (!tel) { erEl.textContent = 'Informe seu WhatsApp.'; erEl.hidden = false; return; }
+  if (!cpf) { erEl.textContent = 'Informe seu CPF.'; erEl.hidden = false; return; }
+  if (!validarCPF(cpf)) { erEl.textContent = 'CPF inválido. Verifique e tente novamente.'; erEl.hidden = false; return; }
   if (senha.length < 6) { erEl.textContent = 'A senha deve ter pelo menos 6 caracteres.'; erEl.hidden = false; return; }
   if (senha !== senha2) { erEl.textContent = 'As senhas não coincidem.'; erEl.hidden = false; return; }
   const btn = document.getElementById('pl-btn-cad');
@@ -1000,12 +1015,14 @@ document.getElementById('bm-btn-cad').addEventListener('click', async () => {
   const nome = document.getElementById('bm-nome').value.trim();
   const email = document.getElementById('bm-email').value.trim();
   const tel = document.getElementById('bm-tel').value.trim();
-  const cpf = document.getElementById('bm-cpf').value.trim() || null;
+  const cpf = document.getElementById('bm-cpf').value.trim();
   const senha = document.getElementById('bm-senha').value;
   const senha2 = document.getElementById('bm-senha2').value;
   if (!nome) { erEl.textContent = 'Informe seu nome completo.'; erEl.hidden = false; return; }
   if (!email) { erEl.textContent = 'Informe seu e-mail.'; erEl.hidden = false; return; }
   if (!tel) { erEl.textContent = 'Informe seu WhatsApp.'; erEl.hidden = false; return; }
+  if (!cpf) { erEl.textContent = 'Informe seu CPF.'; erEl.hidden = false; return; }
+  if (!validarCPF(cpf)) { erEl.textContent = 'CPF inválido. Verifique e tente novamente.'; erEl.hidden = false; return; }
   if (senha.length < 6) { erEl.textContent = 'A senha deve ter pelo menos 6 caracteres.'; erEl.hidden = false; return; }
   if (senha !== senha2) { erEl.textContent = 'As senhas não coincidem.'; erEl.hidden = false; return; }
   const btn = document.getElementById('bm-btn-cad');
