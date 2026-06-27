@@ -438,7 +438,11 @@ img, svg { display: block; }
 /* ── Modal de reserva ───────────────────────────────────────────────────── */
 .bm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
 .bm-overlay[hidden] { display: none; }
-.bm-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: calc(var(--r)*2); padding: 2rem 1.75rem; width: 100%; max-width: 440px; max-height: 90dvh; overflow-y: auto; position: relative; }
+.bm-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: calc(var(--r)*2); padding: 2rem 1.75rem; width: 100%; max-width: 440px; max-height: 90dvh; overflow-y: auto; position: relative; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.bm-card::-webkit-scrollbar { width: 4px; }
+.bm-card::-webkit-scrollbar-track { background: transparent; }
+.bm-card::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.bm-card::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .bm-fechar { position: absolute; top: .85rem; right: 1rem; background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; line-height: 1; padding: .2rem .45rem; border-radius: var(--r); }
 .bm-fechar:hover { background: rgba(255,255,255,.08); color: var(--text); }
 .bm-title { font-family: 'Cinzel', serif; font-size: 1.05rem; font-weight: 700; margin-bottom: .2rem; padding-right: 1.5rem; }
