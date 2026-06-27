@@ -14,6 +14,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Cria o enum manualmente com IF NOT EXISTS para ser idempotente
+    op.execute(
+        "CREATE TYPE IF NOT EXISTS statuslistaespera AS ENUM "
+        "('aguardando', 'convocado', 'expirado', 'ativado', 'removido')"
+    )
     op.create_table(
         "lista_espera",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -23,6 +28,7 @@ def upgrade() -> None:
             sa.Enum(
                 "aguardando", "convocado", "expirado", "ativado", "removido",
                 name="statuslistaespera",
+                create_type=False,  # já criado acima com IF NOT EXISTS
             ),
             nullable=False,
             server_default="aguardando",
