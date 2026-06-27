@@ -379,7 +379,20 @@ class SubscriptionService:
         return list(result.scalars().all())
 
     async def minha_ativa(self, player: Player) -> Subscription | None:
-        return await self._get_ativa(player.id)
+        """Retorna ATIVA (preferência) ou PENDENTE — para o perfil do jogador."""
+        ativa = await self._get_ativa(player.id)
+        if ativa:
+            return ativa
+        result = await self.db.execute(
+            select(Subscription)
+            .where(
+                Subscription.player_id == player.id,
+                Subscription.status == StatusAssinatura.PENDENTE,
+            )
+            .order_by(Subscription.data_inicio_ciclo.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     # ── Ações ─────────────────────────────────────────────────────────────────
 

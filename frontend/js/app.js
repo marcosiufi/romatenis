@@ -194,11 +194,12 @@ function _enderecoHtml(p) {
 const PLANO_LABEL = { mensal: "Mensal", trimestral: "Trimestral", semestral: "Semestral", anual: "Anual" };
 const PLANO_MESES = { mensal: 30, trimestral: 90, semestral: 180, anual: 365 };
 const STATUS_SUB = {
-  ativa:        { cor: "#4ab870", icone: "✓", label: "Ativa" },
-  pausada:      { cor: "#e0a040", icone: "⏸", label: "Pausada" },
-  expirada:     { cor: "#e07040", icone: "✕", label: "Expirada" },
-  inadimplente: { cor: "#e74c3c", icone: "!", label: "Inadimplente" },
-  cancelada:    { cor: "#888",    icone: "–", label: "Cancelada" },
+  pendente:     { cor: "#e0a040", icone: "⏳", label: "Aguardando ativação" },
+  ativa:        { cor: "#4ab870", icone: "✓",  label: "Ativa" },
+  pausada:      { cor: "#e0a040", icone: "⏸",  label: "Pausada" },
+  expirada:     { cor: "#e07040", icone: "✕",  label: "Expirada" },
+  inadimplente: { cor: "#e74c3c", icone: "!",  label: "Inadimplente" },
+  cancelada:    { cor: "#888",    icone: "–",  label: "Cancelada" },
 };
 
 function fmtData(isoStr) {
