@@ -14,10 +14,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "CREATE TYPE statuslistaespera AS ENUM "
-        "('aguardando', 'convocado', 'expirado', 'ativado', 'removido')"
-    )
     op.create_table(
         "lista_espera",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
@@ -50,4 +46,4 @@ def downgrade() -> None:
     op.drop_index("ix_lista_espera_status", table_name="lista_espera")
     op.drop_index("ix_lista_espera_player_id", table_name="lista_espera")
     op.drop_table("lista_espera")
-    op.execute("DROP TYPE statuslistaespera")
+    op.execute("DROP TYPE IF EXISTS statuslistaespera")
