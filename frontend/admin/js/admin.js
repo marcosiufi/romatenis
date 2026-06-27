@@ -157,7 +157,7 @@ function switchTab(tab) {
     case 'assinaturas':    loadAssinaturas(); break
     case 'locacoes':       loadLocacoes(); break
     case 'matchmaking':    loadInvitations(); break
-    case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); break
+    case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); break
   }
 }
 
@@ -1207,6 +1207,7 @@ async function loadSlotsRanking() {
           </span>
         </td>
         <td style="display:flex;gap:.4rem">
+          <button class="btn-xs" onclick='abrirModalSlotRanking(${JSON.stringify(s)})'>Editar</button>
           <button class="btn-xs" onclick="toggleSlotRanking(${s.id},${s.ativo})" title="${s.ativo ? 'Desativar' : 'Ativar'}">${s.ativo ? 'Pausar' : 'Ativar'}</button>
           <button class="btn-xs danger" onclick="deletarSlotRanking(${s.id})">Excluir</button>
         </td>
@@ -1216,12 +1217,20 @@ async function loadSlotsRanking() {
   }
 }
 
-function abrirModalSlotRanking() {
+let _srEditId = null
+
+function abrirModalSlotRanking(slot = null) {
+  _srEditId = slot ? slot.id : null
+  document.getElementById('sr-modal-titulo').textContent = slot ? 'Editar Horário de Ranking' : 'Adicionar Horário de Ranking'
+  document.getElementById('sr-dia').value    = slot ? slot.dia_semana : 0
+  document.getElementById('sr-inicio').value = slot ? slot.hora_inicio.slice(0, 5) : '07:00'
+  document.getElementById('sr-fim').value    = slot ? slot.hora_fim.slice(0, 5)    : '09:00'
   document.getElementById('sr-erro').style.display = 'none'
   document.getElementById('modal-slot-ranking').style.display = 'flex'
 }
 function fecharModalSlotRanking() {
   document.getElementById('modal-slot-ranking').style.display = 'none'
+  _srEditId = null
 }
 
 async function salvarSlotRanking() {
@@ -1233,10 +1242,12 @@ async function salvarSlotRanking() {
   if (!inicio || !fim) { erEl.textContent = 'Informe horário de início e fim.'; erEl.style.display = 'block'; return }
   if (inicio >= fim) { erEl.textContent = 'Hora de início deve ser anterior à hora de fim.'; erEl.style.display = 'block'; return }
   try {
-    await api('/admin/slots-ranking', { method: 'POST', body: JSON.stringify({ dia_semana: dia, hora_inicio: inicio, hora_fim: fim }) })
+    const url = _srEditId ? `/admin/slots-ranking/${_srEditId}` : '/admin/slots-ranking'
+    const method = _srEditId ? 'PUT' : 'POST'
+    await api(url, { method, body: JSON.stringify({ dia_semana: dia, hora_inicio: inicio, hora_fim: fim }) })
     fecharModalSlotRanking()
     loadSlotsRanking()
-    toast('Horário de ranking adicionado!')
+    toast(_srEditId ? 'Horário atualizado!' : 'Horário de ranking adicionado!')
   } catch(e) {
     erEl.textContent = e?.message || 'Erro ao salvar.'; erEl.style.display = 'block'
   }
@@ -1257,6 +1268,104 @@ async function deletarSlotRanking(id) {
     loadSlotsRanking()
     toast('Horário excluído.')
   } catch { toast('Erro ao excluir.', true) }
+}
+
+// ── Feriados e Horários Especiais ────────────────────────────────────────────
+
+let _heEditId = null
+
+async function loadHorariosEspeciais() {
+  const tbody = document.getElementById('tbody-horarios-especiais')
+  if (!tbody) return
+  try {
+    const items = await api('/admin/horarios-especiais')
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;opacity:.5;padding:.75rem">Nenhum dia especial cadastrado.</td></tr>'
+      return
+    }
+    tbody.innerHTML = items.map(he => {
+      const datFmt = new Date(he.data + 'T12:00:00').toLocaleDateString('pt-BR')
+      const horario = he.fechado
+        ? '<span class="badge b-cancelado">Fechado</span>'
+        : (he.hora_abertura != null ? `${he.hora_abertura}h – ${he.hora_fechamento}h` : 'Horário normal')
+      return `<tr>
+        <td>${datFmt}</td>
+        <td>${he.descricao}</td>
+        <td>${horario}</td>
+        <td style="display:flex;gap:.3rem">
+          <button class="btn-xs" onclick='abrirModalHorarioEspecial(${JSON.stringify(he)})'>Editar</button>
+          <button class="btn-xs danger" onclick="deletarHorarioEspecial(${he.id})">Excluir</button>
+        </td>
+      </tr>`
+    }).join('')
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--clr-danger,red);padding:.5rem">${e.message}</td></tr>`
+  }
+}
+
+function abrirModalHorarioEspecial(he = null) {
+  _heEditId = he ? he.id : null
+  document.getElementById('he-modal-titulo').textContent = he ? 'Editar Dia Especial' : 'Adicionar Dia Especial'
+  document.getElementById('he-data').value      = he ? he.data : ''
+  document.getElementById('he-descricao').value = he ? he.descricao : ''
+  document.getElementById('he-fechado').checked = he ? he.fechado : false
+  document.getElementById('he-abertura').value  = (he && he.hora_abertura != null) ? he.hora_abertura : ''
+  document.getElementById('he-fechamento').value = (he && he.hora_fechamento != null) ? he.hora_fechamento : ''
+  document.getElementById('he-erro').style.display = 'none'
+  toggleHeFechado()
+  document.getElementById('modal-horario-especial').style.display = 'flex'
+}
+
+function fecharModalHorarioEspecial() {
+  document.getElementById('modal-horario-especial').style.display = 'none'
+  _heEditId = null
+}
+
+function toggleHeFechado() {
+  const fechado = document.getElementById('he-fechado').checked
+  document.getElementById('he-horario-section').style.display = fechado ? 'none' : ''
+}
+
+async function salvarHorarioEspecial() {
+  const errEl = document.getElementById('he-erro')
+  errEl.style.display = 'none'
+  const data       = document.getElementById('he-data').value
+  const descricao  = document.getElementById('he-descricao').value.trim()
+  const fechado    = document.getElementById('he-fechado').checked
+  const aberturaV  = document.getElementById('he-abertura').value
+  const fechamentoV = document.getElementById('he-fechamento').value
+  if (!data || !descricao) {
+    errEl.textContent = 'Data e descrição são obrigatórios.'
+    errEl.style.display = ''
+    return
+  }
+  const body = {
+    data, descricao, fechado,
+    hora_abertura:   aberturaV  !== '' ? parseInt(aberturaV)  : null,
+    hora_fechamento: fechamentoV !== '' ? parseInt(fechamentoV) : null,
+  }
+  try {
+    const url    = _heEditId ? `/admin/horarios-especiais/${_heEditId}` : '/admin/horarios-especiais'
+    const method = _heEditId ? 'PUT' : 'POST'
+    await api(url, { method, body: JSON.stringify(body) })
+    fecharModalHorarioEspecial()
+    toast(_heEditId ? 'Dia especial atualizado.' : 'Dia especial adicionado.')
+    loadHorariosEspeciais()
+  } catch(e) {
+    errEl.textContent = e?.message || 'Erro ao salvar.'
+    errEl.style.display = ''
+  }
+}
+
+async function deletarHorarioEspecial(id) {
+  if (!confirm('Excluir este dia especial?')) return
+  try {
+    await api(`/admin/horarios-especiais/${id}`, { method: 'DELETE' })
+    toast('Dia especial excluído.')
+    loadHorariosEspeciais()
+  } catch(e) {
+    toast(e?.message || 'Erro ao excluir.', true)
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.payment import Payment
 from app.models.configuracao import Configuracao
+from app.models.horario_especial import HorarioEspecial
 from app.models.slot_ranking import SlotRanking
 from app.models.match import Match, StatusPartida
 from app.models.player import NivelJogador, Player, StatusJogador
@@ -333,6 +334,29 @@ async def criar_slot_ranking(
     return slot
 
 
+@router.put("/slots-ranking/{slot_id}", response_model=SlotRankingOut)
+async def atualizar_slot_ranking(
+    slot_id: int,
+    body: SlotRankingIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    if not (0 <= body.dia_semana <= 6):
+        raise HTTPException(422, "Dia da semana inválido (0=segunda, 6=domingo).")
+    if body.hora_inicio >= body.hora_fim:
+        raise HTTPException(422, "Hora de início deve ser anterior à hora de fim.")
+    slot = await db.get(SlotRanking, slot_id)
+    if not slot:
+        raise HTTPException(404, "Slot não encontrado.")
+    slot.dia_semana = body.dia_semana
+    slot.hora_inicio = body.hora_inicio
+    slot.hora_fim = body.hora_fim
+    slot.ativo = body.ativo
+    await db.commit()
+    await db.refresh(slot)
+    return slot
+
+
 @router.patch("/slots-ranking/{slot_id}/toggle", response_model=SlotRankingOut)
 async def toggle_slot_ranking(
     slot_id: int,
@@ -418,3 +442,84 @@ async def cancelar_locacao(
     booking.status = StatusReserva.CANCELADA
     await db.commit()
     return {"ok": True}
+
+
+# ── Feriados e Horários Especiais ─────────────────────────────────────────────
+
+class HorarioEspecialIn(BaseModel):
+    data: date
+    descricao: str
+    fechado: bool = False
+    hora_abertura: int | None = None
+    hora_fechamento: int | None = None
+
+
+class HorarioEspecialOut(BaseModel):
+    id: int
+    data: date
+    descricao: str
+    fechado: bool
+    hora_abertura: int | None = None
+    hora_fechamento: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/horarios-especiais", response_model=list[HorarioEspecialOut])
+async def listar_horarios_especiais(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    return (await db.execute(
+        select(HorarioEspecial).order_by(HorarioEspecial.data)
+    )).scalars().all()
+
+
+@router.post("/horarios-especiais", response_model=HorarioEspecialOut, status_code=201)
+async def criar_horario_especial(
+    body: HorarioEspecialIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    if await db.scalar(select(HorarioEspecial).where(HorarioEspecial.data == body.data)):
+        raise HTTPException(409, "Já existe um horário especial para esta data.")
+    he = HorarioEspecial(**body.model_dump())
+    db.add(he)
+    await db.commit()
+    await db.refresh(he)
+    return he
+
+
+@router.put("/horarios-especiais/{he_id}", response_model=HorarioEspecialOut)
+async def atualizar_horario_especial(
+    he_id: int,
+    body: HorarioEspecialIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    he = await db.get(HorarioEspecial, he_id)
+    if not he:
+        raise HTTPException(404, "Não encontrado.")
+    conflito = await db.scalar(
+        select(HorarioEspecial).where(HorarioEspecial.data == body.data, HorarioEspecial.id != he_id)
+    )
+    if conflito:
+        raise HTTPException(409, "Já existe um horário especial para esta data.")
+    for k, v in body.model_dump().items():
+        setattr(he, k, v)
+    await db.commit()
+    await db.refresh(he)
+    return he
+
+
+@router.delete("/horarios-especiais/{he_id}", status_code=204)
+async def deletar_horario_especial(
+    he_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    he = await db.get(HorarioEspecial, he_id)
+    if not he:
+        raise HTTPException(404, "Não encontrado.")
+    await db.delete(he)
+    await db.commit()

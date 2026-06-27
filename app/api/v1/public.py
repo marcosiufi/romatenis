@@ -17,6 +17,7 @@ from app.core.auth import (
 from app.core.database import get_db
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.configuracao import Configuracao
+from app.models.horario_especial import HorarioEspecial
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
 from app.models.player import Player, StatusJogador
 from app.models.slot_ranking import SlotRanking
@@ -54,6 +55,27 @@ async def disponibilidade(
     preco = float(cfg.preco_locacao_hora)
     hora_abertura = cfg.hora_abertura
     hora_fechamento = cfg.hora_fechamento
+
+    especial = await db.scalar(select(HorarioEspecial).where(HorarioEspecial.data == data))
+    if especial:
+        if especial.fechado:
+            return DisponibilidadeOut(
+                data=str(data),
+                preco_hora=preco,
+                slots=[
+                    SlotOut(
+                        hora_inicio=f"{h:02d}:00",
+                        hora_fim=f"{h + 1:02d}:00",
+                        status="ocupado",
+                        motivo=f"Quadra fechada — {especial.descricao}",
+                    )
+                    for h in range(hora_abertura, hora_fechamento)
+                ],
+            )
+        if especial.hora_abertura is not None:
+            hora_abertura = especial.hora_abertura
+        if especial.hora_fechamento is not None:
+            hora_fechamento = especial.hora_fechamento
 
     dia_semana = data.weekday()  # 0=segunda, 6=domingo
     slots_ranking = (
@@ -196,7 +218,12 @@ async def reservar(
 
     cfg = await Configuracao.get(db)
     valor = float(cfg.preco_locacao_hora)
-    if hora < cfg.hora_abertura or hora >= cfg.hora_fechamento:
+    especial_r = await db.scalar(select(HorarioEspecial).where(HorarioEspecial.data == body.data))
+    if especial_r and especial_r.fechado:
+        raise HTTPException(status_code=409, detail=f"A quadra está fechada nesta data — {especial_r.descricao}.")
+    hora_ab = especial_r.hora_abertura if (especial_r and especial_r.hora_abertura is not None) else cfg.hora_abertura
+    hora_fe = especial_r.hora_fechamento if (especial_r and especial_r.hora_fechamento is not None) else cfg.hora_fechamento
+    if hora < hora_ab or hora >= hora_fe:
         raise HTTPException(status_code=400, detail="Horário fora do funcionamento.")
 
     slot_ini = datetime.combine(body.data, time(hora, 0), tzinfo=FUSO_BR)
