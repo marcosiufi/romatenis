@@ -412,6 +412,29 @@ img, svg { display: block; }
 .bk-r-hora { font-size: 1.15rem; font-weight: 700; }
 .bk-r-preco { font-size: .88rem; color: var(--accent); font-weight: 600; margin-top: .2rem; }
 
+/* ── Toggle modalidade (Simples / Duplas) ───────────────────────────────── */
+.modalidade-toggle { display: flex; gap: .4rem; }
+.mod-btn {
+  flex: 1; padding: .55rem .5rem; border-radius: var(--r);
+  font-family: 'Inter', sans-serif; font-size: .88rem; font-weight: 500;
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--muted);
+}
+.mod-btn.active { background: rgba(193,80,46,.12); border-color: var(--accent); color: var(--text); font-weight: 600; }
+.mod-btn:hover:not(.active) { border-color: rgba(240,235,228,.25); color: var(--text); }
+
+/* ── Toggle pagamento (PIX / Cartão) ────────────────────────────────────── */
+.pmt-toggle { display: flex; gap: .4rem; margin-bottom: .2rem; }
+.pmt-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: .4rem;
+  padding: .55rem .5rem; border-radius: var(--r);
+  font-family: 'Inter', sans-serif; font-size: .88rem; font-weight: 500;
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+  background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--muted);
+}
+.pmt-btn.active { background: rgba(193,80,46,.12); border-color: var(--accent); color: var(--text); font-weight: 600; }
+.pmt-btn:hover:not(.active) { border-color: rgba(240,235,228,.25); color: var(--text); }
+
 /* ── Modal de reserva ───────────────────────────────────────────────────── */
 .bm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
 .bm-overlay[hidden] { display: none; }

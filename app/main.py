@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import router as api_router
@@ -68,6 +69,11 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/redefinir-senha", include_in_schema=False)
+async def redefinir_senha_page():
+    return FileResponse("frontend/redefinir-senha.html")
 
 
 app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")

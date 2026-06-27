@@ -166,6 +166,7 @@ class ReservaIn(BaseModel):
     data: date
     hora_inicio: str   # "HH:00"
     tipo: Literal["simples", "duplas"] = "simples"
+    metodo_pagamento: Literal["pix", "cartao"] = "pix"
 
 
 class PixOut(BaseModel):
@@ -173,6 +174,7 @@ class PixOut(BaseModel):
     valor: float
     pix_copia_cola: str | None = None
     pix_qrcode: str | None = None
+    invoice_url: str | None = None
     asaas_payment_id: str | None = None
     msg: str
 
@@ -246,6 +248,7 @@ async def reservar(
     # Tentar criar cobrança Asaas
     pix_copia_cola = None
     pix_qrcode = None
+    invoice_url = None
     asaas_payment_id = None
     msg = "Reserva confirmada! Entre em contato para acertar o pagamento."
 
@@ -262,30 +265,36 @@ async def reservar(
             )
             player.asaas_customer_id = customer_id
 
+        billing_type = "CREDIT_CARD" if body.metodo_pagamento == "cartao" else "PIX"
         data_venc = body.data.isoformat()
         descricao = f"Locação Roma Tênis — {body.data.strftime('%d/%m/%Y')} {hora:02d}h"
         charge = await asaas.criar_cobranca(
             customer_id=customer_id,
             valor=valor,
-            billing_type="PIX",
+            billing_type=billing_type,
             due_date=data_venc,
             descricao=descricao,
         )
         asaas_payment_id = charge.get("id")
-        if asaas_payment_id:
-            qr = await asaas.get_pix_qrcode(asaas_payment_id)
-            pix_copia_cola = qr.get("payload")
-            pix_qrcode = qr.get("encodedImage")
+
+        if body.metodo_pagamento == "cartao":
+            invoice_url = charge.get("invoiceUrl")
+            msg = "Reserva confirmada! Clique no botão para pagar com cartão."
+        else:
+            if asaas_payment_id:
+                qr = await asaas.get_pix_qrcode(asaas_payment_id)
+                pix_copia_cola = qr.get("payload")
+                pix_qrcode = qr.get("encodedImage")
+            msg = "Reserva confirmada! Pague via PIX abaixo para garantir o horário."
 
         payment = Payment(
             booking_id=booking.id,
             valor=valor,
-            metodo=MetodoPagamento.PIX,
+            metodo=MetodoPagamento.CARTAO if body.metodo_pagamento == "cartao" else MetodoPagamento.PIX,
             status=StatusPagamento.PENDENTE,
             gateway_id=asaas_payment_id,
         )
         db.add(payment)
-        msg = "Reserva confirmada! Pague via PIX abaixo para garantir o horário."
     except Exception:
         pass  # Se Asaas falhar, mantém a reserva sem pagamento online
 
@@ -296,6 +305,7 @@ async def reservar(
         valor=valor,
         pix_copia_cola=pix_copia_cola,
         pix_qrcode=pix_qrcode,
+        invoice_url=invoice_url,
         asaas_payment_id=asaas_payment_id,
         msg=msg,
     )

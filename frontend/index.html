@@ -155,7 +155,7 @@
         <p class="section-label">Aluguel Avulso</p>
         <h2 class="section-title">Reserve sua Quadra</h2>
         <div class="accent-line"></div>
-        <p class="section-sub">Sem necessidade de assinatura. Escolha a data e o horário, pague via PIX e receba a confirmação na hora.</p>
+        <p class="section-sub">Sem necessidade de assinatura. Escolha a data e o horário, pague via PIX ou Cartão de Crédito e receba a confirmação na hora.</p>
         <br>
         <p class="section-sub" style="font-size:.85rem">Associados têm prioridade no agendamento e acesso exclusivo nos horários do ranking.</p>
       </div>
@@ -171,10 +171,10 @@
           </div>
           <div class="aw-field">
             <label>Modalidade</label>
-            <select id="bk-tipo">
-              <option value="simples">Simples</option>
-              <option value="duplas">Duplas</option>
-            </select>
+            <div class="modalidade-toggle">
+              <button type="button" class="mod-btn active" data-value="simples" onclick="bkSetModalidade(this)">Simples</button>
+              <button type="button" class="mod-btn" data-value="duplas" onclick="bkSetModalidade(this)">Duplas</button>
+            </div>
           </div>
           <div id="bk-loading" hidden style="text-align:center;padding:.75rem 0;color:var(--muted);font-size:.85rem">
             Verificando horários…
@@ -203,7 +203,7 @@
             Reserve Agora
           </button>
           <p style="text-align:center;font-size:.75rem;color:var(--muted);margin-top:.55rem">
-            Pagamento seguro via PIX
+            🔒 Pagamento seguro via PIX ou Cartão
           </p>
         </div>
 
@@ -251,7 +251,19 @@
     <!-- Confirmação -->
     <div id="bm-confirmar" hidden>
       <p class="bm-title">Confirmar Reserva</p>
-      <div id="bm-conf-resumo" class="bk-resumo" style="margin:.85rem 0 1.25rem"></div>
+      <div id="bm-conf-resumo" class="bk-resumo" style="margin:.85rem 0 1rem"></div>
+      <p style="font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem">Forma de pagamento</p>
+      <div class="pmt-toggle">
+        <button type="button" class="pmt-btn active" data-pmt="pix" onclick="bkSetPmt(this)">
+          <span style="font-size:1rem">🏦</span> PIX
+        </button>
+        <button type="button" class="pmt-btn" data-pmt="cartao" onclick="bkSetPmt(this)">
+          <span style="font-size:1rem">💳</span> Cartão
+        </button>
+      </div>
+      <p id="bm-pmt-info" style="font-size:.78rem;color:var(--muted);margin:.6rem 0 1rem;line-height:1.45">
+        PIX com confirmação imediata. Sem taxas adicionais.
+      </p>
       <p class="bm-erro" id="bm-res-erro" hidden></p>
       <button class="btn-land btn-primary" id="bm-btn-confirmar"
               style="width:100%;font-size:1rem;padding:.85rem">
@@ -261,6 +273,26 @@
               style="width:100%;margin-top:.6rem;background:none;border:1px solid var(--border);color:var(--muted);padding:.65rem;border-radius:var(--r);cursor:pointer;font-family:'Inter',sans-serif;font-size:.85rem">
         Cancelar
       </button>
+    </div>
+
+    <!-- Cartão de crédito -->
+    <div id="bm-cartao" hidden>
+      <p class="bm-title">Pagar com Cartão</p>
+      <div id="bm-cartao-resumo" class="bk-resumo" style="margin:.65rem 0 .9rem"></div>
+      <div style="background:rgba(111,207,151,.07);border:1px solid rgba(111,207,151,.25);border-radius:var(--r);padding:.75rem 1rem;margin-bottom:1rem;font-size:.83rem;color:#6fcf97;font-weight:600">
+        ✅ Reserva confirmada! Complete o pagamento abaixo.
+      </div>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.55">
+        Você será levado para a página segura da <strong style="color:var(--text)">Asaas</strong>, nosso parceiro de pagamentos certificado pelo Banco Central do Brasil. Os dados do cartão são processados diretamente por eles — o Roma Tênis não tem acesso.
+      </p>
+      <a id="bm-cartao-link" href="#" target="_blank" rel="noopener"
+         class="btn-land btn-primary" style="width:100%;display:block;text-align:center;font-size:1rem;padding:.9rem">
+        Pagar com Cartão de Crédito →
+      </a>
+      <p style="font-size:.73rem;color:var(--muted);text-align:center;margin-top:.65rem">
+        🔒 Ambiente 100% seguro e criptografado
+      </p>
+      <button onclick="bkFecharModal()" class="btn-land btn-ghost" style="width:100%;margin-top:.85rem">Fechar</button>
     </div>
 
     <!-- PIX -->
@@ -395,8 +427,7 @@
         </div>
         <div>
           <p class="contato-label">Endereço</p>
-          <!-- TODO: preencher endereço real -->
-          <p class="contato-value">A preencher — São Paulo, SP</p>
+          <p class="contato-value">Rua Minoru Mizutani, 99<br>Recreio das Acácias<br>Ribeirão Preto-SP · CEP 14098-555</p>
         </div>
       </div>
 
@@ -409,8 +440,7 @@
         </div>
         <div>
           <p class="contato-label">WhatsApp</p>
-          <!-- TODO: preencher número real -->
-          <a id="footer-whatsapp" href="#" class="contato-value" style="color:var(--accent)">Clique para conversar</a>
+          <a id="footer-whatsapp" href="https://wa.me/5516993618092" target="_blank" rel="noopener" class="contato-value" style="color:var(--accent)">(16) 993618-2092</a>
         </div>
       </div>
 
@@ -424,8 +454,7 @@
         </div>
         <div>
           <p class="contato-label">Instagram</p>
-          <!-- TODO: preencher @ real -->
-          <a href="#" class="contato-value" style="color:var(--accent)">@romatenis</a>
+          <a href="https://instagram.com/romatenisrp" target="_blank" rel="noopener" class="contato-value" style="color:var(--accent)">@romatenisrp</a>
         </div>
       </div>
 
@@ -439,6 +468,19 @@
         <div>
           <p class="contato-label">Funcionamento</p>
           <p class="contato-value">Seg – Dom: 07h às 22h</p>
+        </div>
+      </div>
+
+      <div class="contato-item reveal">
+        <div class="contato-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+        <div>
+          <p class="contato-label">E-mail</p>
+          <a href="mailto:contato@romatenis.com.br" class="contato-value" style="color:var(--accent)">contato@romatenis.com.br</a>
         </div>
       </div>
 
@@ -511,13 +553,34 @@ fetch('/api/v1/subscriptions/precos')
   .catch(() => {});
 
 // ── Booking Widget ─────────────────────────────────────────────────────────
-let bkSlot = null, bkData = null, bkTipo = 'simples', bkPreco = 0;
+let bkSlot = null, bkData = null, bkTipo = 'simples', bkPreco = 0, bkPmt = 'pix';
 
 const bkDataEl = document.getElementById('bk-data');
 bkDataEl.min = new Date().toISOString().split('T')[0];
 
 bkDataEl.addEventListener('change', () => { bkData = bkDataEl.value; if (bkData) bkBuscarSlots(); });
-document.getElementById('bk-tipo').addEventListener('change', function() { bkTipo = this.value; if (bkSlot) bkRenderResumo('bk-slot-resumo'); });
+
+function bkSetModalidade(el) {
+  document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  bkTipo = el.dataset.value;
+  if (bkSlot) bkRenderResumo('bk-slot-resumo');
+}
+
+function bkSetPmt(el) {
+  document.querySelectorAll('.pmt-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  bkPmt = el.dataset.pmt;
+  const info = document.getElementById('bm-pmt-info');
+  const btn = document.getElementById('bm-btn-confirmar');
+  if (bkPmt === 'cartao') {
+    info.textContent = 'Você será redirecionado para a página segura da Asaas para inserir os dados do cartão.';
+    btn.textContent = 'Confirmar e Pagar com Cartão';
+  } else {
+    info.textContent = 'PIX com confirmação imediata. Sem taxas adicionais.';
+    btn.textContent = 'Confirmar e Gerar PIX';
+  }
+}
 
 async function bkBuscarSlots() {
   ['bk-slots-wrap','bk-sem-slots','bk-erro-data'].forEach(id => document.getElementById(id).hidden = true);
@@ -584,7 +647,7 @@ document.getElementById('bk-btn-reservar').addEventListener('click', bkAbrirModa
 // ── Modal ──────────────────────────────────────────────────────────────────
 function bkAbrirModal() {
   if (!bkSlot) return;
-  ['bm-slot-ref','bm-conf-resumo','bm-pix-resumo','bm-ok-resumo'].forEach(id => bkRenderResumo(id));
+  ['bm-slot-ref','bm-conf-resumo','bm-pix-resumo','bm-ok-resumo','bm-cartao-resumo'].forEach(id => bkRenderResumo(id));
   document.getElementById('bk-modal').hidden = false;
   document.body.style.overflow = 'hidden';
   if (localStorage.getItem('access_token')) bkPasso('confirmar');
@@ -597,10 +660,15 @@ function bkFecharModal() {
   ['bm-cad-erro','bm-login-erro','bm-res-erro'].forEach(id => {
     const el = document.getElementById(id); if (el) { el.hidden = true; el.textContent = ''; }
   });
+  // Reseta forma de pagamento para PIX ao fechar
+  bkPmt = 'pix';
+  document.querySelectorAll('.pmt-btn').forEach(b => b.classList.toggle('active', b.dataset.pmt === 'pix'));
+  document.getElementById('bm-pmt-info').textContent = 'PIX com confirmação imediata. Sem taxas adicionais.';
+  document.getElementById('bm-btn-confirmar').textContent = 'Confirmar e Gerar PIX';
 }
 
 function bkPasso(p) {
-  ['auth','confirmar','pix','ok'].forEach(n => document.getElementById('bm-' + n).hidden = n !== p);
+  ['auth','confirmar','cartao','pix','ok'].forEach(n => document.getElementById('bm-' + n).hidden = n !== p);
 }
 
 function bkAba(aba) {
@@ -663,14 +731,18 @@ document.getElementById('bm-btn-confirmar').addEventListener('click', async () =
     const token = localStorage.getItem('access_token');
     const r = await fetch('/api/v1/public/reserva', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo }),
+      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo, metodo_pagamento:bkPmt }),
     });
     const d = await r.json();
     if (!r.ok) {
       if (r.status === 401) { localStorage.removeItem('access_token'); bkPasso('auth'); bkAba('login'); document.getElementById('bm-login-erro').textContent = 'Sessão expirada. Faça login novamente.'; document.getElementById('bm-login-erro').hidden = false; return; }
       erEl.textContent = d.detail || 'Erro ao criar reserva.'; erEl.hidden = false; return;
     }
-    if (d.pix_copia_cola) {
+    if (d.invoice_url) {
+      bkRenderResumo('bm-cartao-resumo');
+      document.getElementById('bm-cartao-link').href = d.invoice_url;
+      bkPasso('cartao');
+    } else if (d.pix_copia_cola) {
       document.getElementById('bm-pix-cod').value = d.pix_copia_cola;
       if (d.pix_qrcode) document.getElementById('bm-pix-qr').innerHTML = `<img src="data:image/png;base64,${d.pix_qrcode}" alt="QR Code PIX" style="max-width:190px;border-radius:8px;margin:0 auto;display:block" />`;
       bkPasso('pix');
@@ -678,9 +750,9 @@ document.getElementById('bm-btn-confirmar').addEventListener('click', async () =
       document.getElementById('bm-ok-msg').textContent = d.msg || 'Sua reserva foi registrada!';
       bkPasso('ok');
     }
-    bkBuscarSlots(); // atualiza disponibilidade
+    bkBuscarSlots();
   } catch { erEl.textContent = 'Erro de conexão.'; erEl.hidden = false; }
-  finally { btn.disabled = false; btn.textContent = 'Confirmar e Gerar PIX'; }
+  finally { btn.disabled = false; btn.textContent = bkPmt === 'cartao' ? 'Confirmar e Pagar com Cartão' : 'Confirmar e Gerar PIX'; }
 });
 
 function bkCopiarPix() {
