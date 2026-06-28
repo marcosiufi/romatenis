@@ -61,8 +61,8 @@
     #admin-app { display: flex; height: 100dvh; overflow: hidden; }
 
     .admin-sidebar {
-      width: 200px;
-      min-width: 200px;
+      width: 210px;
+      min-width: 210px;
       background: var(--clr-surface);
       border-right: 1px solid var(--clr-border);
       display: flex;
@@ -103,13 +103,13 @@
       display: block;
       width: 100%;
       text-align: left;
-      padding: .6rem 1rem;
+      padding: .65rem 1.1rem;
       border: none;
       border-left: 3px solid transparent;
       background: transparent;
       color: var(--clr-text-muted);
       cursor: pointer;
-      font-size: .83rem;
+      font-size: .86rem;
       font-weight: 500;
       transition: color .12s, background .12s, border-color .12s;
       white-space: nowrap;
@@ -127,7 +127,7 @@
     .admin-main {
       flex: 1;
       overflow-y: auto;
-      padding: 2rem 2.5rem;
+      padding: 1.75rem 2rem;
     }
     @media (max-width: 768px) { .admin-main { padding: 1.25rem; } }
 
@@ -151,16 +151,14 @@
       box-shadow: 0 2px 16px rgba(0,0,0,0.22);
     }
 
-    /* ── Desktop 2-colunas para Configurações ── */
-    .cfg-grid-top {
+    /* ── Grade 4 colunas para preços no desktop ── */
+    .form-grid-4 {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.25rem;
-      align-items: start;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0 1rem;
     }
     @media (min-width: 900px) {
-      .cfg-grid-top { grid-template-columns: 1fr 1fr; }
-      .cfg-grid-top > .card { margin-bottom: 0; }
+      .form-grid-4 { grid-template-columns: repeat(4, 1fr); }
     }
 
     .stat-grid {
@@ -596,54 +594,56 @@
         <h2>Configurações</h2>
       </div>
 
-      <!-- Preços + Parcelamento lado a lado no desktop -->
-      <div class="cfg-grid-top">
-        <div class="card">
+      <div class="card">
+        <form id="form-config" onsubmit="salvarConfiguracoes(event)">
           <p class="form-section-label">Planos de Assinatura</p>
           <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">Valor total cobrado por período. O valor mensal equivalente é calculado automaticamente.</p>
-          <form id="form-config" onsubmit="salvarConfiguracoes(event)">
-            <div class="form-grid-2">
-              <div class="form-row">
-                <label>Mensal (R$)</label>
-                <input type="number" id="cfg-mensal" step="0.01" min="0" required>
-                <small id="cfg-mensal-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
-              </div>
-              <div class="form-row">
-                <label>Trimestral — total (R$)</label>
-                <input type="number" id="cfg-trimestral" step="0.01" min="0" required>
-                <small id="cfg-trimestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
-              </div>
-              <div class="form-row">
-                <label>Semestral — total (R$)</label>
-                <input type="number" id="cfg-semestral" step="0.01" min="0" required>
-                <small id="cfg-semestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
-              </div>
-              <div class="form-row">
-                <label>Anual — total (R$)</label>
-                <input type="number" id="cfg-anual" step="0.01" min="0" required>
-                <small id="cfg-anual-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
-              </div>
+          <div class="form-grid-4">
+            <div class="form-row">
+              <label>Mensal (R$)</label>
+              <input type="number" id="cfg-mensal" step="0.01" min="0" required>
+              <small id="cfg-mensal-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
-            <p class="form-section-label" style="margin-top:1rem">Locação Avulsa</p>
-            <div class="form-row" style="max-width:180px">
-              <label>Valor por hora (R$)</label>
-              <input type="number" id="cfg-locacao" step="0.01" min="0" required>
+            <div class="form-row">
+              <label>Trimestral — total (R$)</label>
+              <input type="number" id="cfg-trimestral" step="0.01" min="0" required>
+              <small id="cfg-trimestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
-            <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.5rem"></div>
-            <div style="margin-top:1.5rem">
-              <button type="submit" class="btn-xs primary">Salvar Configurações</button>
+            <div class="form-row">
+              <label>Semestral — total (R$)</label>
+              <input type="number" id="cfg-semestral" step="0.01" min="0" required>
+              <small id="cfg-semestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
-          </form>
-        </div>
+            <div class="form-row">
+              <label>Anual — total (R$)</label>
+              <input type="number" id="cfg-anual" step="0.01" min="0" required>
+              <small id="cfg-anual-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
+            </div>
+          </div>
 
-        <div class="card">
-          <p class="form-section-label">Parcelamento (gerado automaticamente)</p>
-          <p style="font-size:.78rem;opacity:.6;margin-bottom:.75rem">Boleto e cartão parcelado geram as parcelas abaixo. PIX é sempre à vista.</p>
-          <table class="data-table" style="font-size:.82rem">
-            <thead><tr><th>Plano</th><th>Parcelas</th><th>Valor/parcela</th><th>Total</th></tr></thead>
-            <tbody id="tbody-parcelas"></tbody>
-          </table>
-        </div>
+          <div style="display:flex;gap:2rem;align-items:flex-start;margin-top:1.25rem;flex-wrap:wrap">
+            <div>
+              <p class="form-section-label" style="margin-bottom:.6rem">Locação Avulsa</p>
+              <div class="form-row" style="max-width:200px;margin-bottom:0">
+                <label>Valor por hora (R$)</label>
+                <input type="number" id="cfg-locacao" step="0.01" min="0" required>
+              </div>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <p class="form-section-label" style="margin-bottom:.6rem">Parcelamento (gerado automaticamente)</p>
+              <p style="font-size:.78rem;opacity:.6;margin-bottom:.5rem">PIX à vista. Cartão e boleto parcelados conforme abaixo.</p>
+              <table class="data-table" style="font-size:.82rem;width:100%">
+                <thead><tr><th>Plano</th><th>Parcelas</th><th>Valor/parcela</th><th>Total</th></tr></thead>
+                <tbody id="tbody-parcelas"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.75rem"></div>
+          <div style="margin-top:1.5rem">
+            <button type="submit" class="btn-xs primary">Salvar Configurações</button>
+          </div>
+        </form>
       </div>
 
       <div class="card">
