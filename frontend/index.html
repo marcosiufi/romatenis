@@ -606,7 +606,7 @@
         </div>
         <div>
           <p class="contato-label">Endereço</p>
-          <p class="contato-value">Rua Minoru Mizutani, 99<br>Recreio das Acácias<br>Ribeirão Preto-SP · CEP 14098-555</p>
+          <p class="contato-value" id="site-endereco">Rua Minoru Mizutani, 99, Recreio das Acácias, Ribeirão Preto-SP · CEP 14098-555</p>
         </div>
       </div>
 
@@ -619,7 +619,7 @@
         </div>
         <div>
           <p class="contato-label">WhatsApp</p>
-          <a id="footer-whatsapp" href="https://wa.me/5516993618092" target="_blank" rel="noopener" class="contato-value" style="color:var(--accent)">(16) 993618-2092</a>
+          <a id="site-whatsapp" href="https://wa.me/5516993618092" target="_blank" rel="noopener" class="contato-value" style="color:var(--accent)">(16) 993618-2092</a>
         </div>
       </div>
 
@@ -633,7 +633,7 @@
         </div>
         <div>
           <p class="contato-label">Instagram</p>
-          <a href="https://instagram.com/romatenisrp" target="_blank" rel="noopener" class="contato-value" style="color:var(--accent)">@romatenisrp</a>
+          <a id="site-instagram" href="https://instagram.com/romatenisrp" target="_blank" rel="noopener" class="contato-value" style="color:var(--accent)">@romatenisrp</a>
         </div>
       </div>
 
@@ -659,7 +659,7 @@
         </div>
         <div>
           <p class="contato-label">E-mail</p>
-          <a href="mailto:contato@romatenis.com.br" class="contato-value" style="color:var(--accent)">contato@romatenis.com.br</a>
+          <a id="site-email" href="mailto:contato@romatenis.com.br" class="contato-value" style="color:var(--accent)">contato@romatenis.com.br</a>
         </div>
       </div>
 
@@ -1226,6 +1226,42 @@ function bkCopiarPix() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') bkFecharModal(); });
 document.getElementById('bk-modal').addEventListener('click', function(e) { if (e.target === this) bkFecharModal(); });
+
+// ── Dados da empresa na seção de contato ────────────────────────────────────
+(function () {
+  function fmtWhatsapp(num) {
+    const d = num.replace(/\D/g, '');
+    if (d.length === 13) return `(${d.slice(2,4)}) ${d.slice(4,9)}-${d.slice(9)}`;
+    if (d.length === 12) return `(${d.slice(2,4)}) ${d.slice(4,8)}-${d.slice(8)}`;
+    return num;
+  }
+  fetch('/api/v1/public/empresa')
+    .then(r => r.json())
+    .then(e => {
+      const end = document.getElementById('site-endereco');
+      if (end) end.textContent = e.endereco || end.textContent;
+
+      const wa = document.getElementById('site-whatsapp');
+      if (wa && e.whatsapp) {
+        const num = e.whatsapp.replace(/\D/g, '');
+        wa.href = `https://wa.me/${num}`;
+        wa.textContent = fmtWhatsapp(e.whatsapp);
+      }
+
+      const ig = document.getElementById('site-instagram');
+      if (ig && e.instagram) {
+        ig.href = `https://instagram.com/${e.instagram}`;
+        ig.textContent = `@${e.instagram}`;
+      }
+
+      const em = document.getElementById('site-email');
+      if (em && e.email_contato) {
+        em.href = `mailto:${e.email_contato}`;
+        em.textContent = e.email_contato;
+      }
+    })
+    .catch(() => {});
+})();
 
 // ── Horários de funcionamento no footer ─────────────────────────────────────
 (function () {

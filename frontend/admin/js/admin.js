@@ -161,6 +161,7 @@ function switchTab(tab) {
     case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); loadHorarios(); break
     case 'lista-espera':   loadListaEspera(); break
     case 'contrato':       loadContrato(); break
+    case 'empresa':        loadEmpresa(); break
   }
 }
 
@@ -1664,6 +1665,47 @@ async function salvarHorarios() {
     _horarios = payload
   } catch (e) {
     showToast('Erro ao salvar: ' + e.message, 'error')
+  }
+}
+
+// ── Dados da empresa ──────────────────────────────────────────────────────────
+
+async function loadEmpresa() {
+  try {
+    const e = await api('/admin/empresa')
+    document.getElementById('emp-razao-social').value    = e.razao_social    ?? ''
+    document.getElementById('emp-nome-fantasia').value   = e.nome_fantasia   ?? ''
+    document.getElementById('emp-cnpj').value            = e.cnpj            ?? ''
+    document.getElementById('emp-cpf-responsavel').value = e.cpf_responsavel ?? ''
+    document.getElementById('emp-endereco').value        = e.endereco        ?? ''
+    document.getElementById('emp-whatsapp').value        = e.whatsapp        ?? ''
+    document.getElementById('emp-instagram').value       = e.instagram       ?? ''
+    document.getElementById('emp-email').value           = e.email_contato   ?? ''
+  } catch (err) {
+    toast('Erro ao carregar dados da empresa: ' + err.message, true)
+  }
+}
+
+async function salvarEmpresa(e) {
+  if (e) e.preventDefault()
+  showErr('emp-erro', '')
+  try {
+    await api('/admin/empresa', {
+      method: 'PUT',
+      body: JSON.stringify({
+        razao_social:    document.getElementById('emp-razao-social').value.trim(),
+        nome_fantasia:   document.getElementById('emp-nome-fantasia').value.trim(),
+        cnpj:            document.getElementById('emp-cnpj').value.trim(),
+        cpf_responsavel: document.getElementById('emp-cpf-responsavel').value.trim(),
+        endereco:        document.getElementById('emp-endereco').value.trim(),
+        whatsapp:        document.getElementById('emp-whatsapp').value.trim(),
+        instagram:       document.getElementById('emp-instagram').value.trim(),
+        email_contato:   document.getElementById('emp-email').value.trim(),
+      }),
+    })
+    toast('Dados da empresa salvos!')
+  } catch (err) {
+    showErr('emp-erro', err.message)
   }
 }
 

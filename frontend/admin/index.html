@@ -389,6 +389,7 @@
       <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
       <button data-tab="lista-espera" onclick="switchTab('lista-espera')">Lista de Espera</button>
       <button data-tab="contrato" onclick="switchTab('contrato')">Contrato</button>
+      <button data-tab="empresa" onclick="switchTab('empresa')">Empresa</button>
     </nav>
   </aside>
 
@@ -733,6 +734,59 @@
       <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:space-between;align-items:center">
         <button class="btn-xs sec" onclick="contratoAddClausula()">+ Adicionar Cláusula</button>
         <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
+      </div>
+    </section>
+
+    <section id="sec-empresa" class="admin-section">
+      <div class="section-header">
+        <h2>Dados da Empresa</h2>
+        <button class="btn-xs primary" onclick="salvarEmpresa()">Salvar</button>
+      </div>
+      <div class="card" style="max-width:540px">
+        <form id="form-empresa" onsubmit="salvarEmpresa(event)">
+          <div class="form-row">
+            <label>Razão Social</label>
+            <input type="text" id="emp-razao-social" required />
+          </div>
+          <div class="form-row">
+            <label>Nome Fantasia</label>
+            <input type="text" id="emp-nome-fantasia" required />
+          </div>
+          <div class="form-grid-2" style="margin-top:.5rem">
+            <div class="form-row">
+              <label>CNPJ</label>
+              <input type="text" id="emp-cnpj" placeholder="00.000.000/0001-00" required />
+            </div>
+            <div class="form-row">
+              <label>CPF do Responsável</label>
+              <input type="text" id="emp-cpf-responsavel" placeholder="00000000000" required />
+              <small style="color:var(--clr-text-muted);font-size:.72rem">Usado no cabeçalho do contrato PDF</small>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:.5rem">
+            <label>Endereço completo</label>
+            <input type="text" id="emp-endereco" placeholder="Rua, número, bairro, cidade-UF · CEP" required />
+          </div>
+          <div class="form-grid-2" style="margin-top:.5rem">
+            <div class="form-row">
+              <label>WhatsApp (somente números)</label>
+              <input type="text" id="emp-whatsapp" placeholder="5516993618092" required />
+              <small style="color:var(--clr-text-muted);font-size:.72rem">Código do país + DDD + número</small>
+            </div>
+            <div class="form-row">
+              <label>Instagram (sem @)</label>
+              <input type="text" id="emp-instagram" placeholder="romatenisrp" required />
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:.5rem">
+            <label>E-mail de contato</label>
+            <input type="email" id="emp-email" required />
+          </div>
+          <div id="emp-erro" class="erro-msg" style="display:none;margin-top:.5rem"></div>
+          <div style="margin-top:1.25rem">
+            <button type="submit" class="btn-xs primary">Salvar</button>
+          </div>
+        </form>
       </div>
     </section>
 

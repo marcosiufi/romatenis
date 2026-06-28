@@ -64,6 +64,7 @@ def _gerar_pdf(
     cpf: str | None,
     data_str: str,
     clausulas: list[dict] | None = None,
+    empresa: dict | None = None,
 ) -> bytes:
     """Gera o Termo de Adesão em PDF e retorna os bytes.
 
@@ -80,9 +81,14 @@ def _gerar_pdf(
     pdf.cell(0, 10, "ROMA TÊNIS - TERMO DE ADESÃO", new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 9)
+    _emp = empresa or {}
+    _razao  = _emp.get("razao_social", "Rosangela Pioli Siufi")
+    _cpf_r  = _emp.get("cpf_responsavel", "05405791814")
+    _cnpj   = _emp.get("cnpj", "29.616.848/0001-21")
+    _fantasia = _emp.get("nome_fantasia", "Roma Tênis")
     pdf.cell(
         0, 6,
-        "Rosangela Pioli Siufi 05405791814  |  CNPJ: 29.616.848/0001-21  |  Nome Fantasia: Roma Tênis",
+        f"{_razao} {_cpf_r}  |  CNPJ: {_cnpj}  |  Nome Fantasia: {_fantasia}",
         new_x="LMARGIN", new_y="NEXT", align="C",
     )
     pdf.ln(8)
@@ -156,6 +162,7 @@ class AutentiqueClient:
         cpf: str | None = None,
         telefone: str | None = None,
         clausulas: list[dict] | None = None,
+        empresa: dict | None = None,
     ) -> tuple[str, str | None]:
         """
         Gera o PDF do contrato e cria o documento no Autentique via multipart upload.
@@ -166,7 +173,7 @@ class AutentiqueClient:
             raise AutentiqueError("AUTENTIQUE_API_KEY não configurada")
 
         data_str = datetime.now(_FUSO_BR).strftime("%d/%m/%Y")
-        pdf_bytes = _gerar_pdf(nome, email, cpf, data_str, clausulas)
+        pdf_bytes = _gerar_pdf(nome, email, cpf, data_str, clausulas, empresa)
 
         # GraphQL multipart request spec: file como Upload!
         operations = json.dumps({

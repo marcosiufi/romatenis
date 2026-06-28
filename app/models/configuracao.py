@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, Numeric, select
+from sqlalchemy import Integer, Numeric, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,6 +25,16 @@ class Configuracao(Base):
 
     # Limite de jogadores no ranking
     limite_ranking: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+
+    # Dados da empresa
+    razao_social: Mapped[str] = mapped_column(String(300), nullable=False, default="Rosangela Pioli Siufi")
+    nome_fantasia: Mapped[str] = mapped_column(String(300), nullable=False, default="Roma Tênis")
+    cnpj: Mapped[str] = mapped_column(String(30), nullable=False, default="29.616.848/0001-21")
+    cpf_responsavel: Mapped[str] = mapped_column(String(20), nullable=False, default="05405791814")
+    endereco: Mapped[str] = mapped_column(Text, nullable=False, default="Rua Minoru Mizutani, 99, Recreio das Acácias, Ribeirão Preto-SP · CEP 14098-555")
+    whatsapp: Mapped[str] = mapped_column(String(30), nullable=False, default="5516993618092")
+    instagram: Mapped[str] = mapped_column(String(100), nullable=False, default="romatenisrp")
+    email_contato: Mapped[str] = mapped_column(String(200), nullable=False, default="contato@romatenis.com.br")
 
     @classmethod
     async def get(cls, db: AsyncSession) -> "Configuracao":

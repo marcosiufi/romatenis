@@ -195,6 +195,7 @@ class SubscriptionService:
         if not player.contrato_assinado:
             from app.services.autentique_client import AutentiqueClient, AutentiqueError
             from app.models.contrato import ContratoClausula
+            from app.models.configuracao import Configuracao
             client = AutentiqueClient()
             # Carrega cláusulas editáveis do banco
             _res = await self.db.execute(
@@ -206,6 +207,14 @@ class SubscriptionService:
                 {"titulo": c.titulo, "texto": c.texto}
                 for c in _res.scalars()
             ]
+            # Carrega dados da empresa para o cabeçalho do PDF
+            _cfg = await Configuracao.get(self.db)
+            _empresa = {
+                "razao_social":    _cfg.razao_social,
+                "cpf_responsavel": _cfg.cpf_responsavel,
+                "cnpj":            _cfg.cnpj,
+                "nome_fantasia":   _cfg.nome_fantasia,
+            }
             try:
                 doc_id, link = await client.enviar_contrato(
                     nome=player.nome,
@@ -213,6 +222,7 @@ class SubscriptionService:
                     cpf=player.cpf,
                     telefone=player.telefone,
                     clausulas=_clausulas or None,
+                    empresa=_empresa,
                 )
                 player.contrato_autentique_id = doc_id
                 player.contrato_link_assinatura = link

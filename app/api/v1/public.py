@@ -441,6 +441,22 @@ async def reservar(
     )
 
 
+# ── Dados públicos da empresa ────────────────────────────────────────────────
+
+@router.get("/empresa")
+async def empresa_publica(db: AsyncSession = Depends(get_db)):
+    cfg = await Configuracao.get(db)
+    return {
+        "razao_social":  cfg.razao_social,
+        "nome_fantasia": cfg.nome_fantasia,
+        "cnpj":          cfg.cnpj,
+        "endereco":      cfg.endereco,
+        "whatsapp":      cfg.whatsapp,
+        "instagram":     cfg.instagram,
+        "email_contato": cfg.email_contato,
+    }
+
+
 # ── Horários de funcionamento (público) ───────────────────────────────────────
 
 @router.get("/horarios-semana")

@@ -582,6 +582,56 @@ async def verificar_convocacoes_expiradas(
     return {"expiradas": n}
 
 
+# ── Dados da empresa ──────────────────────────────────────────────────────────
+
+class EmpresaIn(BaseModel):
+    razao_social: str
+    nome_fantasia: str
+    cnpj: str
+    cpf_responsavel: str
+    endereco: str
+    whatsapp: str
+    instagram: str
+    email_contato: str
+
+
+@router.get("/empresa")
+async def get_empresa(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    cfg = await Configuracao.get(db)
+    return {
+        "razao_social":    cfg.razao_social,
+        "nome_fantasia":   cfg.nome_fantasia,
+        "cnpj":            cfg.cnpj,
+        "cpf_responsavel": cfg.cpf_responsavel,
+        "endereco":        cfg.endereco,
+        "whatsapp":        cfg.whatsapp,
+        "instagram":       cfg.instagram,
+        "email_contato":   cfg.email_contato,
+    }
+
+
+@router.put("/empresa")
+async def put_empresa(
+    body: EmpresaIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    cfg = await Configuracao.get(db)
+    cfg.razao_social    = body.razao_social.strip()
+    cfg.nome_fantasia   = body.nome_fantasia.strip()
+    cfg.cnpj            = body.cnpj.strip()
+    cfg.cpf_responsavel = body.cpf_responsavel.strip()
+    cfg.endereco        = body.endereco.strip()
+    cfg.whatsapp        = "".join(c for c in body.whatsapp if c.isdigit())
+    cfg.instagram       = body.instagram.strip().lstrip("@")
+    cfg.email_contato   = body.email_contato.strip()
+    await db.commit()
+    return {"ok": True}
+
+
 # ── Contrato ─────────────────────────────────────────────────────────────────
 
 class ClausulaIn(BaseModel):
