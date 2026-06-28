@@ -346,12 +346,29 @@ async function carregarPerfil() {
       </div>
       <div id="perfil-form-editar" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
         <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Editar dados</p>
-        <div class="campo"><label>Apelido</label><input type="text" id="edit-apelido" value="${p.apelido || ""}" placeholder="Seu apelido (opcional)" /></div>
-        <div class="campo"><label>Telefone</label><input type="tel" id="edit-telefone" value="${p.telefone || ""}" placeholder="Ex: 16991234567" /></div>
+        <div class="campo"><label>Nome completo</label><input type="text" id="edit-nome" value="${p.nome || ""}" /></div>
+        <div class="campo"><label>Apelido</label><input type="text" id="edit-apelido" value="${p.apelido || ""}" placeholder="Opcional" /></div>
         <div class="campo"><label>E-mail</label><input type="email" id="edit-email" value="${p.email || ""}" /></div>
+        <div class="campo"><label>Telefone</label><input type="tel" id="edit-telefone" value="${p.telefone || ""}" placeholder="Ex: 16991234567" /></div>
+        <div class="campo"><label>CPF</label><input type="text" id="edit-cpf" value="${p.cpf || ""}" placeholder="000.000.000-00" maxlength="14" /></div>
         <div class="campo"><label>Data de nascimento</label><input type="date" id="edit-nascimento" value="${p.data_nascimento || ""}" /></div>
+        <p class="perfil-secao-label" style="margin-top:.5rem">Endereço</p>
+        <div class="campo"><label>Logradouro</label><input type="text" id="edit-rua" value="${p.rua || ""}" /></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div class="campo"><label>Número</label><input type="text" id="edit-numero" value="${p.numero || ""}" /></div>
+          <div class="campo"><label>Complemento</label><input type="text" id="edit-complemento" value="${p.complemento || ""}" /></div>
+        </div>
+        <div class="campo"><label>Bairro</label><input type="text" id="edit-bairro" value="${p.bairro || ""}" /></div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:.5rem">
+          <div class="campo"><label>Cidade</label><input type="text" id="edit-cidade" value="${p.cidade || ""}" /></div>
+          <div class="campo"><label>Estado</label><input type="text" id="edit-estado" value="${p.estado || ""}" maxlength="2" style="text-transform:uppercase;width:4rem" /></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div class="campo"><label>CEP</label><input type="text" id="edit-cep" value="${p.cep || ""}" maxlength="9" /></div>
+          <div class="campo"><label>País</label><input type="text" id="edit-pais" value="${p.pais || ""}" /></div>
+        </div>
         <p id="edit-perfil-erro" class="erro" hidden></p>
-        <div style="display:flex;gap:.5rem;margin-top:.25rem">
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
           <button class="btn btn-secundario" style="flex:1;font-size:.82rem" onclick="fecharEdicaoPerfil()">Cancelar</button>
           <button class="btn btn-primario" style="flex:1;font-size:.82rem" onclick="salvarDadosPerfil()">Salvar</button>
         </div>
@@ -453,18 +470,52 @@ function fecharEdicaoPerfil() {
   if (f) f.style.display = "none";
 }
 
+function _validarCPF(cpf) {
+  cpf = cpf.replace(/\D/g, "");
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += +cpf[i] * (10 - i);
+  let r = (soma * 10) % 11;
+  if (r >= 10) r = 0;
+  if (r !== +cpf[9]) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += +cpf[i] * (11 - i);
+  r = (soma * 10) % 11;
+  if (r >= 10) r = 0;
+  return r === +cpf[10];
+}
+
 async function salvarDadosPerfil() {
   const erro = document.getElementById("edit-perfil-erro");
   erro.hidden = true;
-  const body = {};
-  const apelido   = document.getElementById("edit-apelido")?.value.trim();
-  const telefone  = document.getElementById("edit-telefone")?.value.trim();
-  const email     = document.getElementById("edit-email")?.value.trim();
-  const nascimento = document.getElementById("edit-nascimento")?.value;
-  if (apelido   !== undefined) body.apelido          = apelido   || null;
-  if (telefone)                body.telefone         = telefone;
-  if (email)                   body.email            = email;
-  if (nascimento)              body.data_nascimento  = nascimento;
+
+  const g = (id) => document.getElementById(id)?.value.trim() ?? "";
+  const cpfRaw = g("edit-cpf").replace(/\D/g, "");
+  if (cpfRaw && !_validarCPF(cpfRaw)) {
+    erro.textContent = "CPF inválido.";
+    erro.hidden = false;
+    return;
+  }
+
+  const body = {
+    nome:            g("edit-nome")        || undefined,
+    apelido:         g("edit-apelido")     || null,
+    email:           g("edit-email")       || undefined,
+    telefone:        g("edit-telefone")    || undefined,
+    cpf:             cpfRaw                || null,
+    data_nascimento: g("edit-nascimento")  || null,
+    rua:             g("edit-rua")         || null,
+    numero:          g("edit-numero")      || null,
+    complemento:     g("edit-complemento") || null,
+    bairro:          g("edit-bairro")      || null,
+    cidade:          g("edit-cidade")      || null,
+    estado:          g("edit-estado").toUpperCase() || null,
+    cep:             g("edit-cep")         || null,
+    pais:            g("edit-pais")        || null,
+  };
+  // Remove campos undefined (não enviados ao backend)
+  Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
   try {
     await apiFetch("/players/me", { method: "PATCH", body: JSON.stringify(body) });
     await carregarPerfil();
