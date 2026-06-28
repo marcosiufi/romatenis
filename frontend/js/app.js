@@ -602,7 +602,7 @@ async function buscarSlots() {
       if (nomes) {
         const placarHtml = placar ? `<span class="slot-placar">${statusLabel}${placar}</span>` : "";
         centro = `<div class="slot-info-centro"><span class="slot-jogadores">${nomes}</span>${placarHtml}</div>`;
-      } else if (s.motivo_indisponibilidade && s.tipo_disponibilidade !== "ocupado") {
+      } else if (s.motivo_indisponibilidade && s.tipo_disponibilidade === "janela_morta") {
         centro = `<span class="slot-motivo-inline" style="font-size:.75rem;opacity:.45">${s.motivo_indisponibilidade}</span>`;
       } else {
         centro = `<span></span>`;
