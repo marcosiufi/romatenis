@@ -158,6 +158,7 @@
         <p class="section-sub">Sem necessidade de assinatura. Escolha a data e o horário, pague via PIX ou Cartão de Crédito e receba a confirmação na hora.</p>
         <br>
         <p class="section-sub" style="font-size:.85rem">Associados têm prioridade no agendamento e acesso exclusivo nos horários do ranking.</p>
+        <p class="agendar-preco reveal">R$ <span id="preco-hora-locacao">–</span><span style="font-size:.85rem;opacity:.7"> / hora</span></p>
       </div>
 
       <div class="agendar-widget reveal">
@@ -1259,6 +1260,11 @@ document.getElementById('bk-modal').addEventListener('click', function(e) { if (
       if (em && e.email_contato) {
         em.href = `mailto:${e.email_contato}`;
         em.textContent = e.email_contato;
+      }
+
+      const precoHora = document.getElementById('preco-hora-locacao');
+      if (precoHora && e.preco_locacao_hora != null) {
+        precoHora.textContent = e.preco_locacao_hora.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       const legal = document.getElementById('footer-legal');

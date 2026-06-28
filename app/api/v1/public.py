@@ -453,13 +453,14 @@ async def empresa_publica(db: AsyncSession = Depends(get_db)):
         f"{cfg.end_bairro}, {cfg.end_cidade}-{cfg.end_estado} · CEP {cfg.end_cep}"
     )
     return {
-        "razao_social":  cfg.razao_social,
-        "nome_fantasia": cfg.nome_fantasia,
-        "cnpj":          cfg.cnpj,
-        "endereco":      endereco,
-        "whatsapp":      cfg.whatsapp,
-        "instagram":     cfg.instagram,
-        "email_contato": cfg.email_contato,
+        "razao_social":      cfg.razao_social,
+        "nome_fantasia":     cfg.nome_fantasia,
+        "cnpj":              cfg.cnpj,
+        "endereco":          endereco,
+        "whatsapp":          cfg.whatsapp,
+        "instagram":         cfg.instagram,
+        "email_contato":     cfg.email_contato,
+        "preco_locacao_hora": float(cfg.preco_locacao_hora),
     }
 
 
