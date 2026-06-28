@@ -686,6 +686,7 @@
     </ul>
 
     <p class="footer-copy">© 2026 Roma Tênis</p>
+    <p class="footer-legal" id="footer-legal"></p>
   </div>
 </footer>
 
@@ -1258,6 +1259,14 @@ document.getElementById('bk-modal').addEventListener('click', function(e) { if (
       if (em && e.email_contato) {
         em.href = `mailto:${e.email_contato}`;
         em.textContent = e.email_contato;
+      }
+
+      const legal = document.getElementById('footer-legal');
+      if (legal && (e.nome_fantasia || e.cnpj)) {
+        const partes = [];
+        if (e.nome_fantasia) partes.push(e.nome_fantasia);
+        if (e.cnpj) partes.push(`CNPJ ${e.cnpj}`);
+        legal.textContent = partes.join(' · ');
       }
     })
     .catch(() => {});

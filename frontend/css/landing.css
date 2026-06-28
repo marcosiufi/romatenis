@@ -374,6 +374,7 @@ img, svg { display: block; }
 }
 .footer-links a:hover { color: var(--text); }
 .footer-copy { font-size: .78rem; color: var(--muted); }
+.footer-legal { font-size: .72rem; color: var(--muted); opacity: .6; margin-top: .25rem; }
 
 /* ── Divider line ───────────────────────────────────────────────────────── */
 .accent-line {
