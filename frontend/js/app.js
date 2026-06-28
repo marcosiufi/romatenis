@@ -341,6 +341,21 @@ async function carregarPerfil() {
       <div class="perfil-linha"><span class="perfil-label">Pontos (temporada)</span><span>${p.pontos_ranking_temporada_atual}</span></div>
       <div class="perfil-linha" style="${_temEndereco(p) ? '' : 'border:none'}"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
       ${_enderecoHtml(p)}
+      <div style="text-align:center;margin:.75rem 0">
+        <button class="btn btn-secundario" style="font-size:.8rem;padding:.35rem 1rem" onclick="abrirEdicaoPerfil()">Editar dados pessoais</button>
+      </div>
+      <div id="perfil-form-editar" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
+        <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Editar dados</p>
+        <div class="campo"><label>Apelido</label><input type="text" id="edit-apelido" value="${p.apelido || ""}" placeholder="Seu apelido (opcional)" /></div>
+        <div class="campo"><label>Telefone</label><input type="tel" id="edit-telefone" value="${p.telefone || ""}" placeholder="Ex: 16991234567" /></div>
+        <div class="campo"><label>E-mail</label><input type="email" id="edit-email" value="${p.email || ""}" /></div>
+        <div class="campo"><label>Data de nascimento</label><input type="date" id="edit-nascimento" value="${p.data_nascimento || ""}" /></div>
+        <p id="edit-perfil-erro" class="erro" hidden></p>
+        <div style="display:flex;gap:.5rem;margin-top:.25rem">
+          <button class="btn btn-secundario" style="flex:1;font-size:.82rem" onclick="fecharEdicaoPerfil()">Cancelar</button>
+          <button class="btn btn-primario" style="flex:1;font-size:.82rem" onclick="salvarDadosPerfil()">Salvar</button>
+        </div>
+      </div>
       <p class="card-titulo" style="margin-top:1rem;margin-bottom:.5rem">Minha Assinatura</p>
       ${subHtml}
       <div id="sub-renovar-ui" style="display:none" class="sub-card">
@@ -425,6 +440,37 @@ async function carregarPerfil() {
     });
   } catch {
     el.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar perfil.</p>";
+  }
+}
+
+function abrirEdicaoPerfil() {
+  const f = document.getElementById("perfil-form-editar");
+  if (f) f.style.display = "block";
+}
+
+function fecharEdicaoPerfil() {
+  const f = document.getElementById("perfil-form-editar");
+  if (f) f.style.display = "none";
+}
+
+async function salvarDadosPerfil() {
+  const erro = document.getElementById("edit-perfil-erro");
+  erro.hidden = true;
+  const body = {};
+  const apelido   = document.getElementById("edit-apelido")?.value.trim();
+  const telefone  = document.getElementById("edit-telefone")?.value.trim();
+  const email     = document.getElementById("edit-email")?.value.trim();
+  const nascimento = document.getElementById("edit-nascimento")?.value;
+  if (apelido   !== undefined) body.apelido          = apelido   || null;
+  if (telefone)                body.telefone         = telefone;
+  if (email)                   body.email            = email;
+  if (nascimento)              body.data_nascimento  = nascimento;
+  try {
+    await apiFetch("/players/me", { method: "PATCH", body: JSON.stringify(body) });
+    await carregarPerfil();
+  } catch (e) {
+    erro.textContent = e.message || "Erro ao salvar.";
+    erro.hidden = false;
   }
 }
 
@@ -733,7 +779,10 @@ function nomesLado(partida, lado, jogadores) {
     .filter((p) => p.lado === lado)
     .map((p) => {
       const j = jogadores.find((j) => j.id === p.player_id);
-      return j ? j.nome.split(" ")[0] : `#${p.player_id}`;
+      if (!j) return `#${p.player_id}`;
+      if (j.apelido) return j.apelido;
+      const partes = j.nome.trim().split(/\s+/);
+      return partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1]}` : partes[0];
     })
     .join(" / ");
 }
