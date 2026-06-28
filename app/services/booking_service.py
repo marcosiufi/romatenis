@@ -138,7 +138,7 @@ class BookingService:
                     slots.append(SlotDisponivel(
                         data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                         disponivel=False, tipo_disponibilidade="comercial",
-                        motivo_indisponibilidade="Disponível apenas na última hora (< 1h de antecedência)",
+                        motivo_indisponibilidade="Disponível apenas na última hora",
                     ))
                 else:
                     slots.append(SlotDisponivel(
