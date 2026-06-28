@@ -178,53 +178,84 @@
 
       <!-- Tela: Locar Quadra -->
       <section id="tela-locacao" class="tela">
-        <div class="card">
+
+        <!-- Passo 1: data e duração -->
+        <div id="loc-s1" class="card">
           <p class="card-titulo">Alugar Quadra</p>
           <div class="campo">
             <label for="loc-data">Data</label>
             <input id="loc-data" type="date" />
           </div>
-          <button id="btn-verificar-loc" class="btn btn-primario" style="width:100%">
-            Ver horários disponíveis
-          </button>
+          <div class="campo">
+            <label>Duração</label>
+            <div class="radio-group">
+              <label class="radio-opt"><input type="radio" name="loc-horas" value="1" checked /> 1h</label>
+              <label class="radio-opt"><input type="radio" name="loc-horas" value="2" /> 2h</label>
+              <label class="radio-opt"><input type="radio" name="loc-horas" value="3" /> 3h</label>
+              <label class="radio-opt"><input type="radio" name="loc-horas" value="4" /> 4h</label>
+            </div>
+          </div>
+          <button id="btn-verificar-loc" class="btn btn-primario" style="width:100%">Ver horários</button>
         </div>
 
-        <div id="loc-resultado" hidden>
+        <!-- Passo 2: lista de horários -->
+        <div id="loc-s2" hidden>
           <div class="card">
-            <p class="card-titulo" id="loc-data-label"></p>
-            <p id="loc-preco-info" style="font-size:.82rem;opacity:.65;margin-bottom:.75rem"></p>
-            <div id="loc-slots-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+              <p class="card-titulo" id="loc-data-label" style="margin:0"></p>
+              <button onclick="locIrStep(1)" class="btn btn-secundario" style="font-size:.75rem;padding:.28rem .6rem">← Voltar</button>
+            </div>
+            <p id="loc-preco-info" style="font-size:.8rem;opacity:.6;margin-bottom:.75rem"></p>
+            <div id="loc-slots-list"></div>
           </div>
         </div>
 
-        <!-- Confirmação inline -->
-        <div id="loc-confirmar" hidden>
+        <!-- Passo 3: forma de pagamento -->
+        <div id="loc-s3" hidden>
           <div class="card">
             <p class="card-titulo">Confirmar reserva</p>
-            <p id="loc-confirm-info" style="font-size:.9rem;margin-bottom:.75rem;opacity:.85"></p>
-            <p style="font-size:.8rem;opacity:.6;margin-bottom:.75rem">
-              O pagamento será combinado diretamente com o estabelecimento.
-            </p>
-            <p id="loc-confirm-erro" class="erro" hidden></p>
-            <div style="display:flex;gap:.5rem;margin-top:.5rem">
-              <button id="btn-loc-voltar" class="btn btn-secundario" style="flex:1">Voltar</button>
+            <p id="loc-s3-info" style="font-size:.9rem;line-height:1.55;margin-bottom:1rem;opacity:.9"></p>
+            <div class="campo">
+              <label>Forma de pagamento</label>
+              <div class="radio-group">
+                <label class="radio-opt"><input type="radio" name="loc-pagto" value="pix" checked /> PIX</label>
+                <label class="radio-opt"><input type="radio" name="loc-pagto" value="cartao" /> Cartão de crédito</label>
+              </div>
+            </div>
+            <p id="loc-s3-erro" class="erro" hidden></p>
+            <div style="display:flex;gap:.5rem;margin-top:.75rem">
+              <button onclick="locIrStep(2)" class="btn btn-secundario" style="flex:1">Voltar</button>
               <button id="btn-loc-confirmar" class="btn btn-primario" style="flex:1">Confirmar</button>
             </div>
           </div>
         </div>
 
-        <!-- Sucesso -->
-        <div id="loc-sucesso" hidden>
+        <!-- Passo 4: resultado do pagamento -->
+        <div id="loc-s4" hidden>
           <div class="card" style="text-align:center">
-            <div style="font-size:2.5rem;margin-bottom:.5rem">✅</div>
-            <p class="card-titulo">Reserva confirmada!</p>
-            <p id="loc-sucesso-info" style="font-size:.88rem;opacity:.75;margin-bottom:1rem"></p>
-            <p style="font-size:.8rem;opacity:.6;margin-bottom:1rem">
-              Entre em contato com o estabelecimento para combinar o pagamento.
-            </p>
-            <button class="btn btn-primario" style="width:100%" onclick="locNovaReserva()">Nova reserva</button>
+            <p class="card-titulo">Pré-reserva criada!</p>
+            <p id="loc-s4-msg" style="font-size:.85rem;opacity:.75;margin-bottom:1rem;line-height:1.5"></p>
+
+            <div id="loc-pix" hidden>
+              <img id="loc-pix-qr" alt="QR Code PIX" style="width:180px;border-radius:8px;margin:0 auto .75rem;display:block" />
+              <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:.65rem;margin-bottom:.75rem;text-align:left">
+                <p style="font-size:.7rem;opacity:.5;margin:0 0 .25rem">Copia e cola</p>
+                <p id="loc-pix-chave" style="font-size:.68rem;word-break:break-all;margin:0"></p>
+              </div>
+              <button id="btn-copiar-pix" class="btn btn-primario" style="width:100%;margin-bottom:.5rem">Copiar código PIX</button>
+            </div>
+
+            <div id="loc-cartao" hidden>
+              <a id="loc-cartao-url" class="btn btn-primario" href="#" target="_blank"
+                 style="display:block;width:100%;margin-bottom:.75rem;text-decoration:none;box-sizing:border-box">
+                Pagar com cartão →
+              </a>
+            </div>
+
+            <button class="btn btn-secundario" style="width:100%" onclick="locNovaReserva()">Nova reserva</button>
           </div>
         </div>
+
       </section>
 
       <!-- Tela: Meu perfil -->
@@ -266,13 +297,18 @@
         Partidas
       </a>
       <a href="#" data-tela="tela-locacao">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2"/>
-          <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
-          <path d="M8 7V5a2 2 0 0 0-4 0v2" opacity=".4"/>
-          <circle cx="12" cy="14" r="2"/>
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <!-- quadra de tênis vista de cima -->
+          <rect x="2" y="5" width="20" height="14" rx="1"/>
+          <line x1="2" y1="12" x2="22" y2="12" stroke-width="2"/>
+          <line x1="7" y1="5" x2="7" y2="19"/>
+          <line x1="17" y1="5" x2="17" y2="19"/>
+          <line x1="7" y1="8.5" x2="17" y2="8.5"/>
+          <line x1="7" y1="15.5" x2="17" y2="15.5"/>
+          <line x1="12" y1="5" x2="12" y2="8.5"/>
+          <line x1="12" y1="15.5" x2="12" y2="19"/>
         </svg>
-        Quadra
+        Alugar
       </a>
       <a href="#" data-tela="tela-perfil">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

@@ -861,110 +861,138 @@ document.getElementById("btn-submeter-placar")?.addEventListener("click", async 
 
 // ── Locação Avulsa ───────────────────────────────────────────────────────────
 
-let _locSlotSelecionado = null;
+let _locPrecoHora = 0;
+let _locSelecionado = null;
+
+function locIrStep(n) {
+  [1, 2, 3, 4].forEach(i => {
+    document.getElementById(`loc-s${i}`).hidden = i !== n;
+  });
+}
 
 function locInit() {
-  // Reseta para o estado inicial ao entrar na tela
   const hoje = new Date().toISOString().slice(0, 10);
   document.getElementById("loc-data").value = hoje;
-  document.getElementById("loc-resultado").hidden = true;
-  document.getElementById("loc-confirmar").hidden = true;
-  document.getElementById("loc-sucesso").hidden = true;
-  _locSlotSelecionado = null;
+  const r1 = document.querySelector('input[name="loc-horas"][value="1"]');
+  if (r1) r1.checked = true;
+  _locSelecionado = null;
+  _locPrecoHora = 0;
+  locIrStep(1);
 }
 
 document.getElementById("btn-verificar-loc").addEventListener("click", async () => {
   const data = document.getElementById("loc-data").value;
   if (!data) return;
+  const numHoras = parseInt(document.querySelector('input[name="loc-horas"]:checked').value, 10);
 
-  const resultado = document.getElementById("loc-resultado");
-  const grid = document.getElementById("loc-slots-grid");
-  const label = document.getElementById("loc-data-label");
-  const precoInfo = document.getElementById("loc-preco-info");
-
-  document.getElementById("loc-confirmar").hidden = true;
-  document.getElementById("loc-sucesso").hidden = true;
-  grid.innerHTML = '<p style="opacity:.6;font-size:.85rem">Verificando…</p>';
-  resultado.hidden = false;
+  const slotsEl = document.getElementById("loc-slots-list");
+  slotsEl.innerHTML = '<p style="opacity:.6;font-size:.85rem">Verificando…</p>';
+  locIrStep(2);
 
   try {
     const res = await fetch(`/api/v1/public/disponibilidade?data=${data}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Erro ao buscar horários");
+    }
     const d = await res.json();
+    _locPrecoHora = d.preco_hora;
 
     const [ano, mes, dia] = data.split("-");
-    label.textContent = `${dia}/${mes}/${ano}`;
-    precoInfo.textContent = `R$ ${Number(d.preco_hora).toFixed(2).replace(".", ",")} por hora`;
+    document.getElementById("loc-data-label").textContent = `${dia}/${mes}/${ano}`;
+    const total = (_locPrecoHora * numHoras).toFixed(2).replace(".", ",");
+    document.getElementById("loc-preco-info").textContent =
+      `R$ ${_locPrecoHora.toFixed(2).replace(".", ",")} /hora · ${numHoras}h = R$ ${total}`;
 
-    if (!d.slots || !d.slots.length) {
-      grid.innerHTML = '<p style="opacity:.6;font-size:.85rem">Nenhum horário disponível.</p>';
+    // Horários de início onde numHoras consecutivas estão disponíveis
+    const livres = new Set(
+      (d.slots || []).filter(s => s.status === "disponivel").map(s => parseInt(s.hora_inicio))
+    );
+    const validos = (d.slots || []).filter(s => {
+      const h = parseInt(s.hora_inicio);
+      for (let i = 0; i < numHoras; i++) if (!livres.has(h + i)) return false;
+      return true;
+    });
+
+    if (!validos.length) {
+      slotsEl.innerHTML = '<p style="opacity:.6;font-size:.85rem">Nenhum horário disponível para esta duração.</p>';
       return;
     }
 
-    grid.innerHTML = d.slots.map(s => {
-      const livre = s.status === "disponivel";
-      return `<button
-        onclick="${livre ? `locSelecionarSlot('${data}','${s.hora_inicio}',${d.preco_hora})` : ''}"
-        style="
-          padding:.55rem .3rem;border-radius:8px;border:1px solid;text-align:center;
-          font-size:.8rem;font-weight:600;cursor:${livre ? 'pointer' : 'default'};
-          background:${livre ? 'rgba(40,160,80,.15)' : 'rgba(120,120,120,.12)'};
-          border-color:${livre ? '#28a050' : 'rgba(180,180,180,.25)'};
-          color:${livre ? '#4ae080' : 'rgba(200,200,200,.4)'};
-        "
-        ${livre ? '' : 'disabled'}
-      >
-        ${s.hora_inicio}<br>
-        <span style="font-weight:400;font-size:.72rem">${livre ? 'Livre' : 'Ocupado'}</span>
+    slotsEl.innerHTML = validos.map(s => {
+      const hFim = String(parseInt(s.hora_inicio) + numHoras).padStart(2, "0") + ":00";
+      return `<button onclick="locSelecionarSlot('${data}','${s.hora_inicio}',${numHoras})"
+        style="display:block;width:100%;text-align:left;padding:.65rem .85rem;margin-bottom:.4rem;
+          border-radius:8px;border:1px solid rgba(40,160,80,.4);background:rgba(40,160,80,.1);
+          font-size:.9rem;font-weight:500;cursor:pointer;color:inherit">
+        ${s.hora_inicio} às ${hFim}
       </button>`;
     }).join("");
 
   } catch (e) {
-    grid.innerHTML = `<p style="color:var(--cor-erro);font-size:.85rem">Erro: ${e.message}</p>`;
+    slotsEl.innerHTML = `<p style="color:var(--cor-erro);font-size:.85rem">Erro: ${e.message}</p>`;
   }
 });
 
-function locSelecionarSlot(data, hora, preco) {
-  _locSlotSelecionado = { data, hora, preco };
+function locSelecionarSlot(data, hora, numHoras) {
+  _locSelecionado = { data, hora, numHoras };
+  const hFim = String(parseInt(hora) + numHoras).padStart(2, "0") + ":00";
   const [ano, mes, dia] = data.split("-");
-  document.getElementById("loc-confirm-info").textContent =
-    `${dia}/${mes}/${ano} às ${hora} — R$ ${Number(preco).toFixed(2).replace(".", ",")}`;
-  document.getElementById("loc-confirm-erro").hidden = true;
-  document.getElementById("loc-confirmar").hidden = false;
-  document.getElementById("loc-confirmar").scrollIntoView({ behavior: "smooth", block: "center" });
+  const total = (_locPrecoHora * numHoras).toFixed(2).replace(".", ",");
+  document.getElementById("loc-s3-info").innerHTML =
+    `<strong>${dia}/${mes}/${ano}</strong> · ${hora} às ${hFim}<br>` +
+    `${numHoras}h · <strong>R$ ${total}</strong>`;
+  document.getElementById("loc-s3-erro").hidden = true;
+  const pixRadio = document.querySelector('input[name="loc-pagto"][value="pix"]');
+  if (pixRadio) pixRadio.checked = true;
+  locIrStep(3);
 }
 
-document.getElementById("btn-loc-voltar").addEventListener("click", () => {
-  document.getElementById("loc-confirmar").hidden = true;
-  _locSlotSelecionado = null;
-});
-
 document.getElementById("btn-loc-confirmar").addEventListener("click", async () => {
-  if (!_locSlotSelecionado) return;
+  if (!_locSelecionado) return;
   const btn = document.getElementById("btn-loc-confirmar");
   btn.disabled = true;
   btn.textContent = "Aguarde…";
 
-  const { data, hora } = _locSlotSelecionado;
-  const horaNum = parseInt(hora.split(":")[0], 10);
-  const dataHora = `${data}T${String(horaNum).padStart(2, "0")}:00:00-03:00`;
+  const metodo = document.querySelector('input[name="loc-pagto"]:checked').value;
+  const { data, hora, numHoras } = _locSelecionado;
 
   try {
-    const res = await apiFetch("/bookings/locacao", {
+    const resp = await apiFetch("/public/reserva", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data_hora: dataHora }),
+      body: JSON.stringify({
+        data,
+        hora_inicio: hora,
+        num_horas: numHoras,
+        metodo_pagamento: metodo,
+      }),
     });
 
-    const [ano, mes, dia] = data.split("-");
-    document.getElementById("loc-sucesso-info").textContent =
-      `${dia}/${mes}/${ano} às ${hora}`;
-    document.getElementById("loc-confirmar").hidden = true;
-    document.getElementById("loc-resultado").hidden = true;
-    document.getElementById("loc-sucesso").hidden = false;
-    _locSlotSelecionado = null;
+    document.getElementById("loc-s4-msg").textContent = resp.msg;
+    document.getElementById("loc-pix").hidden = true;
+    document.getElementById("loc-cartao").hidden = true;
+
+    if (metodo === "pix" && resp.pix_qrcode) {
+      document.getElementById("loc-pix-qr").src = `data:image/png;base64,${resp.pix_qrcode}`;
+      document.getElementById("loc-pix-chave").textContent = resp.pix_copia_cola || "";
+      document.getElementById("btn-copiar-pix").onclick = () => {
+        navigator.clipboard.writeText(resp.pix_copia_cola || "").then(() => {
+          const b = document.getElementById("btn-copiar-pix");
+          b.textContent = "Copiado!";
+          setTimeout(() => { b.textContent = "Copiar código PIX"; }, 2000);
+        });
+      };
+      document.getElementById("loc-pix").hidden = false;
+    } else if (metodo === "cartao" && resp.invoice_url) {
+      document.getElementById("loc-cartao-url").href = resp.invoice_url;
+      document.getElementById("loc-cartao").hidden = false;
+    }
+
+    locIrStep(4);
 
   } catch (e) {
-    const erroEl = document.getElementById("loc-confirm-erro");
+    const erroEl = document.getElementById("loc-s3-erro");
     erroEl.textContent = e.message.replace(/^Erro \d+: /, "");
     erroEl.hidden = false;
   } finally {
