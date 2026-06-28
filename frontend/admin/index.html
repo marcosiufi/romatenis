@@ -599,6 +599,15 @@
       </div>
 
       <div class="card" style="max-width:540px;margin-top:1rem">
+        <p class="form-section-label">Parcelamento (gerado automaticamente)</p>
+        <p style="font-size:.78rem;opacity:.6;margin-bottom:.5rem">Boleto e cartão parcelado geram automaticamente as parcelas abaixo. PIX é sempre cobrado à vista.</p>
+        <table class="data-table" style="font-size:.82rem">
+          <thead><tr><th>Plano</th><th>Parcelas</th><th>Valor/parcela</th><th>Total</th></tr></thead>
+          <tbody id="tbody-parcelas"></tbody>
+        </table>
+      </div>
+
+      <div class="card" style="max-width:540px;margin-top:1rem">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
           <p class="form-section-label" style="margin:0">Horário de Funcionamento por Dia</p>
           <button class="btn-xs primary" onclick="salvarHorarios()">Salvar Horários</button>
@@ -609,15 +618,6 @@
         <div id="horarios-wrap">
           <p style="color:var(--clr-text-muted);font-size:.85rem">Carregando…</p>
         </div>
-      </div>
-
-      <div class="card" style="max-width:540px;margin-top:1rem">
-        <p class="form-section-label">Parcelamento (gerado automaticamente)</p>
-        <p style="font-size:.78rem;opacity:.6;margin-bottom:.5rem">Boleto e cartão parcelado geram automaticamente as parcelas abaixo. PIX é sempre cobrado à vista.</p>
-        <table class="data-table" style="font-size:.82rem">
-          <thead><tr><th>Plano</th><th>Parcelas</th><th>Valor/parcela</th><th>Total</th></tr></thead>
-          <tbody id="tbody-parcelas"></tbody>
-        </table>
       </div>
 
       <!-- ── Slots de Ranking ── -->
