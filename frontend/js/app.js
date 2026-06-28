@@ -772,6 +772,11 @@ function renderPartida(p, aguardandoPlacar) {
          <button class="btn btn-primario" style="font-size:.8rem;padding:.35rem .9rem"
                  onclick="abrirFormPlacar(${p.id})">Lançar placar</button>
        </div>`
+    : p.status === "agendado"
+    ? `<div style="text-align:right;margin-top:.4rem">
+         <button class="btn" style="font-size:.75rem;padding:.25rem .7rem;opacity:.7;border:1px solid rgba(255,255,255,.15);border-radius:6px;background:transparent;color:inherit;cursor:pointer"
+                 onclick="cancelarPartida(${p.id})">Cancelar partida</button>
+       </div>`
     : "";
 
   return `
@@ -816,6 +821,16 @@ async function carregarPartidas() {
     cont.innerHTML = html || "<div class='card'><p style='opacity:.5;font-size:.85rem'>Nenhuma partida encontrada.</p></div>";
   } catch {
     cont.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar partidas.</p>";
+  }
+}
+
+async function cancelarPartida(matchId) {
+  if (!confirm("Cancelar esta partida? O horário será liberado na agenda.")) return;
+  try {
+    await apiFetch(`/matches/${matchId}/cancelar-jogador`, { method: "POST" });
+    carregarPartidas();
+  } catch (e) {
+    alert(e.message || "Erro ao cancelar partida.");
   }
 }
 

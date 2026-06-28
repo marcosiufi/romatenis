@@ -61,6 +61,18 @@ async def cancelar_sem_placar(
         raise HTTPException(422, str(e))
 
 
+@router.post("/{match_id}/cancelar-jogador", response_model=MatchOut)
+async def cancelar_por_jogador(
+    match_id: int,
+    player: Player = Depends(get_current_player),
+    svc: MatchService = Depends(_svc),
+):
+    try:
+        return await svc.cancelar_por_jogador(match_id, player)
+    except MatchError as e:
+        raise HTTPException(422, str(e))
+
+
 @router.post("/recalcular-classificacao")
 async def recalcular(
     _player: Player = Depends(get_current_admin),

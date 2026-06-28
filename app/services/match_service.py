@@ -23,6 +23,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSession
+from app.models.booking import Booking, StatusReserva
 from app.models.match import LadoPartida, Match, MatchParticipant, StatusPartida, TipoPartida
 from app.models.player import NivelJogador, Player
 from app.services.whatsapp_service import WhatsAppService
@@ -157,6 +158,33 @@ class MatchService:
         await self.db.commit()
         await self.db.refresh(match)
         await self._notificar_resultado(match)
+        return match
+
+    async def cancelar_por_jogador(self, match_id: int, player: Player) -> Match:
+        """Qualquer participante pode cancelar uma partida futura ainda agendada."""
+        match = await self._get_match(match_id)
+        if match is None:
+            raise MatchError("Partida não encontrada")
+        if match.status != StatusPartida.AGENDADO:
+            raise MatchError("Só é possível cancelar partidas com status Agendado")
+        if match.data_hora <= datetime.now(timezone.utc):
+            raise MatchError("Não é possível cancelar uma partida que já iniciou")
+        ids_participantes = {p.player_id for p in match.participantes}
+        if not player.is_admin and player.id not in ids_participantes:
+            raise MatchError("Você não é participante desta partida")
+
+        match.status = StatusPartida.CANCELADO_SEM_PLACAR
+
+        # Libera o slot na agenda
+        booking_res = await self.db.execute(
+            select(Booking).where(Booking.match_id == match_id)
+        )
+        booking = booking_res.scalar_one_or_none()
+        if booking:
+            booking.status = StatusReserva.CANCELADA
+
+        await self.db.commit()
+        await self.db.refresh(match)
         return match
 
     async def cancelar_sem_placar(self, match_id: int, player: Player) -> Match:
