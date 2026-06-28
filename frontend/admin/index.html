@@ -57,8 +57,11 @@
       color: #f08080; font-size: 0.8rem; background: rgba(220,80,80,0.12);
       border-radius: 0.4rem; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
     }
+    /* ── Neutraliza o flex-column do body do style.css compartilhado ── */
+    body { display: block !important; }
+
     /* ── Layout com sidebar ── */
-    #admin-app { display: flex; height: 100dvh; overflow: hidden; }
+    #admin-app { display: flex; width: 100%; height: 100dvh; overflow: hidden; }
 
     .admin-sidebar {
       width: 210px;
@@ -126,6 +129,7 @@
 
     .admin-main {
       flex: 1;
+      min-width: 0;
       overflow-y: auto;
       padding: 1.75rem 2rem;
     }
@@ -138,7 +142,7 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--clr-accent); }
     * { scrollbar-width: thin; scrollbar-color: var(--clr-border) var(--clr-bg); }
 
-    .admin-section { display: none; }
+    .admin-section { display: none; width: 100%; }
     .admin-section.active { display: block; }
 
     /* ── Card override para o admin ── */
