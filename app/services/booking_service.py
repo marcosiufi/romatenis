@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.configuracao import Configuracao
@@ -32,7 +33,7 @@ from app.models.match import LadoPartida, Match, MatchParticipant, StatusPartida
 from app.models.player import Player
 from app.models.season import Season, StatusTemporada
 from app.models.subscription import StatusAssinatura, Subscription
-from app.schemas.booking import SlotDisponivel
+from app.schemas.booking import JogadorSlot, SlotDisponivel
 from app.services.whatsapp_service import WhatsAppService
 
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
@@ -83,6 +84,24 @@ class BookingService:
         is_feriado = await self._is_feriado(data)
         slots: list[SlotDisponivel] = []
 
+        # Pré-busca todos os bookings confirmados do dia com seus participantes
+        dt_dia_inicio = datetime(data.year, data.month, data.day, 0, 0, 0, tzinfo=FUSO_BR).astimezone(timezone.utc)
+        dt_dia_fim = dt_dia_inicio + timedelta(days=1)
+        res = await self.db.execute(
+            select(Booking)
+            .options(
+                selectinload(Booking.match)
+                .selectinload(Match.participantes)
+                .selectinload(MatchParticipant.player)
+            )
+            .where(
+                Booking.status == StatusReserva.CONFIRMADA,
+                Booking.data_hora_inicio >= dt_dia_inicio,
+                Booking.data_hora_inicio < dt_dia_fim,
+            )
+        )
+        bookings_do_dia: dict[datetime, Booking] = {b.data_hora_inicio: b for b in res.scalars().all()}
+
         for hora in range(6, 22):
             dt_local = datetime(data.year, data.month, data.day, hora, 0, 0, tzinfo=FUSO_BR)
             dt_utc = dt_local.astimezone(timezone.utc)
@@ -100,14 +119,17 @@ class BookingService:
                     data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                     disponivel=False, tipo_disponibilidade="passado",
                     motivo_indisponibilidade="Horário já passou",
+                    **self._extrair_info_booking(bookings_do_dia.get(dt_utc)),
                 ))
                 continue
 
-            if await self._slot_ocupado(dt_utc):
+            booking_ocupado = bookings_do_dia.get(dt_utc)
+            if booking_ocupado is not None:
                 slots.append(SlotDisponivel(
                     data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                     disponivel=False, tipo_disponibilidade="ocupado",
                     motivo_indisponibilidade="Horário já reservado",
+                    **self._extrair_info_booking(booking_ocupado),
                 ))
                 continue
 
@@ -375,6 +397,27 @@ class BookingService:
                 f"Limite semanal atingido: máximo de {limite} jogo(s) de "
                 f"{tipo.value} por semana (já agendados nesta semana: {count})"
             )
+
+    def _extrair_info_booking(self, booking: "Booking | None") -> dict:
+        """Extrai jogadores, placar e status de um booking para popular o SlotDisponivel."""
+        if not booking or not booking.match:
+            return {}
+        m = booking.match
+        jogadores = [
+            JogadorSlot(
+                nome=p.player.nome if p.player else "?",
+                apelido=p.player.apelido if p.player else None,
+                lado=p.lado.value,
+            )
+            for p in m.participantes
+            if p.player
+        ]
+        return {
+            "jogadores": jogadores,
+            "placar": m.placar,
+            "lado_vencedor": m.lado_vencedor,
+            "status_partida": m.status.value,
+        }
 
     async def _slot_ocupado(self, dt_inicio: datetime) -> bool:
         dt_fim = dt_inicio + timedelta(hours=1)

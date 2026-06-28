@@ -6,6 +6,12 @@ from app.models.booking import StatusReserva, TipoReserva
 from app.models.match import TipoPartida
 
 
+class JogadorSlot(BaseModel):
+    nome: str
+    apelido: str | None = None
+    lado: str  # "A" | "B"
+
+
 class SlotDisponivel(BaseModel):
     data_hora_inicio: datetime
     data_hora_fim: datetime
@@ -14,6 +20,10 @@ class SlotDisponivel(BaseModel):
     # | "ocupado" | "passado" | "comercial" | "janela_morta"
     tipo_disponibilidade: str
     motivo_indisponibilidade: str | None = None
+    jogadores: list[JogadorSlot] = []
+    placar: dict | None = None
+    lado_vencedor: str | None = None  # "A" | "B"
+    status_partida: str | None = None  # "agendado" | "realizado" | "wo" | etc.
 
 
 class BookingCreateRanking(BaseModel):

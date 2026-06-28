@@ -546,14 +546,28 @@ function fmtHora(isoStr) {
 }
 
 const SLOT_CONFIG = {
-  ranking:               { label: "Ranking",        cls: "label-ranking" },
-  ranking_ultima_hora:   { label: "Última hora",     cls: "label-ultima-hora" },
-  comercial_ultima_hora: { label: "Comercial",       cls: "label-ultima-hora" },
-  ocupado:               { label: "Ocupado",         cls: "label-ocupado" },
-  passado:               { label: "Passado",         cls: "label-indisponivel" },
-  comercial:             { label: "Comercial",       cls: "label-indisponivel" },
-  janela_morta:          { label: "Fora da janela",  cls: "label-indisponivel" },
+  ranking:               { label: "Disponível",        cls: "label-ranking" },
+  ranking_ultima_hora:   { label: "Última hora!",       cls: "label-ultima-hora" },
+  comercial_ultima_hora: { label: "Última hora!",       cls: "label-ultima-hora" },
+  ocupado:               { label: "Reservado",          cls: "label-ocupado" },
+  passado:               { label: "Encerrado",          cls: "label-indisponivel" },
+  comercial:             { label: "Locação avulsa",     cls: "label-indisponivel" },
+  janela_morta:          { label: "Fora da janela",     cls: "label-indisponivel" },
 };
+
+function fmtPlacar(placar, lado_vencedor) {
+  if (!placar || !placar.lado_A || !placar.lado_B) return null;
+  const sets = placar.lado_A.map((g, i) => `${g}-${placar.lado_B[i] ?? "?"}`).join(", ");
+  const venc = lado_vencedor === "A" ? placar.lado_A.reduce((a, b) => a + b, 0) > placar.lado_B.reduce((a, b) => a + b, 0) ? "A" : "B" : lado_vencedor;
+  return sets;
+}
+
+function fmtJogadoresSlot(jogadores) {
+  if (!jogadores || !jogadores.length) return null;
+  const ladoA = jogadores.filter(j => j.lado === "A").map(j => j.apelido || j.nome.split(" ")[0]).join(" / ");
+  const ladoB = jogadores.filter(j => j.lado === "B").map(j => j.apelido || j.nome.split(" ")[0]).join(" / ");
+  return ladoA && ladoB ? `${ladoA} vs ${ladoB}` : (ladoA || ladoB);
+}
 
 async function buscarSlots() {
   const data = document.getElementById("inp-data-jogo").value;
@@ -580,13 +594,26 @@ async function buscarSlots() {
     lista.innerHTML = slots.map((s, i) => {
       const cfg = SLOT_CONFIG[s.tipo_disponibilidade] || { label: s.tipo_disponibilidade, cls: "label-indisponivel" };
       const livre = s.disponivel;
+      const nomes = fmtJogadoresSlot(s.jogadores);
+      const placar = s.placar ? fmtPlacar(s.placar, s.lado_vencedor) : null;
+      const statusLabel = s.status_partida === "realizado" ? "Resultado: " : s.status_partida === "wo" ? "W.O. · " : "";
+
+      let centro = "";
+      if (nomes) {
+        const placarHtml = placar ? `<span class="slot-placar">${statusLabel}${placar}</span>` : "";
+        centro = `<div class="slot-info-centro"><span class="slot-jogadores">${nomes}</span>${placarHtml}</div>`;
+      } else if (s.motivo_indisponibilidade && s.tipo_disponibilidade !== "ocupado") {
+        centro = `<span class="slot-motivo-inline" style="font-size:.75rem;opacity:.45">${s.motivo_indisponibilidade}</span>`;
+      } else {
+        centro = `<span></span>`;
+      }
+
       return `
         <div class="slot-item ${livre ? "slot-livre" : "slot-indisponivel"}"
              ${livre ? `onclick="selecionarSlot(${i})"` : ""}>
           <span class="slot-hora">${fmtHora(s.data_hora_inicio)}</span>
-          <span></span>
+          ${centro}
           <span class="slot-label ${cfg.cls}">${cfg.label}</span>
-          ${s.motivo_indisponibilidade ? `<span class="slot-motivo">${s.motivo_indisponibilidade}</span>` : ""}
         </div>`;
     }).join("");
   } catch {

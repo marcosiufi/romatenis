@@ -398,7 +398,7 @@ select option { background: #1a3320; }
   grid-template-columns: 3.5rem 1fr auto;
   align-items: center;
   gap: .5rem;
-  padding: .55rem 0;
+  padding: .6rem 0;
   border-bottom: 1px solid var(--cor-borda);
   font-size: .85rem;
 }
@@ -409,10 +409,13 @@ select option { background: #1a3320; }
 .slot-label { font-size: .75rem; padding: .15rem .5rem; border-radius: 20px; white-space: nowrap; }
 .label-ranking         { background: rgba(192,98,42,.25); color: #e8905a; }
 .label-ultima-hora     { background: rgba(220,160,30,.2);  color: #e0b040; }
-.label-ocupado         { background: rgba(255,255,255,.06); color: #666; }
+.label-ocupado         { background: rgba(255,255,255,.06); color: #888; }
 .label-indisponivel    { background: rgba(255,255,255,.04); color: #555; }
-.slot-motivo { font-size: .72rem; opacity: .5; grid-column: 2 / -1; margin-top: -.3rem; }
-.slot-indisponivel { opacity: .45; cursor: default; }
+.slot-motivo { font-size: .72rem; opacity: .5; grid-column: 2 / -1; margin-top: -.25rem; }
+.slot-indisponivel { opacity: .5; cursor: default; }
+.slot-info-centro { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.slot-jogadores { font-size: .8rem; font-weight: 500; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot-placar { font-size: .72rem; opacity: .5; }
 
 /* ── Partidas ── */
 .partida-card {
