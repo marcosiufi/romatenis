@@ -57,11 +57,18 @@
       color: #f08080; font-size: 0.8rem; background: rgba(220,80,80,0.12);
       border-radius: 0.4rem; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem;
     }
-    /* ── Neutraliza o flex-column do body do style.css compartilhado ── */
+    /* ── Neutraliza herança do style.css do site público ── */
+    html, body { height: 100%; overflow: hidden; }
     body { display: block !important; }
 
-    /* ── Layout com sidebar ── */
-    #admin-app { display: flex; width: 100%; height: 100dvh; overflow: hidden; }
+    /* ── Layout com sidebar — ocupa o viewport inteiro ── */
+    #admin-app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      overflow: hidden;
+      z-index: 10;
+    }
 
     .admin-sidebar {
       width: 210px;
