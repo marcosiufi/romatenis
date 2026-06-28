@@ -31,6 +31,7 @@ from app.models.configuracao import Configuracao
 from app.models.feriado import Feriado
 from app.models.horario_especial import HorarioEspecial
 from app.models.match import LadoPartida, Match, MatchParticipant, StatusPartida, TipoPartida
+from app.models.slot_ranking import SlotRanking
 from app.models.player import Player
 from app.models.season import Season, StatusTemporada
 from app.models.subscription import StatusAssinatura, Subscription
@@ -108,6 +109,10 @@ class BookingService:
         )
         bookings_do_dia: dict[datetime, Booking] = {b.data_hora_inicio: b for b in res.scalars().all()}
 
+        # Slots de ranking configurados para o dia da semana (0=seg, 6=dom)
+        dia_semana = datetime(data.year, data.month, data.day).weekday()
+        slots_ranking_dia = await self._get_slots_ranking_dia(dia_semana)
+
         # Intervalo de horas: usa horário especial se definido, senão padrão 6–22
         h_ini = horario_esp.hora_abertura if horario_esp and horario_esp.hora_abertura is not None else 6
         h_fim = horario_esp.hora_fechamento if horario_esp and horario_esp.hora_fechamento is not None else 22
@@ -117,13 +122,17 @@ class BookingService:
             dt_utc = dt_local.astimezone(timezone.utc)
             dt_fim_utc = dt_utc + timedelta(hours=1)
 
-            # Horário especial: tudo dentro do intervalo é janela de ranking
-            if horario_esp:
-                em_janela = True
-                em_comercial = False
+            # Janela de ranking: usa SlotRanking cadastrado; fallback para lógica hardcoded
+            if slots_ranking_dia:
+                em_janela = self._hora_em_slots_ranking(hora, slots_ranking_dia)
             else:
                 em_janela = _em_janela_ranking(dt_local, is_feriado)
-                em_comercial = _em_zona_comercial(dt_local, is_feriado)
+
+            # Horário especial: horas fora do ranking dentro do especial não são comerciais
+            if horario_esp:
+                em_comercial = False
+            else:
+                em_comercial = not em_janela and _em_zona_comercial(dt_local, is_feriado)
 
             if not em_janela and not em_comercial:
                 continue
@@ -316,17 +325,25 @@ class BookingService:
         if horario_esp and horario_esp.fechado:
             raise BookingError("Quadra fechada neste dia")
 
+        dia_semana = dt_local.weekday()
+        slots_ranking_dia = await self._get_slots_ranking_dia(dia_semana)
+
         if horario_esp:
-            # Horário especial: só verifica se está dentro do intervalo
             h_ini = horario_esp.hora_abertura if horario_esp.hora_abertura is not None else 6
             h_fim = horario_esp.hora_fechamento if horario_esp.hora_fechamento is not None else 22
             if not (h_ini <= dt_local.hour < h_fim):
                 raise BookingError("Horário fora do período especial do dia")
+            if slots_ranking_dia and not self._hora_em_slots_ranking(dt_local.hour, slots_ranking_dia):
+                raise BookingError("Horário fora das janelas de ranking configuradas")
             em_comercial = False
         else:
             is_feriado = await self._is_feriado(dt_local.date())
-            em_janela = _em_janela_ranking(dt_local, is_feriado)
-            em_comercial = _em_zona_comercial(dt_local, is_feriado)
+            if slots_ranking_dia:
+                em_janela = self._hora_em_slots_ranking(dt_local.hour, slots_ranking_dia)
+                em_comercial = not em_janela and _em_zona_comercial(dt_local, is_feriado)
+            else:
+                em_janela = _em_janela_ranking(dt_local, is_feriado)
+                em_comercial = _em_zona_comercial(dt_local, is_feriado)
             if not em_janela and not em_comercial:
                 raise BookingError("Horário fora das janelas disponíveis para o ranking")
 
@@ -431,6 +448,21 @@ class BookingService:
             select(HorarioEspecial).where(HorarioEspecial.data == data)
         )
         return res.scalar_one_or_none()
+
+    async def _get_slots_ranking_dia(self, dia_semana: int) -> list[SlotRanking]:
+        res = await self.db.execute(
+            select(SlotRanking).where(
+                SlotRanking.dia_semana == dia_semana,
+                SlotRanking.ativo.is_(True),
+            )
+        )
+        return list(res.scalars().all())
+
+    @staticmethod
+    def _hora_em_slots_ranking(hora: int, slots: list[SlotRanking]) -> bool:
+        from datetime import time as time_
+        t = time_(hora, 0)
+        return any(s.hora_inicio <= t < s.hora_fim for s in slots)
 
     def _extrair_info_booking(self, booking: "Booking | None") -> dict:
         """Extrai jogadores, placar e status de um booking para popular o SlotDisponivel."""
