@@ -22,6 +22,7 @@ from app.models.horario_especial import HorarioEspecial
 from app.models.horario_dia_semana import HorarioDiaSemana
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
 from app.models.player import Player, StatusJogador
+from app.models.season import Season, StatusTemporada
 from app.models.slot_ranking import SlotRanking
 from app.schemas.player import TokenResponse
 
@@ -463,6 +464,67 @@ async def empresa_publica(db: AsyncSession = Depends(get_db)):
 
 
 # ── Horários de funcionamento (público) ───────────────────────────────────────
+
+@router.get("/temporadas")
+async def temporadas_publico(db: AsyncSession = Depends(get_db)):
+    """Temporada ativa + top-2 das encerradas (com apelido quando disponível)."""
+    seasons = (await db.execute(
+        select(Season).order_by(Season.id.desc())
+    )).scalars().all()
+
+    # Mapeia player_id → apelido para enriquecer ranking_final
+    players_map: dict[int, str | None] = {}
+    player_ids = {
+        entry["player_id"]
+        for s in seasons if s.ranking_final
+        for entry in (s.ranking_final[:2] if s.ranking_final else [])
+    }
+    if player_ids:
+        rows = (await db.execute(
+            select(Player.id, Player.apelido).where(Player.id.in_(player_ids))
+        )).all()
+        players_map = {r.id: r.apelido for r in rows}
+
+    ativa = next((s for s in seasons if s.status == StatusTemporada.ATIVA), None)
+    encerradas = [s for s in seasons if s.status == StatusTemporada.ENCERRADA]
+
+    def top2(season: Season) -> list:
+        if not season.ranking_final:
+            return []
+        top = season.ranking_final[:2]
+        result = []
+        for entry in top:
+            pid = entry.get("player_id")
+            apelido = players_map.get(pid) if pid else None
+            nome = entry.get("nome", "")
+            partes = nome.strip().split()
+            nome_exib = apelido or (
+                f"{partes[0]} {partes[-1]}" if len(partes) > 1 else nome
+            )
+            result.append({
+                "posicao": entry.get("posicao"),
+                "nome": nome_exib,
+                "pontos": entry.get("pontos"),
+            })
+        return result
+
+    return {
+        "ativa": {
+            "id": ativa.id,
+            "data_inicio": ativa.data_inicio.isoformat(),
+            "data_fim": ativa.data_fim.isoformat(),
+        } if ativa else None,
+        "encerradas": [
+            {
+                "id": s.id,
+                "data_inicio": s.data_inicio.isoformat(),
+                "data_fim": s.data_fim.isoformat(),
+                "top2": top2(s),
+            }
+            for s in encerradas
+        ],
+    }
+
 
 @router.get("/horarios-semana")
 async def horarios_semana(db: AsyncSession = Depends(get_db)):

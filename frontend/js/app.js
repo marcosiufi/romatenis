@@ -150,25 +150,68 @@ async function uploadFoto(file) {
 }
 
 // ── Ranking ──────────────────────────────────────────────────────────────────
+function _fmtDataTemporada(iso) {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+}
+
 async function carregarRanking() {
-  const lista = document.getElementById("lista-ranking");
+  const lista    = document.getElementById("lista-ranking");
+  const infoEl   = document.getElementById("ranking-temporada-info");
+  const anterEl  = document.getElementById("ranking-anteriores");
   lista.innerHTML = "<p style='opacity:.5;font-size:.85rem'>Carregando…</p>";
+
   try {
-    const jogadores = await apiFetch("/players");
-    if (!jogadores) return;
-    if (!jogadores.length) {
-      lista.innerHTML = "<p style='opacity:.5;font-size:.85rem'>Nenhum jogador cadastrado ainda.</p>";
-      return;
+    const [jogadores, temporadas] = await Promise.all([
+      apiFetch("/players"),
+      fetch("/api/v1/public/temporadas").then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+
+    // ── Info da temporada ativa ──
+    if (infoEl) {
+      if (temporadas?.ativa) {
+        const { data_inicio, data_fim } = temporadas.ativa;
+        infoEl.innerHTML = `<p style="font-size:.78rem;opacity:.55;margin-bottom:.1rem">
+          ${_fmtDataTemporada(data_inicio)} – ${_fmtDataTemporada(data_fim)}
+        </p>`;
+      } else {
+        infoEl.innerHTML = "";
+      }
     }
-    lista.innerHTML = jogadores
-      .map((j, i) => `
-        <div class="ranking-item">
-          <span class="ranking-pos">${i + 1}</span>
-          ${avatarHtml(j)}
-          <span style="flex:1">${j.apelido || j.nome}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:rgba(200,80,30,.25);color:#e08050;padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
-          <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
-        </div>`)
-      .join("");
+
+    // ── Classificação atual ──
+    if (!jogadores?.length) {
+      lista.innerHTML = "<p style='opacity:.5;font-size:.85rem'>Nenhum jogador cadastrado ainda.</p>";
+    } else {
+      lista.innerHTML = jogadores
+        .map((j, i) => `
+          <div class="ranking-item">
+            <span class="ranking-pos">${i + 1}</span>
+            ${avatarHtml(j)}
+            <span style="flex:1">${j.apelido || j.nome}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:rgba(200,80,30,.25);color:#e08050;padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
+            <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
+          </div>`)
+        .join("");
+    }
+
+    // ── Temporadas anteriores ──
+    if (anterEl) {
+      const encerradas = temporadas?.encerradas?.filter(s => s.top2?.length) ?? [];
+      if (encerradas.length) {
+        anterEl.innerHTML = encerradas.map(s => `
+          <div class="card" style="margin-top:.75rem">
+            <p class="card-titulo" style="margin-bottom:.35rem">Temporada anterior</p>
+            <p style="font-size:.72rem;opacity:.5;margin-bottom:.65rem">${_fmtDataTemporada(s.data_inicio)} – ${_fmtDataTemporada(s.data_fim)}</p>
+            ${s.top2.map(p => `
+              <div class="ranking-item">
+                <span class="ranking-pos">${p.posicao}º</span>
+                <span style="flex:1">${p.nome}</span>
+                <span class="ranking-pts">${p.pontos} pts</span>
+              </div>`).join("")}
+          </div>`).join("");
+      } else {
+        anterEl.innerHTML = "";
+      }
+    }
   } catch {
     lista.innerHTML = "<p style='color:var(--cor-erro)'>Erro ao carregar ranking.</p>";
   }
