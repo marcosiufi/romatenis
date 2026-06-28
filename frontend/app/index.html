@@ -176,6 +176,57 @@
         </div>
       </section>
 
+      <!-- Tela: Locar Quadra -->
+      <section id="tela-locacao" class="tela">
+        <div class="card">
+          <p class="card-titulo">Alugar Quadra</p>
+          <div class="campo">
+            <label for="loc-data">Data</label>
+            <input id="loc-data" type="date" />
+          </div>
+          <button id="btn-verificar-loc" class="btn btn-primario" style="width:100%">
+            Ver horários disponíveis
+          </button>
+        </div>
+
+        <div id="loc-resultado" hidden>
+          <div class="card">
+            <p class="card-titulo" id="loc-data-label"></p>
+            <p id="loc-preco-info" style="font-size:.82rem;opacity:.65;margin-bottom:.75rem"></p>
+            <div id="loc-slots-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem"></div>
+          </div>
+        </div>
+
+        <!-- Confirmação inline -->
+        <div id="loc-confirmar" hidden>
+          <div class="card">
+            <p class="card-titulo">Confirmar reserva</p>
+            <p id="loc-confirm-info" style="font-size:.9rem;margin-bottom:.75rem;opacity:.85"></p>
+            <p style="font-size:.8rem;opacity:.6;margin-bottom:.75rem">
+              O pagamento será combinado diretamente com o estabelecimento.
+            </p>
+            <p id="loc-confirm-erro" class="erro" hidden></p>
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+              <button id="btn-loc-voltar" class="btn btn-secundario" style="flex:1">Voltar</button>
+              <button id="btn-loc-confirmar" class="btn btn-primario" style="flex:1">Confirmar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sucesso -->
+        <div id="loc-sucesso" hidden>
+          <div class="card" style="text-align:center">
+            <div style="font-size:2.5rem;margin-bottom:.5rem">✅</div>
+            <p class="card-titulo">Reserva confirmada!</p>
+            <p id="loc-sucesso-info" style="font-size:.88rem;opacity:.75;margin-bottom:1rem"></p>
+            <p style="font-size:.8rem;opacity:.6;margin-bottom:1rem">
+              Entre em contato com o estabelecimento para combinar o pagamento.
+            </p>
+            <button class="btn btn-primario" style="width:100%" onclick="locNovaReserva()">Nova reserva</button>
+          </div>
+        </div>
+      </section>
+
       <!-- Tela: Meu perfil -->
       <section id="tela-perfil" class="tela">
         <div class="card">
@@ -213,6 +264,15 @@
           <line x1="14.5" y1="13.5" x2="19" y2="19"/>
         </svg>
         Partidas
+      </a>
+      <a href="#" data-tela="tela-locacao">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+          <path d="M8 7V5a2 2 0 0 0-4 0v2" opacity=".4"/>
+          <circle cx="12" cy="14" r="2"/>
+        </svg>
+        Quadra
       </a>
       <a href="#" data-tela="tela-perfil">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

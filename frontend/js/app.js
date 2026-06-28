@@ -60,6 +60,7 @@ function mostrarTela(id) {
   if (id === "tela-ranking")  carregarRanking();
   if (id === "tela-perfil")   carregarPerfil();
   if (id === "tela-partidas") carregarPartidas();
+  if (id === "tela-locacao")  locInit();
 }
 
 navLinks.forEach((a) => {
@@ -857,6 +858,124 @@ document.getElementById("btn-submeter-placar")?.addEventListener("click", async 
     btn.textContent = "Confirmar";
   }
 });
+
+// ── Locação Avulsa ───────────────────────────────────────────────────────────
+
+let _locSlotSelecionado = null;
+
+function locInit() {
+  // Reseta para o estado inicial ao entrar na tela
+  const hoje = new Date().toISOString().slice(0, 10);
+  document.getElementById("loc-data").value = hoje;
+  document.getElementById("loc-resultado").hidden = true;
+  document.getElementById("loc-confirmar").hidden = true;
+  document.getElementById("loc-sucesso").hidden = true;
+  _locSlotSelecionado = null;
+}
+
+document.getElementById("btn-verificar-loc").addEventListener("click", async () => {
+  const data = document.getElementById("loc-data").value;
+  if (!data) return;
+
+  const resultado = document.getElementById("loc-resultado");
+  const grid = document.getElementById("loc-slots-grid");
+  const label = document.getElementById("loc-data-label");
+  const precoInfo = document.getElementById("loc-preco-info");
+
+  document.getElementById("loc-confirmar").hidden = true;
+  document.getElementById("loc-sucesso").hidden = true;
+  grid.innerHTML = '<p style="opacity:.6;font-size:.85rem">Verificando…</p>';
+  resultado.hidden = false;
+
+  try {
+    const res = await fetch(`/api/v1/public/disponibilidade?data=${data}`);
+    const d = await res.json();
+
+    const [ano, mes, dia] = data.split("-");
+    label.textContent = `${dia}/${mes}/${ano}`;
+    precoInfo.textContent = `R$ ${Number(d.preco_hora).toFixed(2).replace(".", ",")} por hora`;
+
+    if (!d.slots || !d.slots.length) {
+      grid.innerHTML = '<p style="opacity:.6;font-size:.85rem">Nenhum horário disponível.</p>';
+      return;
+    }
+
+    grid.innerHTML = d.slots.map(s => {
+      const livre = s.status === "disponivel";
+      return `<button
+        onclick="${livre ? `locSelecionarSlot('${data}','${s.hora_inicio}',${d.preco_hora})` : ''}"
+        style="
+          padding:.55rem .3rem;border-radius:8px;border:1px solid;text-align:center;
+          font-size:.8rem;font-weight:600;cursor:${livre ? 'pointer' : 'default'};
+          background:${livre ? 'rgba(40,160,80,.15)' : 'rgba(120,120,120,.12)'};
+          border-color:${livre ? '#28a050' : 'rgba(180,180,180,.25)'};
+          color:${livre ? '#4ae080' : 'rgba(200,200,200,.4)'};
+        "
+        ${livre ? '' : 'disabled'}
+      >
+        ${s.hora_inicio}<br>
+        <span style="font-weight:400;font-size:.72rem">${livre ? 'Livre' : 'Ocupado'}</span>
+      </button>`;
+    }).join("");
+
+  } catch (e) {
+    grid.innerHTML = `<p style="color:var(--cor-erro);font-size:.85rem">Erro: ${e.message}</p>`;
+  }
+});
+
+function locSelecionarSlot(data, hora, preco) {
+  _locSlotSelecionado = { data, hora, preco };
+  const [ano, mes, dia] = data.split("-");
+  document.getElementById("loc-confirm-info").textContent =
+    `${dia}/${mes}/${ano} às ${hora} — R$ ${Number(preco).toFixed(2).replace(".", ",")}`;
+  document.getElementById("loc-confirm-erro").hidden = true;
+  document.getElementById("loc-confirmar").hidden = false;
+  document.getElementById("loc-confirmar").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+document.getElementById("btn-loc-voltar").addEventListener("click", () => {
+  document.getElementById("loc-confirmar").hidden = true;
+  _locSlotSelecionado = null;
+});
+
+document.getElementById("btn-loc-confirmar").addEventListener("click", async () => {
+  if (!_locSlotSelecionado) return;
+  const btn = document.getElementById("btn-loc-confirmar");
+  btn.disabled = true;
+  btn.textContent = "Aguarde…";
+
+  const { data, hora } = _locSlotSelecionado;
+  const horaNum = parseInt(hora.split(":")[0], 10);
+  const dataHora = `${data}T${String(horaNum).padStart(2, "0")}:00:00-03:00`;
+
+  try {
+    const res = await apiFetch("/bookings/locacao", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data_hora: dataHora }),
+    });
+
+    const [ano, mes, dia] = data.split("-");
+    document.getElementById("loc-sucesso-info").textContent =
+      `${dia}/${mes}/${ano} às ${hora}`;
+    document.getElementById("loc-confirmar").hidden = true;
+    document.getElementById("loc-resultado").hidden = true;
+    document.getElementById("loc-sucesso").hidden = false;
+    _locSlotSelecionado = null;
+
+  } catch (e) {
+    const erroEl = document.getElementById("loc-confirm-erro");
+    erroEl.textContent = e.message.replace(/^Erro \d+: /, "");
+    erroEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Confirmar";
+  }
+});
+
+function locNovaReserva() {
+  locInit();
+}
 
 // ── Service Worker ───────────────────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
