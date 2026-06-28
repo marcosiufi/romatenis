@@ -71,8 +71,13 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
+      overflow-x: hidden;
       scrollbar-width: thin;
+      transition: width .2s ease, min-width .2s ease;
+      flex-shrink: 0;
     }
+    .admin-sidebar.collapsed { width: 52px; min-width: 52px; }
+
     .admin-sidebar-top {
       padding: .9rem 1rem;
       border-bottom: 1px solid var(--clr-border);
@@ -80,13 +85,20 @@
       flex-direction: column;
       gap: .3rem;
     }
+    .admin-sidebar.collapsed .admin-sidebar-top { padding: .9rem .5rem; align-items: center; }
+
     .admin-sidebar-marca {
       font-family: 'Cinzel', Georgia, serif;
       font-size: .95rem;
       font-weight: 700;
       color: var(--clr-accent);
       letter-spacing: .05em;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: opacity .15s;
     }
+    .admin-sidebar.collapsed .admin-sidebar-marca { opacity: 0; height: 0; overflow: hidden; }
+
     .admin-sidebar-usuario {
       font-size: .72rem;
       color: var(--clr-text-muted);
@@ -94,7 +106,26 @@
       align-items: center;
       justify-content: space-between;
       gap: .4rem;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: opacity .15s;
     }
+    .admin-sidebar.collapsed .admin-sidebar-usuario { opacity: 0; height: 0; overflow: hidden; }
+
+    .sidebar-toggle {
+      background: none;
+      border: none;
+      color: var(--clr-text-muted);
+      cursor: pointer;
+      padding: .2rem .4rem;
+      border-radius: .3rem;
+      font-size: .9rem;
+      line-height: 1;
+      align-self: flex-end;
+      transition: color .12s, background .12s;
+    }
+    .admin-sidebar.collapsed .sidebar-toggle { align-self: center; }
+    .sidebar-toggle:hover { color: var(--clr-accent); background: rgba(255,255,255,.08); }
 
     .admin-nav {
       flex: 1;
@@ -116,7 +147,16 @@
       font-weight: 500;
       transition: color .12s, background .12s, border-color .12s;
       white-space: nowrap;
+      overflow: hidden;
     }
+    .admin-sidebar.collapsed .admin-nav button {
+      text-align: center;
+      padding: .65rem .5rem;
+      font-size: 0;
+      border-left-color: transparent !important;
+    }
+    .admin-sidebar.collapsed .admin-nav button.active { background: rgba(192,98,42,.18); }
+    .admin-sidebar.collapsed .admin-nav button::first-letter { font-size: .9rem; }
     .admin-nav button:hover:not(.active) {
       color: var(--clr-text);
       background: rgba(255,255,255,.05);
@@ -142,7 +182,7 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--clr-accent); }
     * { scrollbar-width: thin; scrollbar-color: var(--clr-border) var(--clr-bg); }
 
-    .admin-section { display: none; width: 100%; }
+    .admin-section { display: none; width: 100%; max-width: 1760px; }
     .admin-section.active { display: block; }
 
     /* ── Card override para o admin ── */
@@ -417,6 +457,7 @@
         <span id="admin-nome"></span>
         <button class="btn-xs sec" onclick="logout()">Sair</button>
       </div>
+      <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Recolher menu">◀</button>
     </div>
     <nav class="admin-nav" id="admin-nav">
       <button class="active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>

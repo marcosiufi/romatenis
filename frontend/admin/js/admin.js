@@ -1709,6 +1709,27 @@ async function salvarEmpresa(e) {
   }
 }
 
+// ── Sidebar recolhível ───────────────────────────────────────────────────────
+
+function toggleSidebar() {
+  const sidebar = document.querySelector('.admin-sidebar')
+  const btn = document.getElementById('sidebar-toggle')
+  const collapsed = sidebar.classList.toggle('collapsed')
+  btn.textContent = collapsed ? '▶' : '◀'
+  try { localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0') } catch (_) {}
+}
+
+function initSidebar() {
+  try {
+    if (localStorage.getItem('sidebar-collapsed') === '1') {
+      document.querySelector('.admin-sidebar').classList.add('collapsed')
+      const btn = document.getElementById('sidebar-toggle')
+      if (btn) btn.textContent = '▶'
+    }
+  } catch (_) {}
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 init()
+initSidebar()
