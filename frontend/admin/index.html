@@ -389,7 +389,6 @@
       <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
       <button data-tab="lista-espera" onclick="switchTab('lista-espera')">Lista de Espera</button>
       <button data-tab="contrato" onclick="switchTab('contrato')">Contrato</button>
-      <button data-tab="horarios" onclick="switchTab('horarios')">Horários</button>
     </nav>
   </aside>
 
@@ -592,24 +591,24 @@
             <input type="number" id="cfg-locacao" step="0.01" min="0" required>
           </div>
 
-          <p class="form-section-label" style="margin-top:1rem">Horário de Funcionamento</p>
-          <div style="display:flex;gap:1rem;max-width:280px">
-            <div class="form-row" style="flex:1">
-              <label>Abertura (h)</label>
-              <input type="number" id="cfg-hora-abertura" min="0" max="23" required>
-            </div>
-            <div class="form-row" style="flex:1">
-              <label>Fechamento (h)</label>
-              <input type="number" id="cfg-hora-fechamento" min="1" max="24" required>
-            </div>
-          </div>
-          <small style="color:var(--clr-text-muted);font-size:.72rem">Ex.: abertura 7 = 07:00, fechamento 22 = 22:00 (slots de 7h até 21h)</small>
-
           <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.5rem"></div>
           <div style="margin-top:1.25rem">
             <button type="submit" class="btn-xs primary">Salvar Configurações</button>
           </div>
         </form>
+      </div>
+
+      <div class="card" style="max-width:540px;margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+          <p class="form-section-label" style="margin:0">Horário de Funcionamento por Dia</p>
+          <button class="btn-xs primary" onclick="salvarHorarios()">Salvar Horários</button>
+        </div>
+        <p style="color:var(--clr-text-muted);font-size:.78rem;margin-bottom:.75rem">
+          Configure abertura e fechamento por dia da semana. Dias desmarcados ficam fechados para locação.
+        </p>
+        <div id="horarios-wrap">
+          <p style="color:var(--clr-text-muted);font-size:.85rem">Carregando…</p>
+        </div>
       </div>
 
       <div class="card" style="max-width:540px;margin-top:1rem">
@@ -734,20 +733,6 @@
       <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:space-between;align-items:center">
         <button class="btn-xs sec" onclick="contratoAddClausula()">+ Adicionar Cláusula</button>
         <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
-      </div>
-    </section>
-
-    <section id="sec-horarios" class="admin-section">
-      <div class="section-header">
-        <h2>Horários de Funcionamento</h2>
-        <button class="btn-xs primary" onclick="salvarHorarios()">Salvar Alterações</button>
-      </div>
-      <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
-        Configure os horários de abertura e fechamento por dia da semana.
-        Dias marcados como fechados não aparecerão na agenda de locações.
-      </p>
-      <div id="horarios-wrap">
-        <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
       </div>
     </section>
 

@@ -157,10 +157,9 @@ function switchTab(tab) {
     case 'assinaturas':    loadAssinaturas(); break
     case 'locacoes':       loadLocacoes(); break
     case 'matchmaking':    loadInvitations(); break
-    case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); break
+    case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); loadHorarios(); break
     case 'lista-espera':   loadListaEspera(); break
     case 'contrato':       loadContrato(); break
-    case 'horarios':       loadHorarios(); break
   }
 }
 
@@ -1031,9 +1030,7 @@ async function loadConfiguracoes() {
     document.getElementById('cfg-trimestral').value  = cfg.preco_trimestral
     document.getElementById('cfg-semestral').value   = cfg.preco_semestral
     document.getElementById('cfg-anual').value       = cfg.preco_anual
-    document.getElementById('cfg-locacao').value           = cfg.preco_locacao_hora
-    document.getElementById('cfg-hora-abertura').value     = cfg.hora_abertura ?? 7
-    document.getElementById('cfg-hora-fechamento').value   = cfg.hora_fechamento ?? 22
+    document.getElementById('cfg-locacao').value = cfg.preco_locacao_hora
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
   } catch (err) {
@@ -1092,8 +1089,6 @@ async function salvarConfiguracoes(e) {
         preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
         preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
         preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
-        hora_abertura:     parseInt(document.getElementById('cfg-hora-abertura').value) || 7,
-        hora_fechamento:   parseInt(document.getElementById('cfg-hora-fechamento').value) || 22,
       }),
     })
     // Recarrega _precos para atualizar o modal de assinatura
@@ -1105,8 +1100,6 @@ async function salvarConfiguracoes(e) {
       preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
       preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
       preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
-      hora_abertura:     parseInt(document.getElementById('cfg-hora-abertura').value) || 7,
-      hora_fechamento:   parseInt(document.getElementById('cfg-hora-fechamento').value) || 22,
     }
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
