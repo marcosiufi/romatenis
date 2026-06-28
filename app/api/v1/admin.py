@@ -589,7 +589,14 @@ class EmpresaIn(BaseModel):
     nome_fantasia: str
     cnpj: str
     cpf_responsavel: str
-    endereco: str
+    end_logradouro: str
+    end_numero: str
+    end_complemento: str = ""
+    end_bairro: str
+    end_cidade: str
+    end_estado: str
+    end_pais: str
+    end_cep: str
     whatsapp: str
     instagram: str
     email_contato: str
@@ -606,7 +613,14 @@ async def get_empresa(
         "nome_fantasia":   cfg.nome_fantasia,
         "cnpj":            cfg.cnpj,
         "cpf_responsavel": cfg.cpf_responsavel,
-        "endereco":        cfg.endereco,
+        "end_logradouro":  cfg.end_logradouro,
+        "end_numero":      cfg.end_numero,
+        "end_complemento": cfg.end_complemento,
+        "end_bairro":      cfg.end_bairro,
+        "end_cidade":      cfg.end_cidade,
+        "end_estado":      cfg.end_estado,
+        "end_pais":        cfg.end_pais,
+        "end_cep":         cfg.end_cep,
         "whatsapp":        cfg.whatsapp,
         "instagram":       cfg.instagram,
         "email_contato":   cfg.email_contato,
@@ -624,7 +638,14 @@ async def put_empresa(
     cfg.nome_fantasia   = body.nome_fantasia.strip()
     cfg.cnpj            = body.cnpj.strip()
     cfg.cpf_responsavel = body.cpf_responsavel.strip()
-    cfg.endereco        = body.endereco.strip()
+    cfg.end_logradouro  = body.end_logradouro.strip()
+    cfg.end_numero      = body.end_numero.strip()
+    cfg.end_complemento = body.end_complemento.strip()
+    cfg.end_bairro      = body.end_bairro.strip()
+    cfg.end_cidade      = body.end_cidade.strip()
+    cfg.end_estado      = body.end_estado.strip().upper()[:2]
+    cfg.end_pais        = body.end_pais.strip()
+    cfg.end_cep         = body.end_cep.strip()
     cfg.whatsapp        = "".join(c for c in body.whatsapp if c.isdigit())
     cfg.instagram       = body.instagram.strip().lstrip("@")
     cfg.email_contato   = body.email_contato.strip()

@@ -1677,7 +1677,14 @@ async function loadEmpresa() {
     document.getElementById('emp-nome-fantasia').value   = e.nome_fantasia   ?? ''
     document.getElementById('emp-cnpj').value            = e.cnpj            ?? ''
     document.getElementById('emp-cpf-responsavel').value = e.cpf_responsavel ?? ''
-    document.getElementById('emp-endereco').value        = e.endereco        ?? ''
+    document.getElementById('emp-logradouro').value      = e.end_logradouro  ?? ''
+    document.getElementById('emp-numero').value          = e.end_numero      ?? ''
+    document.getElementById('emp-complemento').value     = e.end_complemento ?? ''
+    document.getElementById('emp-bairro').value          = e.end_bairro      ?? ''
+    document.getElementById('emp-cidade').value          = e.end_cidade      ?? ''
+    document.getElementById('emp-estado').value          = e.end_estado      ?? ''
+    document.getElementById('emp-pais').value            = e.end_pais        ?? ''
+    document.getElementById('emp-cep').value             = e.end_cep         ?? ''
     document.getElementById('emp-whatsapp').value        = e.whatsapp        ?? ''
     document.getElementById('emp-instagram').value       = e.instagram       ?? ''
     document.getElementById('emp-email').value           = e.email_contato   ?? ''
@@ -1697,7 +1704,14 @@ async function salvarEmpresa(e) {
         nome_fantasia:   document.getElementById('emp-nome-fantasia').value.trim(),
         cnpj:            document.getElementById('emp-cnpj').value.trim(),
         cpf_responsavel: document.getElementById('emp-cpf-responsavel').value.trim(),
-        endereco:        document.getElementById('emp-endereco').value.trim(),
+        end_logradouro:  document.getElementById('emp-logradouro').value.trim(),
+        end_numero:      document.getElementById('emp-numero').value.trim(),
+        end_complemento: document.getElementById('emp-complemento').value.trim(),
+        end_bairro:      document.getElementById('emp-bairro').value.trim(),
+        end_cidade:      document.getElementById('emp-cidade').value.trim(),
+        end_estado:      document.getElementById('emp-estado').value.trim(),
+        end_pais:        document.getElementById('emp-pais').value.trim(),
+        end_cep:         document.getElementById('emp-cep').value.trim(),
         whatsapp:        document.getElementById('emp-whatsapp').value.trim(),
         instagram:       document.getElementById('emp-instagram').value.trim(),
         email_contato:   document.getElementById('emp-email').value.trim(),

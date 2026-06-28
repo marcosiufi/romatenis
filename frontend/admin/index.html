@@ -817,32 +817,76 @@
       <div class="section-header">
         <h2>Dados da Empresa</h2>
       </div>
-      <div class="card" style="max-width:640px">
+      <div class="card">
         <form id="form-empresa" onsubmit="salvarEmpresa(event)">
-          <div class="form-row">
-            <label>Razão Social</label>
-            <input type="text" id="emp-razao-social" required />
+
+          <!-- Identificação -->
+          <div class="form-grid-2" style="margin-bottom:.75rem">
+            <div class="form-row">
+              <label>Razão Social</label>
+              <input type="text" id="emp-razao-social" required />
+            </div>
+            <div class="form-row">
+              <label>Nome Fantasia</label>
+              <input type="text" id="emp-nome-fantasia" required />
+            </div>
           </div>
-          <div class="form-row">
-            <label>Nome Fantasia</label>
-            <input type="text" id="emp-nome-fantasia" required />
-          </div>
-          <div class="form-grid-2" style="margin-top:.5rem">
+          <div class="form-grid-2" style="margin-bottom:.75rem">
             <div class="form-row">
               <label>CNPJ</label>
               <input type="text" id="emp-cnpj" placeholder="00.000.000/0001-00" required />
             </div>
             <div class="form-row">
               <label>CPF do Responsável</label>
-              <input type="text" id="emp-cpf-responsavel" placeholder="00000000000" required />
+              <input type="text" id="emp-cpf-responsavel" placeholder="000.000.000-00" required />
               <small style="color:var(--clr-text-muted);font-size:.72rem">Usado no cabeçalho do contrato PDF</small>
             </div>
           </div>
-          <div class="form-row" style="margin-top:.5rem">
-            <label>Endereço completo</label>
-            <input type="text" id="emp-endereco" placeholder="Rua, número, bairro, cidade-UF · CEP" required />
+
+          <!-- Endereço -->
+          <div style="margin:1rem 0 .4rem;font-size:.78rem;font-weight:600;color:var(--clr-text-muted);letter-spacing:.06em;text-transform:uppercase">Endereço</div>
+          <div style="display:grid;grid-template-columns:3fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div class="form-row">
+              <label>Logradouro</label>
+              <input type="text" id="emp-logradouro" placeholder="Rua, Avenida, Travessa…" required />
+            </div>
+            <div class="form-row">
+              <label>Número</label>
+              <input type="text" id="emp-numero" placeholder="99" required />
+            </div>
           </div>
-          <div class="form-grid-2" style="margin-top:.5rem">
+          <div class="form-row" style="margin-bottom:.75rem">
+            <label>Complemento <span style="color:var(--clr-text-muted);font-weight:400">(opcional)</span></label>
+            <input type="text" id="emp-complemento" placeholder="Apto, Bloco, Sala…" />
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 2fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div class="form-row">
+              <label>Bairro</label>
+              <input type="text" id="emp-bairro" required />
+            </div>
+            <div class="form-row">
+              <label>Cidade</label>
+              <input type="text" id="emp-cidade" required />
+            </div>
+            <div class="form-row">
+              <label>Estado (UF)</label>
+              <input type="text" id="emp-estado" placeholder="SP" maxlength="2" required style="text-transform:uppercase" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:.75rem;margin-bottom:.75rem">
+            <div class="form-row">
+              <label>CEP</label>
+              <input type="text" id="emp-cep" placeholder="00000-000" required />
+            </div>
+            <div class="form-row">
+              <label>País</label>
+              <input type="text" id="emp-pais" required />
+            </div>
+          </div>
+
+          <!-- Contato -->
+          <div style="margin:1rem 0 .4rem;font-size:.78rem;font-weight:600;color:var(--clr-text-muted);letter-spacing:.06em;text-transform:uppercase">Contato</div>
+          <div class="form-grid-2" style="margin-bottom:.75rem">
             <div class="form-row">
               <label>WhatsApp (somente números)</label>
               <input type="text" id="emp-whatsapp" placeholder="5516993618092" required />
@@ -853,10 +897,11 @@
               <input type="text" id="emp-instagram" placeholder="romatenisrp" required />
             </div>
           </div>
-          <div class="form-row" style="margin-top:.5rem">
+          <div class="form-row" style="margin-bottom:.75rem">
             <label>E-mail de contato</label>
             <input type="email" id="emp-email" required />
           </div>
+
           <div id="emp-erro" class="erro-msg" style="display:none;margin-top:.5rem"></div>
           <div style="margin-top:1.25rem">
             <button type="submit" class="btn-xs primary">Salvar</button>

@@ -446,11 +446,16 @@ async def reservar(
 @router.get("/empresa")
 async def empresa_publica(db: AsyncSession = Depends(get_db)):
     cfg = await Configuracao.get(db)
+    comp = f", {cfg.end_complemento}" if cfg.end_complemento else ""
+    endereco = (
+        f"{cfg.end_logradouro}, {cfg.end_numero}{comp}\n"
+        f"{cfg.end_bairro}, {cfg.end_cidade}-{cfg.end_estado} · CEP {cfg.end_cep}"
+    )
     return {
         "razao_social":  cfg.razao_social,
         "nome_fantasia": cfg.nome_fantasia,
         "cnpj":          cfg.cnpj,
-        "endereco":      cfg.endereco,
+        "endereco":      endereco,
         "whatsapp":      cfg.whatsapp,
         "instagram":     cfg.instagram,
         "email_contato": cfg.email_contato,
