@@ -379,7 +379,7 @@ class BookingService:
             raise BookingError("O mesmo jogador não pode estar em ambos os lados")
 
         for pid in todos:
-            await self._verificar_limite_semanal(pid, tipo, data_hora)
+            await self._verificar_limite_ativo(pid, tipo)
 
         if await self._slot_ocupado(data_hora):
             raise BookingError("Horário já reservado")
@@ -410,18 +410,9 @@ class BookingService:
         )
         return result.scalar_one_or_none() is not None
 
-    async def _verificar_limite_semanal(
-        self, player_id: int, tipo: TipoPartida, data_hora: datetime
-    ) -> None:
-        """Conta partidas confirmadas do tipo na semana (seg–dom) do slot."""
-        dt_local = data_hora.astimezone(FUSO_BR)
-        inicio_local = (dt_local - timedelta(days=dt_local.weekday())).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        fim_local = inicio_local + timedelta(days=7)
-        inicio_utc = inicio_local.astimezone(timezone.utc)
-        fim_utc = fim_local.astimezone(timezone.utc)
-
+    async def _verificar_limite_ativo(self, player_id: int, tipo: TipoPartida) -> None:
+        """Bloqueia se o jogador já tem 1 partida deste tipo agendada e ainda não encerrada."""
+        agora = datetime.now(timezone.utc)
         result = await self.db.execute(
             select(func.count(MatchParticipant.id))
             .join(Match, MatchParticipant.match_id == Match.id)
@@ -429,18 +420,16 @@ class BookingService:
             .where(
                 MatchParticipant.player_id == player_id,
                 Match.tipo == tipo,
-                Match.status != StatusPartida.CANCELADO_SEM_PLACAR,
+                Match.status == StatusPartida.AGENDADO,
                 Booking.status == StatusReserva.CONFIRMADA,
-                Booking.data_hora_inicio >= inicio_utc,
-                Booking.data_hora_inicio < fim_utc,
+                Booking.data_hora_fim > agora,
             )
         )
-        count: int = result.scalar() or 0
-        limite = 3 if tipo == TipoPartida.SIMPLES else 2
-        if count >= limite:
+        if (result.scalar() or 0) >= 1:
+            nome = "simples" if tipo == TipoPartida.SIMPLES else "duplas"
             raise BookingError(
-                f"Limite semanal atingido: máximo de {limite} jogo(s) de "
-                f"{tipo.value} por semana (já agendados nesta semana: {count})"
+                f"Você já tem uma partida de {nome} agendada. "
+                f"Aguarde o encerramento do jogo atual para marcar outro."
             )
 
     async def _get_horario_especial(self, data: date) -> "HorarioEspecial | None":
