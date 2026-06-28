@@ -130,6 +130,13 @@
       padding: 1.5rem;
     }
 
+    /* ── Scrollbars padrão do sistema ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--clr-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--clr-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--clr-accent); }
+    * { scrollbar-width: thin; scrollbar-color: var(--clr-border) var(--clr-bg); }
+
     .admin-section { display: none; max-width: 1100px; margin: 0 auto; }
     .admin-section.active { display: block; }
 
@@ -707,6 +714,28 @@
         <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
       </div>
     </section>
+
+    <!-- Contrato -->
+    <section id="sec-contrato" class="admin-section">
+      <div class="section-header">
+        <h2>Contrato de Adesão</h2>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn-xs sec" onclick="loadContrato()">↺ Recarregar</button>
+          <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
+        </div>
+      </div>
+      <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
+        Edite as cláusulas abaixo. As alterações serão refletidas no próximo contrato enviado ao Autentique.
+      </p>
+      <div id="contrato-clausulas-wrap">
+        <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:space-between;align-items:center">
+        <button class="btn-xs sec" onclick="contratoAddClausula()">+ Adicionar Cláusula</button>
+        <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
+      </div>
+    </section>
+
   </main>
 </div><!-- /admin-app -->
 
@@ -754,27 +783,6 @@
     </div>
   </div>
 </div>
-
-<!-- Contrato -->
-<section id="sec-contrato" class="admin-section">
-  <div class="section-header">
-    <h2>Contrato de Adesão</h2>
-    <div style="display:flex;gap:.5rem">
-      <button class="btn-xs sec" onclick="loadContrato()">↺ Recarregar</button>
-      <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
-    </div>
-  </div>
-  <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
-    Edite as cláusulas abaixo. As alterações serão refletidas no próximo contrato enviado ao Autentique.
-  </p>
-  <div id="contrato-clausulas-wrap">
-    <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
-  </div>
-  <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:space-between;align-items:center">
-    <button class="btn-xs sec" onclick="contratoAddClausula()">+ Adicionar Cláusula</button>
-    <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
-  </div>
-</section>
 
 <!-- Toast -->
 <div id="toast"></div>
