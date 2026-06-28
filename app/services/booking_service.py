@@ -128,9 +128,9 @@ class BookingService:
             else:
                 em_janela = _em_janela_ranking(dt_local, is_feriado)
 
-            # Horário especial: horas fora do ranking dentro do especial não são comerciais
+            # Horas fora do ranking dentro do horário especial → comercial (última hora)
             if horario_esp:
-                em_comercial = False
+                em_comercial = not em_janela
             else:
                 em_comercial = not em_janela and _em_zona_comercial(dt_local, is_feriado)
 
