@@ -398,12 +398,12 @@ select option { background: #1a3320; }
   grid-template-columns: 3.5rem 1fr auto;
   align-items: center;
   gap: .5rem;
-  padding: .6rem 0;
+  padding: .6rem .35rem;
   border-bottom: 1px solid var(--cor-borda);
   font-size: .85rem;
 }
 .slot-item:last-child { border-bottom: none; }
-.slot-livre { cursor: pointer; border-radius: 6px; padding-left: .3rem; padding-right: .3rem; }
+.slot-livre { cursor: pointer; border-radius: 6px; }
 .slot-livre:hover { background: rgba(255,255,255,.06); }
 .slot-hora { font-weight: 700; font-variant-numeric: tabular-nums; }
 .slot-label { font-size: .75rem; padding: .15rem .5rem; border-radius: 20px; white-space: nowrap; }

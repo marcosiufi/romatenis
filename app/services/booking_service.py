@@ -29,6 +29,7 @@ from sqlalchemy.orm import selectinload
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.configuracao import Configuracao
 from app.models.feriado import Feriado
+from app.models.horario_especial import HorarioEspecial
 from app.models.match import LadoPartida, Match, MatchParticipant, StatusPartida, TipoPartida
 from app.models.player import Player
 from app.models.season import Season, StatusTemporada
@@ -82,7 +83,12 @@ class BookingService:
         """Retorna todos os slots de 1h para a data (06:00–22:00 BR)."""
         agora = datetime.now(timezone.utc)
         is_feriado = await self._is_feriado(data)
+        horario_esp = await self._get_horario_especial(data)
         slots: list[SlotDisponivel] = []
+
+        # Quadra fechada no horário especial → nenhum slot
+        if horario_esp and horario_esp.fechado:
+            return []
 
         # Pré-busca todos os bookings confirmados do dia com seus participantes
         dt_dia_inicio = datetime(data.year, data.month, data.day, 0, 0, 0, tzinfo=FUSO_BR).astimezone(timezone.utc)
@@ -102,13 +108,23 @@ class BookingService:
         )
         bookings_do_dia: dict[datetime, Booking] = {b.data_hora_inicio: b for b in res.scalars().all()}
 
-        for hora in range(6, 22):
+        # Intervalo de horas: usa horário especial se definido, senão padrão 6–22
+        h_ini = horario_esp.hora_abertura if horario_esp and horario_esp.hora_abertura is not None else 6
+        h_fim = horario_esp.hora_fechamento if horario_esp and horario_esp.hora_fechamento is not None else 22
+
+        for hora in range(h_ini, h_fim):
             dt_local = datetime(data.year, data.month, data.day, hora, 0, 0, tzinfo=FUSO_BR)
             dt_utc = dt_local.astimezone(timezone.utc)
             dt_fim_utc = dt_utc + timedelta(hours=1)
 
-            em_janela = _em_janela_ranking(dt_local, is_feriado)
-            em_comercial = _em_zona_comercial(dt_local, is_feriado)
+            # Horário especial: tudo dentro do intervalo é janela de ranking
+            if horario_esp:
+                em_janela = True
+                em_comercial = False
+            else:
+                em_janela = _em_janela_ranking(dt_local, is_feriado)
+                em_comercial = _em_zona_comercial(dt_local, is_feriado)
+
             if not em_janela and not em_comercial:
                 continue
 
@@ -295,12 +311,24 @@ class BookingService:
             raise BookingError("Não é possível reservar no passado")
 
         dt_local = data_hora.astimezone(FUSO_BR)
-        is_feriado = await self._is_feriado(dt_local.date())
-        em_janela = _em_janela_ranking(dt_local, is_feriado)
-        em_comercial = _em_zona_comercial(dt_local, is_feriado)
+        horario_esp = await self._get_horario_especial(dt_local.date())
 
-        if not em_janela and not em_comercial:
-            raise BookingError("Horário fora das janelas disponíveis para o ranking")
+        if horario_esp and horario_esp.fechado:
+            raise BookingError("Quadra fechada neste dia")
+
+        if horario_esp:
+            # Horário especial: só verifica se está dentro do intervalo
+            h_ini = horario_esp.hora_abertura if horario_esp.hora_abertura is not None else 6
+            h_fim = horario_esp.hora_fechamento if horario_esp.hora_fechamento is not None else 22
+            if not (h_ini <= dt_local.hour < h_fim):
+                raise BookingError("Horário fora do período especial do dia")
+            em_comercial = False
+        else:
+            is_feriado = await self._is_feriado(dt_local.date())
+            em_janela = _em_janela_ranking(dt_local, is_feriado)
+            em_comercial = _em_zona_comercial(dt_local, is_feriado)
+            if not em_janela and not em_comercial:
+                raise BookingError("Horário fora das janelas disponíveis para o ranking")
 
         antecedencia = data_hora - agora
 
@@ -397,6 +425,12 @@ class BookingService:
                 f"Limite semanal atingido: máximo de {limite} jogo(s) de "
                 f"{tipo.value} por semana (já agendados nesta semana: {count})"
             )
+
+    async def _get_horario_especial(self, data: date) -> "HorarioEspecial | None":
+        res = await self.db.execute(
+            select(HorarioEspecial).where(HorarioEspecial.data == data)
+        )
+        return res.scalar_one_or_none()
 
     def _extrair_info_booking(self, booking: "Booking | None") -> dict:
         """Extrai jogadores, placar e status de um booking para popular o SlotDisponivel."""

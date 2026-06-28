@@ -551,7 +551,7 @@ const SLOT_CONFIG = {
   comercial_ultima_hora: { label: "Última hora!",       cls: "label-ultima-hora" },
   ocupado:               { label: "Reservado",          cls: "label-ocupado" },
   passado:               { label: "Encerrado",          cls: "label-indisponivel" },
-  comercial:             { label: "Locação avulsa",     cls: "label-indisponivel" },
+  comercial:             { label: "Só na última hora",  cls: "label-indisponivel" },
   janela_morta:          { label: "Fora da janela",     cls: "label-indisponivel" },
 };
 
