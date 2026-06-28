@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.configuracao import Configuracao
 from app.models.horario_especial import HorarioEspecial
+from app.models.horario_dia_semana import HorarioDiaSemana
 from app.models.payment import MetodoPagamento, Payment, StatusPagamento
 from app.models.player import Player, StatusJogador
 from app.models.slot_ranking import SlotRanking
@@ -54,9 +55,17 @@ async def disponibilidade(
 
     cfg = await Configuracao.get(db)
     preco = float(cfg.preco_locacao_hora)
-    hora_abertura = cfg.hora_abertura
-    hora_fechamento = cfg.hora_fechamento
 
+    # Horário base: config por dia da semana > global
+    dia_cfg = await db.scalar(
+        select(HorarioDiaSemana).where(HorarioDiaSemana.dia_semana == data.weekday())
+    )
+    if dia_cfg and not dia_cfg.aberto:
+        return DisponibilidadeOut(data=str(data), preco_hora=preco, slots=[])
+    hora_abertura = dia_cfg.hora_abertura if dia_cfg else cfg.hora_abertura
+    hora_fechamento = dia_cfg.hora_fechamento if dia_cfg else cfg.hora_fechamento
+
+    # HorarioEspecial (data específica) tem prioridade máxima
     especial = await db.scalar(select(HorarioEspecial).where(HorarioEspecial.data == data))
     if especial:
         if especial.fechado:
@@ -289,11 +298,23 @@ async def reservar(
 
     cfg = await Configuracao.get(db)
     valor = float(cfg.preco_locacao_hora) * body.num_horas
+
+    # Horário base: config por dia da semana > global
+    dia_cfg_r = await db.scalar(
+        select(HorarioDiaSemana).where(HorarioDiaSemana.dia_semana == body.data.weekday())
+    )
+    if dia_cfg_r and not dia_cfg_r.aberto:
+        raise HTTPException(status_code=409, detail="A quadra está fechada neste dia.")
+    hora_ab = dia_cfg_r.hora_abertura if dia_cfg_r else cfg.hora_abertura
+    hora_fe = dia_cfg_r.hora_fechamento if dia_cfg_r else cfg.hora_fechamento
+
     especial_r = await db.scalar(select(HorarioEspecial).where(HorarioEspecial.data == body.data))
     if especial_r and especial_r.fechado:
         raise HTTPException(status_code=409, detail=f"A quadra está fechada nesta data — {especial_r.descricao}.")
-    hora_ab = especial_r.hora_abertura if (especial_r and especial_r.hora_abertura is not None) else cfg.hora_abertura
-    hora_fe = especial_r.hora_fechamento if (especial_r and especial_r.hora_fechamento is not None) else cfg.hora_fechamento
+    if especial_r and especial_r.hora_abertura is not None:
+        hora_ab = especial_r.hora_abertura
+    if especial_r and especial_r.hora_fechamento is not None:
+        hora_fe = especial_r.hora_fechamento
     if hora < hora_ab or hora >= hora_fe:
         raise HTTPException(status_code=400, detail="Horário fora do funcionamento.")
 
@@ -418,3 +439,21 @@ async def reservar(
         asaas_payment_id=asaas_payment_id,
         msg=msg,
     )
+
+
+# ── Horários de funcionamento (público) ───────────────────────────────────────
+
+@router.get("/horarios-semana")
+async def horarios_semana(db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(
+        select(HorarioDiaSemana).order_by(HorarioDiaSemana.dia_semana)
+    )).scalars().all()
+    return [
+        {
+            "dia_semana": r.dia_semana,
+            "aberto": r.aberto,
+            "hora_abertura": r.hora_abertura,
+            "hora_fechamento": r.hora_fechamento,
+        }
+        for r in rows
+    ]

@@ -9,6 +9,7 @@ from app.core.auth import get_current_admin
 from app.core.database import get_db
 from app.models.lista_espera import ListaEspera, StatusListaEspera
 from app.models.contrato import ContratoClausula
+from app.models.horario_dia_semana import HorarioDiaSemana
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.payment import Payment
 from app.models.configuracao import Configuracao
@@ -627,4 +628,55 @@ async def salvar_clausulas(
 
     await db.commit()
     return {"ok": True, "total": len(clausulas)}
+
+
+# ── Horários por dia da semana ────────────────────────────────────────────────
+
+class HorarioDiaIn(BaseModel):
+    dia_semana: int
+    aberto: bool
+    hora_abertura: int
+    hora_fechamento: int
+
+
+@router.get("/horarios-semana")
+async def get_horarios_semana(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    rows = (await db.execute(
+        select(HorarioDiaSemana).order_by(HorarioDiaSemana.dia_semana)
+    )).scalars().all()
+    return [
+        {
+            "dia_semana": r.dia_semana,
+            "aberto": r.aberto,
+            "hora_abertura": r.hora_abertura,
+            "hora_fechamento": r.hora_fechamento,
+        }
+        for r in rows
+    ]
+
+
+@router.put("/horarios-semana")
+async def put_horarios_semana(
+    horarios: list[HorarioDiaIn],
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    for h in horarios:
+        row = await db.get(HorarioDiaSemana, h.dia_semana)
+        if row:
+            row.aberto = h.aberto
+            row.hora_abertura = h.hora_abertura
+            row.hora_fechamento = h.hora_fechamento
+        else:
+            db.add(HorarioDiaSemana(
+                dia_semana=h.dia_semana,
+                aberto=h.aberto,
+                hora_abertura=h.hora_abertura,
+                hora_fechamento=h.hora_fechamento,
+            ))
+    await db.commit()
+    return {"ok": True}
 

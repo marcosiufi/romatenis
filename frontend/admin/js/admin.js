@@ -160,6 +160,7 @@ function switchTab(tab) {
     case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); break
     case 'lista-espera':   loadListaEspera(); break
     case 'contrato':       loadContrato(); break
+    case 'horarios':       loadHorarios(); break
   }
 }
 
@@ -1573,6 +1574,100 @@ async function salvarContrato() {
     const r = await api('/admin/contrato/clausulas', { method: 'PUT', body: JSON.stringify(clausulas) })
     showToast(`Contrato salvo! ${r.total} cláusula(s).`, 'success')
     await loadContrato()
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error')
+  }
+}
+
+// ── Horários por dia da semana ────────────────────────────────────────────────
+
+const DIAS_NOMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+let _horarios = []
+
+async function loadHorarios() {
+  const wrap = document.getElementById('horarios-wrap')
+  wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>'
+  try {
+    _horarios = await api('/admin/horarios-semana')
+    _renderHorarios()
+  } catch (e) {
+    wrap.innerHTML = `<p style="color:var(--clr-danger)">Erro: ${e.message}</p>`
+  }
+}
+
+function _renderHorarios() {
+  const wrap = document.getElementById('horarios-wrap')
+  wrap.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--clr-border);color:var(--clr-text-muted)">
+          <th style="text-align:left;padding:.5rem .75rem">Dia</th>
+          <th style="text-align:center;padding:.5rem .75rem">Aberto</th>
+          <th style="text-align:center;padding:.5rem .75rem">Abertura</th>
+          <th style="text-align:center;padding:.5rem .75rem">Fechamento</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${_horarios.map((h, i) => `
+          <tr style="border-bottom:1px solid var(--clr-border)">
+            <td style="padding:.6rem .75rem;font-weight:500">${DIAS_NOMES[h.dia_semana]}</td>
+            <td style="text-align:center;padding:.6rem .75rem">
+              <input type="checkbox" id="h-aberto-${i}" ${h.aberto ? 'checked' : ''}
+                onchange="_horariosToggleAberto(${i})" style="width:16px;height:16px;cursor:pointer" />
+            </td>
+            <td style="text-align:center;padding:.6rem .75rem">
+              <select id="h-ab-${i}" ${!h.aberto ? 'disabled' : ''}
+                style="padding:.3rem .5rem;border-radius:6px;border:1px solid var(--clr-border);
+                       background:var(--clr-surface);color:inherit;font-size:.88rem">
+                ${_opcoesHora(h.hora_abertura)}
+              </select>
+            </td>
+            <td style="text-align:center;padding:.6rem .75rem">
+              <select id="h-fe-${i}" ${!h.aberto ? 'disabled' : ''}
+                style="padding:.3rem .5rem;border-radius:6px;border:1px solid var(--clr-border);
+                       background:var(--clr-surface);color:inherit;font-size:.88rem">
+                ${_opcoesHora(h.hora_fechamento)}
+              </select>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `
+}
+
+function _opcoesHora(selecionada) {
+  let html = ''
+  for (let h = 0; h <= 24; h++) {
+    html += `<option value="${h}" ${h === selecionada ? 'selected' : ''}>${String(h).padStart(2,'0')}:00</option>`
+  }
+  return html
+}
+
+function _horariosToggleAberto(idx) {
+  const aberto = document.getElementById(`h-aberto-${idx}`).checked
+  document.getElementById(`h-ab-${idx}`).disabled = !aberto
+  document.getElementById(`h-fe-${idx}`).disabled = !aberto
+}
+
+async function salvarHorarios() {
+  const payload = _horarios.map((h, i) => ({
+    dia_semana: h.dia_semana,
+    aberto: document.getElementById(`h-aberto-${i}`).checked,
+    hora_abertura: parseInt(document.getElementById(`h-ab-${i}`).value, 10),
+    hora_fechamento: parseInt(document.getElementById(`h-fe-${i}`).value, 10),
+  }))
+  // Validação básica
+  for (const h of payload) {
+    if (h.aberto && h.hora_abertura >= h.hora_fechamento) {
+      showToast(`${DIAS_NOMES[h.dia_semana]}: abertura deve ser antes do fechamento.`, 'error')
+      return
+    }
+  }
+  try {
+    await api('/admin/horarios-semana', { method: 'PUT', body: JSON.stringify(payload) })
+    showToast('Horários salvos com sucesso!', 'success')
+    _horarios = payload
   } catch (e) {
     showToast('Erro ao salvar: ' + e.message, 'error')
   }

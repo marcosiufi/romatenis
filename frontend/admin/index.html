@@ -389,6 +389,7 @@
       <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
       <button data-tab="lista-espera" onclick="switchTab('lista-espera')">Lista de Espera</button>
       <button data-tab="contrato" onclick="switchTab('contrato')">Contrato</button>
+      <button data-tab="horarios" onclick="switchTab('horarios')">Horários</button>
     </nav>
   </aside>
 
@@ -733,6 +734,20 @@
       <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:space-between;align-items:center">
         <button class="btn-xs sec" onclick="contratoAddClausula()">+ Adicionar Cláusula</button>
         <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
+      </div>
+    </section>
+
+    <section id="sec-horarios" class="admin-section">
+      <div class="section-header">
+        <h2>Horários de Funcionamento</h2>
+        <button class="btn-xs primary" onclick="salvarHorarios()">Salvar Alterações</button>
+      </div>
+      <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
+        Configure os horários de abertura e fechamento por dia da semana.
+        Dias marcados como fechados não aparecerão na agenda de locações.
+      </p>
+      <div id="horarios-wrap">
+        <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
       </div>
     </section>
 

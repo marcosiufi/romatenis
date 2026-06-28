@@ -646,7 +646,7 @@
         </div>
         <div>
           <p class="contato-label">Funcionamento</p>
-          <p class="contato-value">Seg – Dom: 07h às 22h</p>
+          <p class="contato-value" id="footer-horarios">Seg – Dom: 07h–22h</p>
         </div>
       </div>
 
@@ -1226,6 +1226,41 @@ function bkCopiarPix() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') bkFecharModal(); });
 document.getElementById('bk-modal').addEventListener('click', function(e) { if (e.target === this) bkFecharModal(); });
+
+// ── Horários de funcionamento no footer ─────────────────────────────────────
+(function () {
+  const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  function formatarHorarios(horarios) {
+    if (!horarios || !horarios.length) return 'Seg – Dom: 07h–22h';
+    const linhas = [];
+    let i = 0;
+    while (i < horarios.length) {
+      const h = horarios[i];
+      let j = i;
+      while (
+        j + 1 < horarios.length &&
+        horarios[j + 1].aberto === h.aberto &&
+        horarios[j + 1].hora_abertura === h.hora_abertura &&
+        horarios[j + 1].hora_fechamento === h.hora_fechamento
+      ) j++;
+      const range = i === j ? DIAS[i] : `${DIAS[i]} – ${DIAS[j]}`;
+      if (!h.aberto) {
+        linhas.push(`${range}: Fechado`);
+      } else {
+        linhas.push(`${range}: ${String(h.hora_abertura).padStart(2, '0')}h–${String(h.hora_fechamento).padStart(2, '0')}h`);
+      }
+      i = j + 1;
+    }
+    return linhas.join('<br>');
+  }
+  fetch('/api/v1/public/horarios-semana')
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('footer-horarios');
+      if (el) el.innerHTML = formatarHorarios(data);
+    })
+    .catch(() => {});
+})();
 </script>
 </body>
 </html>
