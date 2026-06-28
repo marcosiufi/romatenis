@@ -62,6 +62,7 @@ function toast(msg, isErr = false) {
   clearTimeout(_toastTimer)
   _toastTimer = setTimeout(() => { el.className = '' }, 3000)
 }
+function showToast(msg, type) { toast(msg, type === 'error') }
 
 function showErr(id, msg) {
   const el = document.getElementById(id)
