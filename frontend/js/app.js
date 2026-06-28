@@ -341,8 +341,20 @@ async function carregarPerfil() {
       <div class="perfil-linha"><span class="perfil-label">Pontos (temporada)</span><span>${p.pontos_ranking_temporada_atual}</span></div>
       <div class="perfil-linha" style="${_temEndereco(p) ? '' : 'border:none'}"><span class="perfil-label">Partidas computadas</span><span>${p.partidas_computadas_rating}</span></div>
       ${_enderecoHtml(p)}
-      <div style="text-align:center;margin:.75rem 0">
+      <div style="display:flex;gap:.5rem;justify-content:center;margin:.75rem 0">
         <button class="btn btn-secundario" style="font-size:.8rem;padding:.35rem 1rem" onclick="abrirEdicaoPerfil()">Editar dados pessoais</button>
+        <button class="btn btn-secundario" style="font-size:.8rem;padding:.35rem 1rem" onclick="abrirAlterarSenha()">Alterar senha</button>
+      </div>
+      <div id="perfil-form-senha" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
+        <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Alterar senha</p>
+        <div class="campo"><label>Senha atual</label><input type="password" id="senha-atual" /></div>
+        <div class="campo"><label>Nova senha</label><input type="password" id="senha-nova" /></div>
+        <div class="campo"><label>Confirmar nova senha</label><input type="password" id="senha-confirma" /></div>
+        <p id="senha-erro" class="erro" hidden></p>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn btn-secundario" style="flex:1;font-size:.82rem" onclick="fecharAlterarSenha()">Cancelar</button>
+          <button class="btn btn-primario" style="flex:1;font-size:.82rem" onclick="confirmarAlterarSenha()">Salvar</button>
+        </div>
       </div>
       <div id="perfil-form-editar" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
         <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Editar dados</p>
@@ -460,9 +472,40 @@ async function carregarPerfil() {
   }
 }
 
+function abrirAlterarSenha() {
+  document.getElementById("perfil-form-editar").style.display = "none";
+  const f = document.getElementById("perfil-form-senha");
+  f.style.display = "block";
+  ["senha-atual","senha-nova","senha-confirma"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("senha-erro").hidden = true;
+}
+
+function fecharAlterarSenha() {
+  document.getElementById("perfil-form-senha").style.display = "none";
+}
+
+async function confirmarAlterarSenha() {
+  const erro = document.getElementById("senha-erro");
+  erro.hidden = true;
+  const atual    = document.getElementById("senha-atual").value;
+  const nova     = document.getElementById("senha-nova").value;
+  const confirma = document.getElementById("senha-confirma").value;
+  if (!atual || !nova) { erro.textContent = "Preencha todos os campos."; erro.hidden = false; return; }
+  if (nova.length < 6)  { erro.textContent = "A nova senha deve ter pelo menos 6 caracteres."; erro.hidden = false; return; }
+  if (nova !== confirma) { erro.textContent = "As senhas não conferem."; erro.hidden = false; return; }
+  try {
+    await apiFetch("/auth/alterar-senha", { method: "POST", body: JSON.stringify({ senha_atual: atual, nova_senha: nova }) });
+    fecharAlterarSenha();
+    alert("Senha alterada com sucesso!");
+  } catch (e) {
+    erro.textContent = e.message || "Erro ao alterar senha.";
+    erro.hidden = false;
+  }
+}
+
 function abrirEdicaoPerfil() {
-  const f = document.getElementById("perfil-form-editar");
-  if (f) f.style.display = "block";
+  document.getElementById("perfil-form-senha").style.display = "none";
+  document.getElementById("perfil-form-editar").style.display = "block";
 }
 
 function fecharEdicaoPerfil() {

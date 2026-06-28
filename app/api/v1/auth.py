@@ -113,6 +113,26 @@ async def validar_reset(
     return {"ok": True, "nome": player.nome}
 
 
+class AlterarSenhaIn(BaseModel):
+    senha_atual: str
+    nova_senha: str
+
+
+@router.post("/alterar-senha")
+async def alterar_senha(
+    body: AlterarSenhaIn,
+    player: Annotated[Player, Depends(get_current_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    if not verify_password(body.senha_atual, player.senha_hash):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta.")
+    if len(body.nova_senha) < 6:
+        raise HTTPException(status_code=422, detail="A nova senha deve ter pelo menos 6 caracteres.")
+    player.senha_hash = hash_password(body.nova_senha)
+    await db.commit()
+    return {"ok": True}
+
+
 @router.post("/redefinir-senha")
 async def redefinir_senha(
     body: RedefinirSenhaIn,
