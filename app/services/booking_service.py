@@ -177,7 +177,7 @@ class BookingService:
                 slots.append(SlotDisponivel(
                     data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                     disponivel=False, tipo_disponibilidade="janela_morta",
-                    motivo_indisponibilidade="Reserve com ≥ 6h de antecedência ou na última hora (< 1h)",
+                    motivo_indisponibilidade="Reserve com 6h ou mais de antecedência ou na última hora",
                 ))
             elif antecedencia <= timedelta(hours=1):
                 slots.append(SlotDisponivel(
