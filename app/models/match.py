@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, pg_enum
@@ -41,6 +41,12 @@ class Match(Base):
 
     season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"), nullable=True)
 
+    # Jogo avulso: membro joga com convidado(s) de fora. Ocupa a cota semanal,
+    # mas não gera pontos nem Elo para ninguém — por isso não aceita placar.
+    avulso: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     season: Mapped["Season | None"] = relationship(back_populates="matches")
     participantes: Mapped[list["MatchParticipant"]] = relationship(
         back_populates="match", cascade="all, delete-orphan"
@@ -49,13 +55,19 @@ class Match(Base):
 
 
 class MatchParticipant(Base):
-    """Associação entre Match e Player, com snapshot de rating e pontos atribuídos."""
+    """
+    Associação entre Match e um jogador, com snapshot de rating e pontos atribuídos.
+
+    Exatamente um entre player_id (membro do ranking) e convidado_id (jogador de
+    fora, apenas em jogos avulsos) é preenchido.
+    """
 
     __tablename__ = "match_participants"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), nullable=False)
-    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
+    player_id: Mapped[int | None] = mapped_column(ForeignKey("players.id"), nullable=True)
+    convidado_id: Mapped[int | None] = mapped_column(ForeignKey("convidados.id"), nullable=True)
     lado: Mapped[LadoPartida] = mapped_column(pg_enum(LadoPartida), nullable=False)
 
     rating_antes: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -63,4 +75,5 @@ class MatchParticipant(Base):
     pontos_atribuidos: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     match: Mapped["Match"] = relationship(back_populates="participantes")
-    player: Mapped["Player"] = relationship(back_populates="participacoes")
+    player: Mapped["Player | None"] = relationship(back_populates="participacoes")
+    convidado: Mapped["Convidado | None"] = relationship(back_populates="participacoes")

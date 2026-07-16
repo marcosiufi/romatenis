@@ -10,6 +10,7 @@ from app.core.database import Base, pg_enum
 class TipoReserva(str, enum.Enum):
     RANKING = "ranking"
     LOCACAO_AVULSA = "locacao_avulsa"
+    JOGO_AVULSO = "jogo_avulso"
     AULA = "aula"
 
 

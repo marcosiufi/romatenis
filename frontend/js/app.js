@@ -60,6 +60,7 @@ function mostrarTela(id) {
   if (id === "tela-ranking")  carregarRanking();
   if (id === "tela-perfil")   carregarPerfil();
   if (id === "tela-partidas") carregarPartidas();
+  if (id === "tela-agendar")  carregarUsoSemanal();
   if (id === "tela-locacao")  locInit();
 }
 
@@ -718,11 +719,69 @@ async function confirmarPausa() {
   }
 }
 
+// ── Uso semanal ──────────────────────────────────────────────────────────────
+function _barraUso(label, uso) {
+  const pct = uso.limite ? Math.min((uso.usados / uso.limite) * 100, 100) : 0;
+  const esgotado = uso.restantes === 0;
+  const cor = esgotado ? "#e07040" : "var(--cor-terracota)";
+  return `
+    <div class="uso-linha">
+      <div class="uso-topo">
+        <span class="uso-label">${label}</span>
+        <span class="uso-nums">${uso.usados} de ${uso.limite}</span>
+      </div>
+      <div class="uso-barra"><div class="uso-barra-fill" style="width:${pct}%;background:${cor}"></div></div>
+      <span class="uso-restante" style="${esgotado ? "color:#e07040" : ""}">
+        ${esgotado ? "Cota esgotada nesta semana" : `${uso.restantes} ${uso.restantes === 1 ? "jogo restante" : "jogos restantes"}`}
+      </span>
+    </div>`;
+}
+
+async function carregarUsoSemanal() {
+  const el = document.getElementById("uso-semanal");
+  if (!el) return;
+  el.innerHTML = "<p style='opacity:.5;font-size:.85rem'>Carregando…</p>";
+  try {
+    const u = await apiFetch("/bookings/uso-semanal");
+    if (!u) return;
+    const periodo = `${_fmtDataTemporada(u.semana_inicio)} – ${_fmtDataTemporada(u.semana_fim)}`;
+    el.innerHTML = `
+      <p style="font-size:.72rem;opacity:.5;margin-bottom:.6rem">${periodo}</p>
+      ${_barraUso("Simples", u.simples)}
+      ${_barraUso("Duplas", u.duplas)}`;
+  } catch {
+    el.innerHTML = "<p style='color:var(--cor-erro);font-size:.85rem'>Erro ao carregar seus jogos da semana.</p>";
+  }
+}
+
 // ── Agendamento ──────────────────────────────────────────────────────────────
 let _slots = [];
 let _slotSelecionado = null;
 let _jogadores = [];
 let _me = null;
+let _precoJogoAvulso = null;
+
+const POSICOES = [
+  { sel: "sel-adversario",  lado: "B", label: "Adversário" },
+  { sel: "sel-parceiro",    lado: "A", label: "Seu parceiro" },
+  { sel: "sel-adversario2", lado: "B", label: "2º adversário" },
+];
+
+function _tipoSelecionado() {
+  return document.querySelector('input[name="tipo-jogo"]:checked').value;
+}
+
+function _posicoesAtivas() {
+  return _tipoSelecionado() === "duplas" ? POSICOES : POSICOES.slice(0, 1);
+}
+
+function _avulsoLigado() {
+  return document.getElementById("chk-jogo-avulso")?.checked === true;
+}
+
+function _slotEhUltimaHora(slot) {
+  return ["ranking_ultima_hora", "comercial_ultima_hora"].includes(slot?.tipo_disponibilidade);
+}
 
 function fmtHora(isoStr) {
   return new Date(isoStr).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -747,8 +806,9 @@ function fmtPlacar(placar, lado_vencedor) {
 
 function fmtJogadoresSlot(jogadores) {
   if (!jogadores || !jogadores.length) return null;
-  const ladoA = jogadores.filter(j => j.lado === "A").map(j => j.apelido || j.nome.split(" ")[0]).join(" / ");
-  const ladoB = jogadores.filter(j => j.lado === "B").map(j => j.apelido || j.nome.split(" ")[0]).join(" / ");
+  const nome = (j) => esc(j.apelido || j.nome.split(" ")[0]);
+  const ladoA = jogadores.filter(j => j.lado === "A").map(nome).join(" / ");
+  const ladoB = jogadores.filter(j => j.lado === "B").map(nome).join(" / ");
   return ladoA && ladoB ? `${ladoA} vs ${ladoB}` : (ladoA || ladoB);
 }
 
@@ -804,35 +864,121 @@ async function buscarSlots() {
   }
 }
 
+function fmtBRL(v) {
+  return `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+let _convidadosData = {};
+
+function _snapshotConvidados() {
+  _posicoesAtivas().forEach(({ sel }) => {
+    if (!document.getElementById(`cv-${sel}-nome`)) return;
+    _convidadosData[sel] = {
+      nome:    document.getElementById(`cv-${sel}-nome`).value,
+      cpf:     document.getElementById(`cv-${sel}-cpf`).value,
+      tel:     document.getElementById(`cv-${sel}-tel`).value,
+      nasc:    document.getElementById(`cv-${sel}-nasc`).value,
+      apelido: document.getElementById(`cv-${sel}-apelido`).value,
+    };
+  });
+}
+
+function _formConvidadoHtml({ sel, label }) {
+  const d = _convidadosData[sel] || {};
+  return `
+    <div class="convidado-box">
+      <p class="convidado-titulo">Convidado — ${label}</p>
+      <div class="campo"><label>Nome completo</label><input type="text" id="cv-${sel}-nome" value="${esc(d.nome)}" /></div>
+      <div class="campo"><label>CPF</label><input type="text" id="cv-${sel}-cpf" maxlength="14" placeholder="000.000.000-00" value="${esc(d.cpf)}" /></div>
+      <div class="campo"><label>WhatsApp</label><input type="tel" id="cv-${sel}-tel" placeholder="16991234567" value="${esc(d.tel)}" /></div>
+      <div class="campo"><label>Data de nascimento</label><input type="date" id="cv-${sel}-nasc" value="${esc(d.nasc)}" /></div>
+      <div class="campo" style="margin-bottom:0"><label>Apelido (opcional)</label><input type="text" id="cv-${sel}-apelido" value="${esc(d.apelido)}" /></div>
+    </div>`;
+}
+
+function _renderFormsConvidados() {
+  const wrap  = document.getElementById("avulso-convidados");
+  const pagam = document.getElementById("avulso-pagamento");
+  if (!_avulsoLigado()) {
+    _snapshotConvidados();
+    wrap.innerHTML = "";
+    pagam.hidden = true;
+    return;
+  }
+  _snapshotConvidados();
+  const posConv = _posicoesAtivas().filter((p) => document.getElementById(p.sel).value === "convidado");
+  wrap.innerHTML = posConv.map(_formConvidadoHtml).join("");
+  pagam.hidden = posConv.length === 0;
+
+  const total = document.getElementById("avulso-total");
+  if (!posConv.length || _precoJogoAvulso == null) {
+    total.textContent = "";
+  } else {
+    total.innerHTML = `Total: <strong>${fmtBRL(_precoJogoAvulso * posConv.length)}</strong>`
+      + `<span style="opacity:.6;font-weight:400"> · ${posConv.length} × ${fmtBRL(_precoJogoAvulso)}</span>`;
+  }
+}
+
+function _renderSelectsJogadores() {
+  const opts = _jogadores
+    .filter((j) => j.id !== _me?.id)
+    .map((j) => `<option value="${j.id}">${j.nome} · ${j.nivel === "nao_classificado" ? "Não class." : "Nível " + j.nivel}</option>`)
+    .join("");
+  const optConvidado = _avulsoLigado()
+    ? `<option value="convidado">+ Convidado (fora do ranking)</option>`
+    : "";
+
+  const isDuplas = _tipoSelecionado() === "duplas";
+  document.getElementById("campo-parceiro").hidden = !isDuplas;
+  document.getElementById("campo-adversario2").hidden = !isDuplas;
+
+  _posicoesAtivas().forEach(({ sel }) => {
+    const el = document.getElementById(sel);
+    const anterior = el.value;
+    el.innerHTML = optConvidado + opts;
+    if (anterior && [...el.options].some((o) => o.value === anterior)) el.value = anterior;
+  });
+  _renderFormsConvidados();
+}
+
 async function selecionarSlot(idx) {
   _slotSelecionado = _slots[idx];
-  const tipo = document.querySelector('input[name="tipo-jogo"]:checked').value;
 
   if (!_me) _me = await apiFetch("/auth/me");
   if (!_jogadores.length) _jogadores = (await apiFetch("/players")) || [];
-
-  const outros = _jogadores.filter((j) => j.id !== _me?.id);
-  const toOpts = (excluir = []) =>
-    outros.filter((j) => !excluir.includes(j.id))
-      .map((j) => `<option value="${j.id}">${j.nome} · ${j.nivel === "nao_classificado" ? "Não class." : "Nível " + j.nivel}</option>`)
-      .join("");
+  if (_precoJogoAvulso == null) {
+    _precoJogoAvulso = await fetch("/api/v1/public/empresa")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((e) => e?.preco_jogo_avulso ?? null)
+      .catch(() => null);
+  }
 
   document.getElementById("reserva-slot-info").textContent =
     `${fmtHora(_slotSelecionado.data_hora_inicio)} – ${fmtHora(_slotSelecionado.data_hora_fim)}`;
 
-  document.getElementById("sel-adversario").innerHTML = toOpts();
-  const isDuplas = tipo === "duplas";
-  document.getElementById("campo-parceiro").hidden = !isDuplas;
-  document.getElementById("campo-adversario2").hidden = !isDuplas;
-  if (isDuplas) {
-    document.getElementById("sel-parceiro").innerHTML = toOpts();
-    document.getElementById("sel-adversario2").innerHTML = toOpts();
-  }
+  _convidadosData = {};
+  document.getElementById("chk-jogo-avulso").checked = false;
+  document.getElementById("campo-avulso-toggle").hidden = !_slotEhUltimaHora(_slotSelecionado);
+  document.getElementById("avulso-cobranca").hidden = true;
+  document.getElementById("avulso-cobranca").innerHTML = "";
+  document.getElementById("reserva-acoes").hidden = false;
+
+  _renderSelectsJogadores();
 
   document.getElementById("reserva-erro").hidden = true;
   document.getElementById("form-reserva").hidden = false;
   document.getElementById("form-reserva").scrollIntoView({ behavior: "smooth" });
 }
+
+document.getElementById("chk-jogo-avulso")?.addEventListener("change", _renderSelectsJogadores);
+POSICOES.forEach(({ sel }) => {
+  document.getElementById(sel)?.addEventListener("change", _renderFormsConvidados);
+});
 
 document.getElementById("btn-buscar-slots")?.addEventListener("click", buscarSlots);
 document.getElementById("inp-data-jogo")?.addEventListener("keydown", (e) => {
@@ -844,10 +990,104 @@ document.getElementById("btn-cancelar-reserva")?.addEventListener("click", () =>
   _slotSelecionado = null;
 });
 
+function _coletarConvidado(sel, lado) {
+  const g = (campo) => document.getElementById(`cv-${sel}-${campo}`).value.trim();
+  const nome = g("nome");
+  const cpf = g("cpf").replace(/\D/g, "");
+  const tel = g("tel").replace(/\D/g, "");
+  const nasc = g("nasc");
+
+  if (!nome || !cpf || !tel || !nasc) throw new Error("Preencha todos os dados dos convidados.");
+  if (nome.split(/\s+/).length < 2) throw new Error(`Informe o nome completo do convidado (${nome}).`);
+  if (!_validarCPF(cpf)) throw new Error(`CPF inválido para o convidado ${nome}.`);
+
+  return { nome, cpf, whatsapp: tel, data_nascimento: nasc, apelido: g("apelido") || null, lado };
+}
+
+async function confirmarJogoAvulso() {
+  const erroEl = document.getElementById("reserva-erro");
+  const btn = document.getElementById("btn-confirmar-reserva");
+  const tipo = _tipoSelecionado();
+
+  const membros_a = [_me.id];
+  const membros_b = [];
+  const convidados = [];
+
+  try {
+    for (const { sel, lado } of _posicoesAtivas()) {
+      const val = document.getElementById(sel).value;
+      if (val === "convidado") {
+        convidados.push(_coletarConvidado(sel, lado));
+      } else {
+        (lado === "A" ? membros_a : membros_b).push(parseInt(val));
+      }
+    }
+    if (!convidados.length) throw new Error("Selecione ao menos um convidado de fora do ranking.");
+  } catch (e) {
+    erroEl.textContent = e.message;
+    erroEl.hidden = false;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Gerando cobrança…";
+  erroEl.hidden = true;
+
+  try {
+    const r = await apiFetch("/bookings/jogo-avulso", {
+      method: "POST",
+      body: JSON.stringify({
+        data_hora: _slotSelecionado.data_hora_inicio,
+        tipo,
+        metodo_pagamento: document.getElementById("sel-avulso-pagamento").value,
+        membros_a,
+        membros_b,
+        convidados,
+      }),
+    });
+
+    const box = document.getElementById("avulso-cobranca");
+    const pagamento = r.invoice_url
+      ? `<a href="${r.invoice_url}" target="_blank" rel="noopener" class="btn btn-primario" style="width:100%;margin-top:.5rem">Abrir link de pagamento →</a>`
+      : `<div class="pix-row" style="margin-top:.5rem">
+           <input class="pix-code" readonly value="${r.pix_copia_cola || ""}" id="avulso-pix-input" />
+           <button class="btn btn-primario pix-copy-btn" onclick="copiarPixAvulso()">Copiar</button>
+         </div>`;
+    box.innerHTML = `
+      <div class="pix-box">
+        <p class="pix-label">${fmtBRL(r.valor)} — aguardando pagamento</p>
+        <p style="font-size:.78rem;opacity:.7">${r.msg}</p>
+        ${pagamento}
+      </div>
+      <button class="btn btn-secundario" style="width:100%;margin-top:.5rem" onclick="fecharReserva()">Fechar</button>`;
+    box.hidden = false;
+    document.getElementById("reserva-acoes").hidden = true;
+  } catch (e) {
+    erroEl.textContent = e.message.replace(/^Erro \d+: /, "");
+    erroEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Confirmar";
+  }
+}
+
+function copiarPixAvulso() {
+  const el = document.getElementById("avulso-pix-input");
+  if (el?.value) navigator.clipboard.writeText(el.value).then(() => alert("PIX copiado!"));
+}
+
+function fecharReserva() {
+  document.getElementById("form-reserva").hidden = true;
+  _slotSelecionado = null;
+  buscarSlots();
+  carregarUsoSemanal();
+}
+
 document.getElementById("btn-confirmar-reserva")?.addEventListener("click", async () => {
   if (!_slotSelecionado || !_me) return;
+  if (_avulsoLigado()) return confirmarJogoAvulso();
 
-  const tipo = document.querySelector('input[name="tipo-jogo"]:checked').value;
+  const tipo = _tipoSelecionado();
   const advId = parseInt(document.getElementById("sel-adversario").value);
   let lado_a = [_me.id];
   let lado_b = [advId];
@@ -878,6 +1118,7 @@ document.getElementById("btn-confirmar-reserva")?.addEventListener("click", asyn
     document.getElementById("form-reserva").hidden = true;
     _slotSelecionado = null;
     buscarSlots();
+    carregarUsoSemanal();
     alert("Partida agendada!");
   } catch (e) {
     erroEl.textContent = e.message.replace(/^Erro \d+: /, "");
@@ -915,6 +1156,7 @@ function nomesLado(partida, lado, jogadores) {
   return partida.participantes
     .filter((p) => p.lado === lado)
     .map((p) => {
+      if (p.convidado_id) return esc(p.convidado_nome || "Convidado");
       const j = jogadores.find((j) => j.id === p.player_id);
       if (!j) return `#${p.player_id}`;
       if (j.apelido) return j.apelido;
@@ -935,9 +1177,13 @@ function renderPartida(p, aguardandoPlacar) {
   const nA = nomesLado(p, "A", _jogadores);
   const nB = nomesLado(p, "B", _jogadores);
 
+  const futura = new Date(p.data_hora) > new Date();
+
   let statusCls, statusTxt, cardCls = "partida-card";
   if (aguardandoPlacar) {
     statusCls = "status-aguardando"; statusTxt = "Aguardando placar"; cardCls += " aguardando-placar";
+  } else if (p.status === "agendado" && !futura) {
+    statusCls = "status-cancelado"; statusTxt = "Encerrado";
   } else if (p.status === "agendado") {
     statusCls = "status-agendado"; statusTxt = "Agendado"; cardCls += " agendada";
   } else if (p.status === "realizado") {
@@ -948,7 +1194,8 @@ function renderPartida(p, aguardandoPlacar) {
     statusCls = "status-cancelado"; statusTxt = "Cancelado"; cardCls += " cancelado";
   }
 
-  const tipo = p.tipo === "simples" ? "Simples" : "Duplas";
+  const tipo = (p.tipo === "simples" ? "Simples" : "Duplas")
+    + (p.avulso ? ' · <span class="partida-avulso">Jogo avulso — não pontua</span>' : "");
   const vsHtml = p.placar
     ? `<div class="partida-placar">${nA} <span style="opacity:.45;font-weight:400">${placarStr(p.placar)}</span> ${nB}</div>`
     : `<div class="partida-jogadores">${nA} <span style="opacity:.35">vs</span> ${nB}</div>`;
@@ -958,7 +1205,7 @@ function renderPartida(p, aguardandoPlacar) {
          <button class="btn btn-primario" style="font-size:.8rem;padding:.35rem .9rem"
                  onclick="abrirFormPlacar(${p.id})">Lançar placar</button>
        </div>`
-    : p.status === "agendado"
+    : p.status === "agendado" && futura
     ? `<div style="text-align:right;margin-top:.4rem">
          <button class="btn" style="font-size:.75rem;padding:.25rem .7rem;opacity:.7;border:1px solid rgba(255,255,255,.15);border-radius:6px;background:transparent;color:inherit;cursor:pointer"
                  onclick="cancelarPartida(${p.id})">Cancelar partida</button>
@@ -990,9 +1237,11 @@ async function carregarPartidas() {
     _partidas = partidas;
 
     const agora = new Date();
-    const aguardando = partidas.filter((p) => p.status === "agendado" && new Date(p.data_hora) <= agora);
-    const proximas   = partidas.filter((p) => p.status === "agendado" && new Date(p.data_hora) >  agora);
-    const historico  = partidas.filter((p) => p.status !== "agendado");
+    const passada = (p) => new Date(p.data_hora) <= agora;
+    // Jogo avulso não recebe placar: quando passa do horário vai direto ao histórico
+    const aguardando = partidas.filter((p) => p.status === "agendado" && !p.avulso && passada(p));
+    const proximas   = partidas.filter((p) => p.status === "agendado" && !passada(p));
+    const historico  = partidas.filter((p) => p.status !== "agendado" || (p.avulso && passada(p)));
 
     let html = "";
     if (aguardando.length) {

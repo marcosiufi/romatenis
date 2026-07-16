@@ -12,6 +12,7 @@ from app.models.slot_ranking import SlotRanking
 from app.models.lista_espera import ListaEspera, StatusListaEspera
 from app.models.contrato import ContratoClausula
 from app.models.horario_dia_semana import HorarioDiaSemana
+from app.models.convidado import Convidado
 
 __all__ = [
     "Player",
@@ -31,4 +32,5 @@ __all__ = [
     "StatusListaEspera",
     "ContratoClausula",
     "HorarioDiaSemana",
+    "Convidado",
 ]

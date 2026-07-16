@@ -1033,6 +1033,7 @@ async function loadConfiguracoes() {
     document.getElementById('cfg-semestral').value   = cfg.preco_semestral
     document.getElementById('cfg-anual').value       = cfg.preco_anual
     document.getElementById('cfg-locacao').value = cfg.preco_locacao_hora
+    document.getElementById('cfg-jogo-avulso').value = cfg.preco_jogo_avulso
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
   } catch (err) {
@@ -1091,6 +1092,7 @@ async function salvarConfiguracoes(e) {
         preco_semestral:   parseFloat(document.getElementById('cfg-semestral').value),
         preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
         preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
+        preco_jogo_avulso: parseFloat(document.getElementById('cfg-jogo-avulso').value),
       }),
     })
     // Recarrega _precos para atualizar o modal de assinatura

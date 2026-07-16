@@ -9,7 +9,13 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(grep -n \"sec-matchmaking\\\\|</section>$\" frontend/admin/index.html)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python3 -c \"from reportlab.lib.pagesizes import A4; print\\('ok'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python -c \"from reportlab.lib.pagesizes import A4; print\\('ok'\\)\")",
+      "Bash(python \"C:\\\\Users\\\\MARCOS~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Marco-Siufi-OneDrive-Quadra-de-tenis-Sistema-Desenvolvimento-Backend\\\\dc8585c7-1622-470f-8bca-be9ff7dca0d9\\\\scratchpad\\\\gerar_contrato.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\MARCOS~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Marco-Siufi-OneDrive-Quadra-de-tenis-Sistema-Desenvolvimento-Backend\\\\dc8585c7-1622-470f-8bca-be9ff7dca0d9\\\\scratchpad\\\\contrato.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\MARCOS~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Marco-Siufi-OneDrive-Quadra-de-tenis-Sistema-Desenvolvimento-Backend\\\\dc8585c7-1622-470f-8bca-be9ff7dca0d9\\\\scratchpad\\\\contrato.py\" 2>&1)"
     ]
   }
 }

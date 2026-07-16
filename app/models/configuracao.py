@@ -19,6 +19,9 @@ class Configuracao(Base):
     # Locação avulsa
     preco_locacao_hora: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=120.00)
 
+    # Jogo avulso — cobrado por convidado de fora do ranking
+    preco_jogo_avulso: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=60.00)
+
     # Horário de funcionamento
     hora_abertura: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     hora_fechamento: Mapped[int] = mapped_column(Integer, nullable=False, default=22)

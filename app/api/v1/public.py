@@ -461,6 +461,7 @@ async def empresa_publica(db: AsyncSession = Depends(get_db)):
         "instagram":         cfg.instagram,
         "email_contato":     cfg.email_contato,
         "preco_locacao_hora": float(cfg.preco_locacao_hora),
+        "preco_jogo_avulso":  float(cfg.preco_jogo_avulso),
     }
 
 

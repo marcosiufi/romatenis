@@ -469,6 +469,48 @@ select option { background: #1a3320; }
   margin-top: .15rem;
 }
 
+/* ── Uso semanal ── */
+.uso-linha { margin-bottom: .85rem; }
+.uso-linha:last-child { margin-bottom: 0; }
+.uso-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: .3rem;
+}
+.uso-label { font-size: .85rem; font-weight: 600; }
+.uso-nums { font-size: .8rem; opacity: .7; font-variant-numeric: tabular-nums; }
+.uso-barra {
+  height: 6px;
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.uso-barra-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.uso-restante { font-size: .72rem; opacity: .6; display: block; margin-top: .25rem; }
+
+/* ── Jogo avulso ── */
+.convidado-box {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  padding: .8rem .9rem;
+  margin-bottom: .75rem;
+}
+.convidado-titulo {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--cor-terracota);
+  margin-bottom: .6rem;
+}
+.avulso-total {
+  font-size: .9rem;
+  font-weight: 600;
+  text-align: right;
+  margin-bottom: .5rem;
+}
+.partida-avulso { color: #e0b040; opacity: .9; }
+
 /* ── Form placar ── */
 .placar-grid {
   display: grid;

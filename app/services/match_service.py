@@ -88,7 +88,7 @@ class MatchService:
     async def listar_partidas(self, player: Player) -> list[Match]:
         stmt = (
             select(Match)
-            .options(selectinload(Match.participantes))
+            .options(selectinload(Match.participantes).selectinload(MatchParticipant.convidado))
             .order_by(Match.data_hora.desc())
         )
         if not player.is_admin:
@@ -114,6 +114,8 @@ class MatchService:
         match = await self._get_match(match_id)
         if match is None:
             raise MatchError("Partida não encontrada")
+        if match.avulso:
+            raise MatchError("Jogo avulso não pontua no ranking e não aceita placar")
         if match.status != StatusPartida.AGENDADO:
             raise MatchError(f"Partida com status '{match.status.value}' não aceita placar")
         if datetime.now(timezone.utc) < match.data_hora:
@@ -149,6 +151,8 @@ class MatchService:
         match = await self._get_match(match_id)
         if match is None:
             raise MatchError("Partida não encontrada")
+        if match.avulso:
+            raise MatchError("Jogo avulso não pontua no ranking e não aceita W.O.")
         if match.status != StatusPartida.AGENDADO:
             raise MatchError(f"Partida com status '{match.status.value}' não pode receber W.O.")
 
@@ -238,7 +242,7 @@ class MatchService:
         result = await self.db.execute(
             select(Match)
             .where(Match.id == match_id)
-            .options(selectinload(Match.participantes))
+            .options(selectinload(Match.participantes).selectinload(MatchParticipant.convidado))
         )
         return result.scalar_one_or_none()
 

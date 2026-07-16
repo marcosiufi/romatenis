@@ -8,7 +8,15 @@ from app.core.auth import get_current_admin, get_current_player
 from app.core.database import get_db
 from app.models.feriado import Feriado
 from app.models.player import Player
-from app.schemas.booking import BookingCreateLocacao, BookingCreateRanking, BookingOut, SlotDisponivel
+from app.schemas.booking import (
+    BookingCreateJogoAvulso,
+    BookingCreateLocacao,
+    BookingCreateRanking,
+    BookingOut,
+    JogoAvulsoOut,
+    SlotDisponivel,
+    UsoSemanalOut,
+)
 from app.services.booking_service import BookingError, BookingService
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -67,6 +75,32 @@ async def criar_reserva_ranking(body: BookingCreateRanking, player: _Player, db:
     except BookingError as e:
         raise _booking_error(e)
     return booking
+
+
+# ── Uso semanal de jogos ──────────────────────────────────────────────────────
+
+@router.get("/uso-semanal", response_model=UsoSemanalOut)
+async def uso_semanal(player: _Player, db: _DB):
+    """Cota de jogos consumida e restante na semana corrente (seg–dom)."""
+    return await BookingService(db).uso_semanal(player)
+
+
+# ── Criar jogo avulso ─────────────────────────────────────────────────────────
+
+@router.post("/jogo-avulso", response_model=JogoAvulsoOut, status_code=status.HTTP_201_CREATED)
+async def criar_jogo_avulso(body: BookingCreateJogoAvulso, player: _Player, db: _DB):
+    try:
+        return await BookingService(db).criar_jogo_avulso(
+            player=player,
+            data_hora=body.data_hora,
+            tipo=body.tipo,
+            membros_a=body.membros_a,
+            membros_b=body.membros_b,
+            convidados=body.convidados,
+            metodo_pagamento=body.metodo_pagamento,
+        )
+    except BookingError as e:
+        raise _booking_error(e)
 
 
 # ── Criar locação avulsa ──────────────────────────────────────────────────────
