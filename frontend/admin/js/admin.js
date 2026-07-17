@@ -180,7 +180,7 @@ async function loadDashboard() {
       ? `Temporada ativa: ${fmtD(d.temporada_ativa.data_inicio)} → ${fmtD(d.temporada_ativa.data_fim)}`
       : 'Nenhuma temporada ativa'
     const liderInfo = d.lider_ranking
-      ? `${d.lider_ranking.nome} (${d.lider_ranking.pontos} pts)`
+      ? `${escHtml(d.lider_ranking.nome)} (${d.lider_ranking.pontos} pts)`
       : 'Sem pontuações ainda'
     const pausaCard = d.pausas_pendentes > 0
       ? `<div class="dash-card" style="border-left:3px solid #e0a040;cursor:pointer" onclick="switchTab('assinaturas');filtrarPausasPendentes()">
@@ -227,7 +227,7 @@ function filtrarJogadores() {
 }
 
 function _nomeExibicao(p) {
-  return p.apelido ? `${p.apelido} <span style="opacity:.55;font-size:.75em">(${escHtml(p.nome)})</span>` : escHtml(p.nome)
+  return p.apelido ? `${escHtml(p.apelido)} <span style="opacity:.55;font-size:.75em">(${escHtml(p.nome)})</span>` : escHtml(p.nome)
 }
 
 function _statusBadge(status) {
@@ -1018,6 +1018,7 @@ function escHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 // ── Configurações ─────────────────────────────────────────────────────────────
@@ -1309,7 +1310,7 @@ async function loadHorariosEspeciais() {
         : (he.hora_abertura != null ? `${he.hora_abertura}h – ${he.hora_fechamento}h` : 'Horário normal')
       return `<tr>
         <td>${datFmt}</td>
-        <td>${he.descricao}</td>
+        <td>${escHtml(he.descricao)}</td>
         <td>${horario}</td>
         <td style="display:flex;gap:.3rem">
           <button class="btn-xs" onclick='abrirModalHorarioEspecial(${JSON.stringify(he)})'>Editar</button>

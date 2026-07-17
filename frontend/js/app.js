@@ -1,5 +1,14 @@
 const API = "/api/v1";
 
+// ── Escape de HTML ───────────────────────────────────────────────────────────
+// Nome, apelido, e-mail, endereço e afins são texto livre do usuário e chegam
+// da API sem sanitização. Sempre passar por esc() antes de interpolar em
+// innerHTML — inclusive dentro de atributos, por causa das aspas.
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 // ── Tokens ──────────────────────────────────────────────────────────────────
 const Auth = {
   getAccess:   () => localStorage.getItem("access_token"),
@@ -129,9 +138,9 @@ function avatarHtml(jogador, extraClass = "") {
   const iniciais = jogador.nome.trim().split(/\s+/).filter(Boolean)
     .slice(0, 2).map(n => n[0].toUpperCase()).join("");
   if (jogador.foto_url) {
-    return `<div class="avatar${extraClass}"><img src="${jogador.foto_url}" alt="${jogador.nome}" loading="lazy" /></div>`;
+    return `<div class="avatar${extraClass}"><img src="${esc(jogador.foto_url)}" alt="${esc(jogador.nome)}" loading="lazy" /></div>`;
   }
-  return `<div class="avatar${extraClass}">${iniciais}</div>`;
+  return `<div class="avatar${extraClass}">${esc(iniciais)}</div>`;
 }
 
 // ── Upload de foto ────────────────────────────────────────────────────────────
@@ -188,7 +197,7 @@ async function carregarRanking() {
           <div class="ranking-item">
             <span class="ranking-pos">${i + 1}</span>
             ${avatarHtml(j)}
-            <span style="flex:1">${j.apelido || j.nome}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:rgba(200,80,30,.25);color:#e08050;padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
+            <span style="flex:1">${esc(j.apelido || j.nome)}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:rgba(200,80,30,.25);color:#e08050;padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
             <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
           </div>`)
         .join("");
@@ -205,7 +214,7 @@ async function carregarRanking() {
             ${s.top2.map(p => `
               <div class="ranking-item">
                 <span class="ranking-pos">${p.posicao}º</span>
-                <span style="flex:1">${p.nome}</span>
+                <span style="flex:1">${esc(p.nome)}</span>
                 <span class="ranking-pts">${p.pontos} pts</span>
               </div>`).join("")}
           </div>`).join("");
@@ -230,9 +239,9 @@ function _enderecoHtml(p) {
   const linha3 = [p.cep, p.pais].filter(Boolean).join(" · ");
   return `
     <p class="perfil-secao-label">Endereço</p>
-    ${linha1 ? `<div class="perfil-linha"><span class="perfil-label">Logradouro</span><span>${linha1}</span></div>` : ""}
-    ${linha2 ? `<div class="perfil-linha"><span class="perfil-label">Bairro / Cidade</span><span>${linha2}</span></div>` : ""}
-    ${linha3 ? `<div class="perfil-linha" style="border:none"><span class="perfil-label">CEP / País</span><span>${linha3}</span></div>` : ""}`;
+    ${linha1 ? `<div class="perfil-linha"><span class="perfil-label">Logradouro</span><span>${esc(linha1)}</span></div>` : ""}
+    ${linha2 ? `<div class="perfil-linha"><span class="perfil-label">Bairro / Cidade</span><span>${esc(linha2)}</span></div>` : ""}
+    ${linha3 ? `<div class="perfil-linha" style="border:none"><span class="perfil-label">CEP / País</span><span>${esc(linha3)}</span></div>` : ""}`;
 }
 
 // ── Perfil ───────────────────────────────────────────────────────────────────
@@ -374,11 +383,11 @@ async function carregarPerfil() {
         <label class="btn-foto" for="inp-foto-upload">Alterar foto</label>
         <input id="inp-foto-upload" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
       </div>
-      <div class="perfil-linha"><span class="perfil-label">Nome</span><span>${p.nome}</span></div>
-      ${p.apelido ? `<div class="perfil-linha"><span class="perfil-label">Apelido</span><span>${p.apelido}</span></div>` : ""}
-      <div class="perfil-linha"><span class="perfil-label">E-mail</span><span>${p.email}</span></div>
-      <div class="perfil-linha"><span class="perfil-label">Telefone</span><span>${p.telefone}</span></div>
-      ${p.cpf ? `<div class="perfil-linha"><span class="perfil-label">CPF</span><span>${p.cpf}</span></div>` : ""}
+      <div class="perfil-linha"><span class="perfil-label">Nome</span><span>${esc(p.nome)}</span></div>
+      ${p.apelido ? `<div class="perfil-linha"><span class="perfil-label">Apelido</span><span>${esc(p.apelido)}</span></div>` : ""}
+      <div class="perfil-linha"><span class="perfil-label">E-mail</span><span>${esc(p.email)}</span></div>
+      <div class="perfil-linha"><span class="perfil-label">Telefone</span><span>${esc(p.telefone)}</span></div>
+      ${p.cpf ? `<div class="perfil-linha"><span class="perfil-label">CPF</span><span>${esc(p.cpf)}</span></div>` : ""}
       ${p.data_nascimento ? `<div class="perfil-linha"><span class="perfil-label">Nascimento</span><span>${fmtData(p.data_nascimento + "T12:00:00")}</span></div>` : ""}
       <div class="perfil-linha"><span class="perfil-label">Nível</span><span>${nivel}</span></div>
       <div class="perfil-linha"><span class="perfil-label">Rating</span><span>${Math.round(p.rating_atual)}</span></div>
@@ -402,26 +411,26 @@ async function carregarPerfil() {
       </div>
       <div id="perfil-form-editar" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
         <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Editar dados</p>
-        <div class="campo"><label>Nome completo</label><input type="text" id="edit-nome" value="${p.nome || ""}" /></div>
-        <div class="campo"><label>Apelido</label><input type="text" id="edit-apelido" value="${p.apelido || ""}" placeholder="Opcional" /></div>
-        <div class="campo"><label>E-mail</label><input type="email" id="edit-email" value="${p.email || ""}" /></div>
-        <div class="campo"><label>Telefone</label><input type="tel" id="edit-telefone" value="${p.telefone || ""}" placeholder="Ex: 16991234567" /></div>
-        <div class="campo"><label>CPF</label><input type="text" id="edit-cpf" value="${p.cpf || ""}" placeholder="000.000.000-00" maxlength="14" /></div>
-        <div class="campo"><label>Data de nascimento</label><input type="date" id="edit-nascimento" value="${p.data_nascimento || ""}" /></div>
+        <div class="campo"><label>Nome completo</label><input type="text" id="edit-nome" value="${esc(p.nome)}" /></div>
+        <div class="campo"><label>Apelido</label><input type="text" id="edit-apelido" value="${esc(p.apelido)}" placeholder="Opcional" /></div>
+        <div class="campo"><label>E-mail</label><input type="email" id="edit-email" value="${esc(p.email)}" /></div>
+        <div class="campo"><label>Telefone</label><input type="tel" id="edit-telefone" value="${esc(p.telefone)}" placeholder="Ex: 16991234567" /></div>
+        <div class="campo"><label>CPF</label><input type="text" id="edit-cpf" value="${esc(p.cpf)}" placeholder="000.000.000-00" maxlength="14" /></div>
+        <div class="campo"><label>Data de nascimento</label><input type="date" id="edit-nascimento" value="${esc(p.data_nascimento)}" /></div>
         <p class="perfil-secao-label" style="margin-top:.5rem">Endereço</p>
-        <div class="campo"><label>Logradouro</label><input type="text" id="edit-rua" value="${p.rua || ""}" /></div>
+        <div class="campo"><label>Logradouro</label><input type="text" id="edit-rua" value="${esc(p.rua)}" /></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-          <div class="campo"><label>Número</label><input type="text" id="edit-numero" value="${p.numero || ""}" /></div>
-          <div class="campo"><label>Complemento</label><input type="text" id="edit-complemento" value="${p.complemento || ""}" /></div>
+          <div class="campo"><label>Número</label><input type="text" id="edit-numero" value="${esc(p.numero)}" /></div>
+          <div class="campo"><label>Complemento</label><input type="text" id="edit-complemento" value="${esc(p.complemento)}" /></div>
         </div>
-        <div class="campo"><label>Bairro</label><input type="text" id="edit-bairro" value="${p.bairro || ""}" /></div>
+        <div class="campo"><label>Bairro</label><input type="text" id="edit-bairro" value="${esc(p.bairro)}" /></div>
         <div style="display:grid;grid-template-columns:1fr auto;gap:.5rem">
-          <div class="campo"><label>Cidade</label><input type="text" id="edit-cidade" value="${p.cidade || ""}" /></div>
-          <div class="campo"><label>Estado</label><input type="text" id="edit-estado" value="${p.estado || ""}" maxlength="2" style="text-transform:uppercase;width:4rem" /></div>
+          <div class="campo"><label>Cidade</label><input type="text" id="edit-cidade" value="${esc(p.cidade)}" /></div>
+          <div class="campo"><label>Estado</label><input type="text" id="edit-estado" value="${esc(p.estado)}" maxlength="2" style="text-transform:uppercase;width:4rem" /></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-          <div class="campo"><label>CEP</label><input type="text" id="edit-cep" value="${p.cep || ""}" maxlength="9" /></div>
-          <div class="campo"><label>País</label><input type="text" id="edit-pais" value="${p.pais || ""}" /></div>
+          <div class="campo"><label>CEP</label><input type="text" id="edit-cep" value="${esc(p.cep)}" maxlength="9" /></div>
+          <div class="campo"><label>País</label><input type="text" id="edit-pais" value="${esc(p.pais)}" /></div>
         </div>
         <p id="edit-perfil-erro" class="erro" hidden></p>
         <div style="display:flex;gap:.5rem;margin-top:.5rem">
@@ -868,11 +877,6 @@ function fmtBRL(v) {
   return `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
 let _convidadosData = {};
 
 function _snapshotConvidados() {
@@ -927,7 +931,7 @@ function _renderFormsConvidados() {
 function _renderSelectsJogadores() {
   const opts = _jogadores
     .filter((j) => j.id !== _me?.id)
-    .map((j) => `<option value="${j.id}">${j.nome} · ${j.nivel === "nao_classificado" ? "Não class." : "Nível " + j.nivel}</option>`)
+    .map((j) => `<option value="${j.id}">${esc(j.nome)} · ${j.nivel === "nao_classificado" ? "Não class." : "Nível " + esc(j.nivel)}</option>`)
     .join("");
   const optConvidado = _avulsoLigado()
     ? `<option value="convidado">+ Convidado (fora do ranking)</option>`
@@ -1159,9 +1163,9 @@ function nomesLado(partida, lado, jogadores) {
       if (p.convidado_id) return esc(p.convidado_nome || "Convidado");
       const j = jogadores.find((j) => j.id === p.player_id);
       if (!j) return `#${p.player_id}`;
-      if (j.apelido) return j.apelido;
+      if (j.apelido) return esc(j.apelido);
       const partes = j.nome.trim().split(/\s+/);
-      return partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1]}` : partes[0];
+      return esc(partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1]}` : partes[0]);
     })
     .join(" / ");
 }
