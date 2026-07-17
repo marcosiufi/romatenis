@@ -189,8 +189,6 @@ class ConfiguracaoIn(BaseModel):
     preco_anual: float
     preco_locacao_hora: float
     preco_jogo_avulso: float
-    hora_abertura: int = 7
-    hora_fechamento: int = 22
 
 
 @router.get("/configuracoes")
@@ -206,8 +204,6 @@ async def get_configuracoes(
         "preco_anual":        float(cfg.preco_anual),
         "preco_locacao_hora": float(cfg.preco_locacao_hora),
         "preco_jogo_avulso":  float(cfg.preco_jogo_avulso),
-        "hora_abertura":      cfg.hora_abertura,
-        "hora_fechamento":    cfg.hora_fechamento,
     }
 
 
@@ -224,8 +220,6 @@ async def put_configuracoes(
     cfg.preco_anual        = body.preco_anual
     cfg.preco_locacao_hora = body.preco_locacao_hora
     cfg.preco_jogo_avulso  = body.preco_jogo_avulso
-    cfg.hora_abertura      = body.hora_abertura
-    cfg.hora_fechamento    = body.hora_fechamento
     await db.commit()
     return {"ok": True}
 

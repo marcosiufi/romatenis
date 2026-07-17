@@ -22,7 +22,11 @@ class Configuracao(Base):
     # Jogo avulso — cobrado por convidado de fora do ranking
     preco_jogo_avulso: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=60.00)
 
-    # Horário de funcionamento
+    # Horário de funcionamento global — LEGADO, substituído por HorarioDiaSemana
+    # (um registro por dia, semeado para os 7 dias na migration 0021) e por
+    # HorarioEspecial (por data). Restam apenas como fallback defensivo em
+    # public.py, inalcançável enquanto os 7 dias existirem. Não editável pelo
+    # admin: o painel usa a tela "Horários por dia da semana".
     hora_abertura: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     hora_fechamento: Mapped[int] = mapped_column(Integer, nullable=False, default=22)
 
