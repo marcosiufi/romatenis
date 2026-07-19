@@ -128,6 +128,9 @@ async def disponibilidade(
         t = time(hora, 0)
         return any(s.hora_inicio <= t < s.hora_fim for s in slots_ranking)
 
+    horas_libera = cfg.locacao_libera_slot_ranking_horas
+    libera_ranking = timedelta(hours=horas_libera)
+
     slots_out: list[SlotOut] = []
     for hora in range(hora_abertura, hora_fechamento):
         slot_ini = datetime.combine(data, time(hora, 0), tzinfo=FUSO_BR)
@@ -138,8 +141,11 @@ async def disponibilidade(
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="ocupado", motivo="Horário já passou"))
         elif _ocupado(hora):
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="ocupado", motivo="Horário já reservado"))
-        elif _ranking(hora) and agora_br < slot_ini - timedelta(hours=6):
-            slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="bloqueado_ranking", motivo="Reservado para o ranking — disponível 6h antes"))
+        elif _ranking(hora) and agora_br < slot_ini - libera_ranking:
+            slots_out.append(SlotOut(
+                hora_inicio=h_fmt, hora_fim=hf_fmt, status="bloqueado_ranking",
+                motivo=f"Reservado para o ranking — disponível {horas_libera}h antes",
+            ))
         else:
             slots_out.append(SlotOut(hora_inicio=h_fmt, hora_fim=hf_fmt, status="disponivel"))
 
@@ -298,6 +304,8 @@ async def reservar(
         raise HTTPException(status_code=422, detail="Hora inválida. Use o formato HH:00.")
 
     cfg = await Configuracao.get(db)
+    if not cfg.reservas_ativas:
+        raise HTTPException(status_code=403, detail=cfg.msg_reservas_desabilitado)
     valor = float(cfg.preco_locacao_hora) * body.num_horas
 
     # Horário base: config por dia da semana > global
@@ -359,10 +367,14 @@ async def reservar(
     for h in range(hora, hora + body.num_horas):
         t_h = time(h, 0)
         slot_h = datetime.combine(body.data, t_h, tzinfo=FUSO_BR)
-        if any(s.hora_inicio <= t_h < s.hora_fim for s in slots_ranking) and agora_br < slot_h - timedelta(hours=6):
+        horas_libera_r = cfg.locacao_libera_slot_ranking_horas
+        if any(s.hora_inicio <= t_h < s.hora_fim for s in slots_ranking) and agora_br < slot_h - timedelta(hours=horas_libera_r):
             raise HTTPException(
                 status_code=409,
-                detail=f"O horário das {h:02d}:00 está reservado para o ranking e só pode ser alugado nas 6 horas anteriores ao jogo.",
+                detail=(
+                    f"O horário das {h:02d}:00 está reservado para o ranking e só pode "
+                    f"ser alugado nas {horas_libera_r} horas anteriores ao jogo."
+                ),
             )
 
     booking = Booking(
@@ -462,6 +474,11 @@ async def empresa_publica(db: AsyncSession = Depends(get_db)):
         "email_contato":     cfg.email_contato,
         "preco_locacao_hora": float(cfg.preco_locacao_hora),
         "preco_jogo_avulso":  float(cfg.preco_jogo_avulso),
+        # Estado comercial: o front avisa antes de o usuário tentar contratar
+        "contratacao_planos_ativa":  cfg.contratacao_planos_ativa,
+        "reservas_ativas":           cfg.reservas_ativas,
+        "msg_planos_desabilitado":   cfg.msg_planos_desabilitado,
+        "msg_reservas_desabilitado": cfg.msg_reservas_desabilitado,
     }
 
 

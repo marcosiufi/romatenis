@@ -286,6 +286,19 @@ img, svg { display: block; }
   color: var(--text);
 }
 
+/* ── Aviso de pré-lançamento ────────────────────────────────────────────── */
+.aviso-fechado {
+  background: rgba(224,160,64,.12);
+  border: 1px solid rgba(224,160,64,.35);
+  border-radius: var(--r);
+  color: #e0a040;
+  font-size: .85rem;
+  line-height: 1.55;
+  padding: .7rem .9rem;
+  margin-bottom: 1rem;
+}
+.aviso-fechado--centro { max-width: 560px; margin: 1.25rem auto 0; text-align: center; }
+
 /* ── Planos ─────────────────────────────────────────────────────────────── */
 .planos-section { padding: 6rem 0; }
 

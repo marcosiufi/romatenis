@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from sqlalchemy import func, select
 
 from app.core.auth import get_current_admin
@@ -189,6 +189,33 @@ class ConfiguracaoIn(BaseModel):
     preco_anual: float
     preco_locacao_hora: float
     preco_jogo_avulso: float
+    # Disponibilidade comercial
+    contratacao_planos_ativa: bool
+    reservas_ativas: bool
+    msg_planos_desabilitado: str
+    msg_reservas_desabilitado: str
+    # Antecedências (horas)
+    ranking_antecedencia_minima_horas: int = Field(ge=0, le=168)
+    ranking_ultima_hora_horas: int = Field(ge=0, le=168)
+    jogo_avulso_ultima_hora_horas: int = Field(ge=0, le=168)
+    locacao_libera_slot_ranking_horas: int = Field(ge=0, le=168)
+
+    @model_validator(mode="after")
+    def validar_janelas(self) -> "ConfiguracaoIn":
+        # Última hora ≥ mínima anularia a reserva antecipada do ranking:
+        # todo slot cairia na janela de última hora.
+        if self.ranking_ultima_hora_horas >= self.ranking_antecedencia_minima_horas:
+            raise ValueError(
+                "A janela de última hora do ranking deve ser menor que a "
+                "antecedência mínima."
+            )
+        for campo, rotulo in (
+            ("msg_planos_desabilitado", "planos"),
+            ("msg_reservas_desabilitado", "reservas"),
+        ):
+            if not getattr(self, campo).strip():
+                raise ValueError(f"A mensagem de {rotulo} desabilitado não pode ficar vazia.")
+        return self
 
 
 @router.get("/configuracoes")
@@ -204,6 +231,14 @@ async def get_configuracoes(
         "preco_anual":        float(cfg.preco_anual),
         "preco_locacao_hora": float(cfg.preco_locacao_hora),
         "preco_jogo_avulso":  float(cfg.preco_jogo_avulso),
+        "contratacao_planos_ativa":  cfg.contratacao_planos_ativa,
+        "reservas_ativas":           cfg.reservas_ativas,
+        "msg_planos_desabilitado":   cfg.msg_planos_desabilitado,
+        "msg_reservas_desabilitado": cfg.msg_reservas_desabilitado,
+        "ranking_antecedencia_minima_horas": cfg.ranking_antecedencia_minima_horas,
+        "ranking_ultima_hora_horas":         cfg.ranking_ultima_hora_horas,
+        "jogo_avulso_ultima_hora_horas":     cfg.jogo_avulso_ultima_hora_horas,
+        "locacao_libera_slot_ranking_horas": cfg.locacao_libera_slot_ranking_horas,
     }
 
 
@@ -220,6 +255,17 @@ async def put_configuracoes(
     cfg.preco_anual        = body.preco_anual
     cfg.preco_locacao_hora = body.preco_locacao_hora
     cfg.preco_jogo_avulso  = body.preco_jogo_avulso
+
+    cfg.contratacao_planos_ativa  = body.contratacao_planos_ativa
+    cfg.reservas_ativas           = body.reservas_ativas
+    cfg.msg_planos_desabilitado   = body.msg_planos_desabilitado.strip()
+    cfg.msg_reservas_desabilitado = body.msg_reservas_desabilitado.strip()
+
+    cfg.ranking_antecedencia_minima_horas = body.ranking_antecedencia_minima_horas
+    cfg.ranking_ultima_hora_horas         = body.ranking_ultima_hora_horas
+    cfg.jogo_avulso_ultima_hora_horas     = body.jogo_avulso_ultima_hora_horas
+    cfg.locacao_libera_slot_ranking_horas = body.locacao_libera_slot_ranking_horas
+
     await db.commit()
     return {"ok": True}
 

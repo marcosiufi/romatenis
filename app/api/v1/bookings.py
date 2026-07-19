@@ -17,7 +17,11 @@ from app.schemas.booking import (
     SlotDisponivel,
     UsoSemanalOut,
 )
-from app.services.booking_service import BookingError, BookingService
+from app.services.booking_service import (
+    BookingError,
+    BookingService,
+    ReservasDesabilitadasError,
+)
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -27,6 +31,10 @@ _Admin = Annotated[Player, Depends(get_current_admin)]
 
 
 def _booking_error(e: BookingError) -> HTTPException:
+    # Reservas desligadas no painel não são erro de validação do pedido: 403
+    # deixa o app distinguir "ainda não abrimos" de "seu pedido é inválido".
+    if isinstance(e, ReservasDesabilitadasError):
+        return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 

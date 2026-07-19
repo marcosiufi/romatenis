@@ -10,10 +10,11 @@ Horário comercial (seg–sex 08:00–17:00): reservado para aulas/locação.
   Jogadores do ranking só podem reservar nesse intervalo com < 1h de antecedência,
   se o slot ainda estiver livre.
 
-Regras de antecedência (ranking):
-  ≥ 6h → reserva normal
-  < 1h → janela de última hora (qualquer slot livre, incluindo comercial)
-  entre 1h e 6h → bloqueado
+Regras de antecedência (ranking) — todas configuráveis no painel admin,
+valores padrão entre parênteses:
+  ≥ mínima (6h) → reserva normal
+  < última hora (1h) → qualquer slot livre, incluindo comercial
+  entre as duas → bloqueado
 
 Limites semanais (seg–dom):
   Simples: 3 jogos/semana
@@ -58,6 +59,10 @@ class BookingError(ValueError):
     """Violação de regra de negócio de agendamento."""
 
 
+class ReservasDesabilitadasError(BookingError):
+    """Reservas desligadas no painel — usa a mensagem configurada pelo admin."""
+
+
 # ── Helpers de janela horária (operam em datetime local BR) ──────────────────
 
 def _em_janela_ranking(dt_local: datetime, is_feriado: bool) -> bool:
@@ -69,6 +74,12 @@ def _em_janela_ranking(dt_local: datetime, is_feriado: bool) -> bool:
         return time(6, 0) <= t < time(22, 0)
     # Seg–Sex: duas janelas
     return (time(6, 0) <= t < time(8, 0)) or (time(17, 0) <= t < time(22, 0))
+
+
+def _fmt_horas(td: timedelta) -> str:
+    """'6h' / '1 hora' — para mensagens acompanharem o valor configurado."""
+    h = int(td.total_seconds() // 3600)
+    return "1 hora" if h == 1 else f"{h}h"
 
 
 def _em_zona_comercial(dt_local: datetime, is_feriado: bool) -> bool:
@@ -86,6 +97,22 @@ class BookingService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    # ── Configuração ──────────────────────────────────────────────────────────
+
+    async def _antecedencias(self) -> dict[str, timedelta]:
+        """Janelas de antecedência configuradas no painel admin."""
+        cfg = await Configuracao.get(self.db)
+        return {
+            "ranking_minima":     timedelta(hours=cfg.ranking_antecedencia_minima_horas),
+            "ranking_ultima":     timedelta(hours=cfg.ranking_ultima_hora_horas),
+            "jogo_avulso_ultima": timedelta(hours=cfg.jogo_avulso_ultima_hora_horas),
+        }
+
+    async def _exigir_reservas_ativas(self) -> None:
+        cfg = await Configuracao.get(self.db)
+        if not cfg.reservas_ativas:
+            raise ReservasDesabilitadasError(cfg.msg_reservas_desabilitado)
+
     # ── Consultas ─────────────────────────────────────────────────────────────
 
     async def listar_slots(
@@ -98,6 +125,7 @@ class BookingService:
         agora = datetime.now(timezone.utc)
         is_feriado = await self._is_feriado(data)
         horario_esp = await self._get_horario_especial(data)
+        ant = await self._antecedencias()
         slots: list[SlotDisponivel] = []
 
         # Quadra fechada no horário especial → nenhum slot
@@ -175,7 +203,7 @@ class BookingService:
                 continue
 
             if em_comercial:
-                if antecedencia > timedelta(hours=1):
+                if antecedencia > ant["ranking_ultima"]:
                     slots.append(SlotDisponivel(
                         data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                         disponivel=False, tipo_disponibilidade="comercial",
@@ -188,14 +216,18 @@ class BookingService:
                     ))
                 continue
 
-            # Janela de ranking: 6h normal OU última hora; entre 1h–6h é bloqueado
-            if timedelta(hours=1) < antecedencia < timedelta(hours=6):
+            # Ranking: reserva normal acima da mínima OU dentro da última hora;
+            # a faixa entre as duas fica bloqueada.
+            if ant["ranking_ultima"] < antecedencia < ant["ranking_minima"]:
+                horas = _fmt_horas(ant["ranking_minima"])
                 slots.append(SlotDisponivel(
                     data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                     disponivel=False, tipo_disponibilidade="janela_morta",
-                    motivo_indisponibilidade="Reserve com 6h ou mais de antecedência ou na última hora",
+                    motivo_indisponibilidade=(
+                        f"Reserve com {horas} ou mais de antecedência ou na última hora"
+                    ),
                 ))
-            elif antecedencia <= timedelta(hours=1):
+            elif antecedencia <= ant["ranking_ultima"]:
                 slots.append(SlotDisponivel(
                     data_hora_inicio=dt_utc, data_hora_fim=dt_fim_utc,
                     disponivel=True, tipo_disponibilidade="ranking_ultima_hora",
@@ -236,6 +268,7 @@ class BookingService:
         lado_a: list[int],
         lado_b: list[int],
     ) -> tuple[Booking, Match]:
+        await self._exigir_reservas_ativas()
         await self._validar_slot_ranking(player, data_hora, tipo, lado_a, lado_b)
 
         # Temporada ativa (opcional — partida pode existir sem temporada)
@@ -278,6 +311,7 @@ class BookingService:
         nome_externo: str | None = None,
         telefone_externo: str | None = None,
     ) -> Booking:
+        await self._exigir_reservas_ativas()
         agora = datetime.now(timezone.utc)
         if data_hora <= agora:
             raise BookingError("Não é possível reservar no passado")
@@ -315,6 +349,7 @@ class BookingService:
         A partida não pontua, mas consome a cota semanal de cada membro. O slot
         fica AGUARDANDO_PAGAMENTO e só é confirmado pelo webhook do Asaas.
         """
+        await self._exigir_reservas_ativas()
         await self._validar_jogo_avulso(
             player, data_hora, tipo, membros_a, membros_b, convidados
         )
@@ -499,17 +534,20 @@ class BookingService:
                 raise BookingError("Horário fora das janelas disponíveis para o ranking")
 
         antecedencia = data_hora - agora
+        ant = await self._antecedencias()
+        ultima = _fmt_horas(ant["ranking_ultima"])
 
         if em_comercial:
-            if antecedencia > timedelta(hours=1):
+            if antecedencia > ant["ranking_ultima"]:
                 raise BookingError(
                     "Horário comercial (seg–sex 08h–17h) disponível apenas na janela "
-                    "de última hora (menos de 1h de antecedência)"
+                    f"de última hora (menos de {ultima} de antecedência)"
                 )
-        elif timedelta(hours=1) < antecedencia < timedelta(hours=6):
+        elif ant["ranking_ultima"] < antecedencia < ant["ranking_minima"]:
             raise BookingError(
-                "Fora da janela de reserva: reserve com no mínimo 6h de antecedência "
-                "ou na janela de última hora (menos de 1h do início)"
+                "Fora da janela de reserva: reserve com no mínimo "
+                f"{_fmt_horas(ant['ranking_minima'])} de antecedência ou na janela "
+                f"de última hora (menos de {ultima} do início)"
             )
 
         if not player.contrato_assinado:
@@ -550,10 +588,11 @@ class BookingService:
             raise BookingError("Não é possível reservar no passado")
 
         antecedencia = data_hora - agora
-        if antecedencia > timedelta(hours=1):
+        janela = (await self._antecedencias())["jogo_avulso_ultima"]
+        if antecedencia > janela:
             raise BookingError(
                 "Jogo avulso só pode ser reservado na última hora "
-                "(menos de 1h antes do início)"
+                f"(menos de {_fmt_horas(janela)} antes do início)"
             )
 
         dt_local = data_hora.astimezone(FUSO_BR)

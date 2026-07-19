@@ -73,6 +73,10 @@ class RankingCheioError(Exception):
         super().__init__("ranking_cheio")
 
 
+class ContratacaoDesabilitadaError(SubscriptionError):
+    """Contratações desligadas no painel — usa a mensagem configurada pelo admin."""
+
+
 @dataclass
 class AssinaturaResult:
     subscription: Subscription
@@ -245,9 +249,10 @@ class SubscriptionService:
             raise SubscriptionError("Você já possui uma assinatura ativa.")
 
         config = await Configuracao.get(self.db)
+        if not config.contratacao_planos_ativa:
+            raise ContratacaoDesabilitadaError(config.msg_planos_desabilitado)
         if await self._ranking_cheio(config.limite_ranking):
             raise RankingCheioError(config.limite_ranking)
-        config = await Configuracao.get(self.db)
         meses = PLANO_MESES[plano]
         precos_totais = {
             PlanoAssinatura.MENSAL:     float(config.preco_mensal),
@@ -270,6 +275,8 @@ class SubscriptionService:
                 raise SubscriptionError("Você ainda tem mais de 7 dias de assinatura ativa.")
 
         config = await Configuracao.get(self.db)
+        if not config.contratacao_planos_ativa:
+            raise ContratacaoDesabilitadaError(config.msg_planos_desabilitado)
         meses = PLANO_MESES[plano]
         precos_totais = {
             PlanoAssinatura.MENSAL:      float(config.preco_mensal),

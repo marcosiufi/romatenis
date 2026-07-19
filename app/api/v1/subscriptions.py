@@ -15,7 +15,12 @@ from app.schemas.subscription import (
     SubscriptionOut,
     SubscriptionRenovar,
 )
-from app.services.subscription_service import RankingCheioError, SubscriptionError, SubscriptionService
+from app.services.subscription_service import (
+    ContratacaoDesabilitadaError,
+    RankingCheioError,
+    SubscriptionError,
+    SubscriptionService,
+)
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
@@ -138,6 +143,8 @@ async def contratar_plano(
         res = await svc.contratar(player, body.plano, body.forma_pagamento)
     except RankingCheioError as e:
         raise HTTPException(409, detail={"code": "ranking_cheio", "limite": e.limite})
+    except ContratacaoDesabilitadaError as e:
+        raise HTTPException(403, str(e))
     except SubscriptionError as e:
         raise HTTPException(422, str(e))
     out = SubscriptionCreateOut.model_validate(res.subscription)
@@ -213,6 +220,8 @@ async def renovar(
 ):
     try:
         res = await svc.renovar(player, body.plano, body.forma_pagamento)
+    except ContratacaoDesabilitadaError as e:
+        raise HTTPException(403, str(e))
     except SubscriptionError as e:
         raise HTTPException(422, str(e))
 

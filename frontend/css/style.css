@@ -469,6 +469,18 @@ select option { background: #1a3320; }
   margin-top: .15rem;
 }
 
+/* ── Aviso de pré-lançamento ── */
+.aviso-fechado {
+  background: rgba(224,160,64,.12);
+  border: 1px solid rgba(224,160,64,.35);
+  border-radius: var(--raio);
+  color: #e0b040;
+  font-size: .82rem;
+  line-height: 1.5;
+  padding: .65rem .8rem;
+  margin-bottom: .75rem;
+}
+
 /* ── Uso semanal ── */
 .uso-linha { margin-bottom: .85rem; }
 .uso-linha:last-child { margin-bottom: 0; }

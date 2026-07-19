@@ -166,6 +166,7 @@
         <!-- Passo 1: data + grade de horários -->
         <div id="bk-step-data">
           <h3>Verificar disponibilidade</h3>
+          <p id="bk-aviso-fechado" class="aviso-fechado" hidden></p>
           <div class="aw-field">
             <label>Data desejada</label>
             <input type="date" id="bk-data" />
@@ -475,9 +476,9 @@
     <div id="pl-s-fila" hidden>
       <div style="text-align:center;padding:.75rem 0 .5rem">
         <div style="font-size:2.2rem;margin-bottom:.5rem">⏳</div>
-        <p class="bm-title">Ranking no limite</p>
+        <p class="bm-title" id="pl-fila-titulo">Ranking no limite</p>
       </div>
-      <p style="font-size:.87rem;color:var(--muted);margin-bottom:1rem;text-align:center;line-height:1.6">
+      <p id="pl-fila-texto" style="font-size:.87rem;color:var(--muted);margin-bottom:1rem;text-align:center;line-height:1.6">
         O Programa de Ranking Roma Tênis atingiu seu limite de
         <strong id="pl-fila-limite">30</strong> jogadores.<br>
         Você pode entrar na lista de espera e será notificado por e-mail quando uma vaga abrir.
@@ -520,6 +521,7 @@
       <h2 class="section-title">Planos de Assinatura</h2>
       <div class="accent-line center"></div>
       <p class="section-sub">Acesso ao app exclusivo, à quadra, ranking oficial e agendamento prioritário.</p>
+      <p id="pl-aviso-fechado" class="aviso-fechado aviso-fechado--centro" hidden></p>
     </div>
 
     <div class="planos-grid" id="planos-grid">
@@ -780,6 +782,19 @@ function plAbrirModal(plano) {
   plPasso('regras');
 }
 
+// Passo de lista de espera — serve tanto para ranking cheio quanto para o
+// período de pré-lançamento (contratações desligadas no painel).
+function plMostrarFila(titulo, texto) {
+  if (titulo) document.getElementById('pl-fila-titulo').textContent = titulo;
+  if (texto)  document.getElementById('pl-fila-texto').textContent  = texto;
+  document.getElementById('pl-fila-posicao').style.display = 'none';
+  document.getElementById('pl-fila-erro').style.display = 'none';
+  const btn = document.getElementById('pl-btn-entrar-fila');
+  btn.disabled = false;
+  btn.textContent = 'Entrar na lista de espera';
+  plPasso('fila');
+}
+
 function plFecharModal() {
   document.getElementById('pl-modal').hidden = true;
   document.body.style.overflow = '';
@@ -905,11 +920,12 @@ async function plConfirmar() {
       if (r.status === 401) { plPasso('auth'); plAba('login'); document.getElementById('pl-login-erro').textContent = 'Sessão expirada. Faça login novamente.'; document.getElementById('pl-login-erro').hidden = false; return; }
       if (r.status === 409 && d.detail?.code === 'ranking_cheio') {
         document.getElementById('pl-fila-limite').textContent = d.detail.limite || 30;
-        document.getElementById('pl-fila-posicao').style.display = 'none';
-        document.getElementById('pl-fila-erro').style.display = 'none';
-        document.getElementById('pl-btn-entrar-fila').disabled = false;
-        document.getElementById('pl-btn-entrar-fila').textContent = 'Entrar na lista de espera';
-        plPasso('fila'); return;
+        plMostrarFila(); return;
+      }
+      // 403 = contratações desligadas no painel: a lista de espera segue aberta
+      if (r.status === 403) {
+        plMostrarFila('Ainda não abrimos', typeof d.detail === 'string' ? d.detail : '');
+        return;
       }
       erEl.textContent = typeof d.detail === 'string' ? d.detail : 'Erro ao processar contratação.'; erEl.hidden = false; return;
     }
@@ -1086,6 +1102,12 @@ document.getElementById('bk-btn-reservar').addEventListener('click', bkAbrirModa
 // ── Modal ──────────────────────────────────────────────────────────────────
 function bkAbrirModal() {
   if (!bkSlot) return;
+  if (_siteEstado.reservas_ativas === false) {
+    const e = document.getElementById('bk-erro-data');
+    e.textContent = _siteEstado.msg_reservas_desabilitado;
+    e.hidden = false;
+    return;
+  }
   ['bm-slot-ref','bm-conf-resumo','bm-pix-resumo','bm-ok-resumo','bm-cartao-resumo'].forEach(id => bkRenderResumo(id));
   document.getElementById('bk-modal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -1229,6 +1251,43 @@ function bkCopiarPix() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') bkFecharModal(); });
 document.getElementById('bk-modal').addEventListener('click', function(e) { if (e.target === this) bkFecharModal(); });
 
+// ── Estado comercial (pré-lançamento) ───────────────────────────────────────
+// Preenchido pelo /public/empresa logo abaixo. Enquanto não chega, assume tudo
+// habilitado — o backend é a autoridade e devolve 403 se estiver desligado.
+const _siteEstado = {
+  contratacao_planos_ativa: true,
+  reservas_ativas: true,
+  msg_planos_desabilitado: '',
+  msg_reservas_desabilitado: '',
+};
+
+function _aplicarEstadoComercial(e) {
+  Object.assign(_siteEstado, {
+    contratacao_planos_ativa: e.contratacao_planos_ativa !== false,
+    reservas_ativas: e.reservas_ativas !== false,
+    msg_planos_desabilitado: e.msg_planos_desabilitado || '',
+    msg_reservas_desabilitado: e.msg_reservas_desabilitado || '',
+  });
+
+  if (!_siteEstado.reservas_ativas) {
+    const aviso = document.getElementById('bk-aviso-fechado');
+    if (aviso) {
+      aviso.textContent = _siteEstado.msg_reservas_desabilitado;
+      aviso.hidden = false;
+    }
+  }
+  if (!_siteEstado.contratacao_planos_ativa) {
+    const aviso = document.getElementById('pl-aviso-fechado');
+    if (aviso) {
+      aviso.textContent = _siteEstado.msg_planos_desabilitado;
+      aviso.hidden = false;
+    }
+    document.querySelectorAll('.plano-cta').forEach(b => {
+      b.textContent = 'Entrar na lista de espera';
+    });
+  }
+}
+
 // ── Dados da empresa na seção de contato ────────────────────────────────────
 (function () {
   function fmtWhatsapp(num) {
@@ -1266,6 +1325,8 @@ document.getElementById('bk-modal').addEventListener('click', function(e) { if (
       if (precoHora && e.preco_locacao_hora != null) {
         precoHora.textContent = e.preco_locacao_hora.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
+
+      _aplicarEstadoComercial(e);
 
       const legal = document.getElementById('footer-legal');
       if (legal && (e.nome_fantasia || e.cnpj)) {

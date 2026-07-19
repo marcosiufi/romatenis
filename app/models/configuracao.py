@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, Numeric, String, Text, select
+from sqlalchemy import Boolean, Integer, Numeric, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,45 @@ class Configuracao(Base):
 
     # Limite de jogadores no ranking
     limite_ranking: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+
+    # ── Disponibilidade comercial ────────────────────────────────────────────
+    # Permitem divulgar antes da abertura: com estes desligados o cadastro e a
+    # lista de espera continuam funcionando, mas ninguém contrata nem reserva.
+    contratacao_planos_ativa: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    reservas_ativas: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    msg_planos_desabilitado: Mapped[str] = mapped_column(
+        Text, nullable=False,
+        default="Ainda não estamos aceitando contratações. Cadastre-se e entre "
+                "na lista de espera para ser avisado assim que abrirmos!",
+    )
+    msg_reservas_desabilitado: Mapped[str] = mapped_column(
+        Text, nullable=False,
+        default="Ainda não estamos aceitando reservas de quadra. "
+                "Em breve liberaremos os agendamentos!",
+    )
+
+    # ── Regras de antecedência (horas) ───────────────────────────────────────
+    # Ranking: reserva normal exige no mínimo X h; abaixo da janela de última
+    # hora libera qualquer slot; entre as duas fica bloqueado.
+    ranking_antecedencia_minima_horas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=6, server_default="6"
+    )
+    ranking_ultima_hora_horas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    # Jogo avulso: só pode ser reservado dentro desta janela antes do início.
+    jogo_avulso_ultima_hora_horas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    # Locação avulsa: slot reservado ao ranking só é liberado para locação
+    # quando faltar menos que este tempo para o jogo.
+    locacao_libera_slot_ranking_horas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=6, server_default="6"
+    )
 
     # Dados da empresa
     razao_social: Mapped[str] = mapped_column(String(300), nullable=False, default="Rosangela Pioli Siufi")

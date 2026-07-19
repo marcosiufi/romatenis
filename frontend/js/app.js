@@ -1,5 +1,29 @@
 const API = "/api/v1";
 
+// ── Estado comercial (pré-lançamento) ────────────────────────────────────────
+// Cacheado após a primeira busca. Enquanto não chega, assume tudo habilitado —
+// o backend é a autoridade e responde 403 com a mensagem configurada.
+let _empresa = null;
+
+async function getEmpresa() {
+  if (_empresa) return _empresa;
+  _empresa = await fetch("/api/v1/public/empresa")
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+  return _empresa;
+}
+
+/** Mostra o aviso de "ainda não abrimos" no elemento indicado. */
+async function aplicarAvisoComercial(elId, chaveAtiva, chaveMsg) {
+  const el = document.getElementById(elId);
+  if (!el) return true;
+  const e = await getEmpresa();
+  const ativo = e?.[chaveAtiva] !== false;
+  el.textContent = ativo ? "" : (e?.[chaveMsg] || "");
+  el.hidden = ativo;
+  return ativo;
+}
+
 // ── Escape de HTML ───────────────────────────────────────────────────────────
 // Nome, apelido, e-mail, endereço e afins são texto livre do usuário e chegam
 // da API sem sanitização. Sempre passar por esc() antes de interpolar em
@@ -69,8 +93,14 @@ function mostrarTela(id) {
   if (id === "tela-ranking")  carregarRanking();
   if (id === "tela-perfil")   carregarPerfil();
   if (id === "tela-partidas") carregarPartidas();
-  if (id === "tela-agendar")  carregarUsoSemanal();
-  if (id === "tela-locacao")  locInit();
+  if (id === "tela-agendar") {
+    carregarUsoSemanal();
+    aplicarAvisoComercial("aviso-reservas-agendar", "reservas_ativas", "msg_reservas_desabilitado");
+  }
+  if (id === "tela-locacao") {
+    locInit();
+    aplicarAvisoComercial("aviso-reservas-locacao", "reservas_ativas", "msg_reservas_desabilitado");
+  }
 }
 
 navLinks.forEach((a) => {
@@ -353,10 +383,14 @@ async function carregarPerfil() {
         <button class="btn btn-secundario" style="width:100%;font-size:.8rem" onclick="sairDaFila()">Sair da lista de espera</button>
       </div>`;
     } else {
+      const emp = await getEmpresa();
+      const planosAtivos = emp?.contratacao_planos_ativa !== false;
       subHtml = `<div class="sub-card sub-card--sem">
            <p style="font-weight:600;margin-bottom:.4rem">Sem assinatura ativa</p>
-           <p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Contrate um plano para ter acesso ao ranking e agendamentos.</p>
-           <button class="btn btn-primario" style="width:100%" onclick="abrirRenovarUI()">Contratar Plano</button>
+           ${planosAtivos
+             ? `<p style="font-size:.8rem;opacity:.7;margin-bottom:.75rem">Contrate um plano para ter acesso ao ranking e agendamentos.</p>
+                <button class="btn btn-primario" style="width:100%" onclick="abrirRenovarUI()">Contratar Plano</button>`
+             : `<p class="aviso-fechado" style="margin-bottom:0">${esc(emp?.msg_planos_desabilitado || "")}</p>`}
          </div>`;
     }
 
@@ -956,10 +990,7 @@ async function selecionarSlot(idx) {
   if (!_me) _me = await apiFetch("/auth/me");
   if (!_jogadores.length) _jogadores = (await apiFetch("/players")) || [];
   if (_precoJogoAvulso == null) {
-    _precoJogoAvulso = await fetch("/api/v1/public/empresa")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((e) => e?.preco_jogo_avulso ?? null)
-      .catch(() => null);
+    _precoJogoAvulso = (await getEmpresa())?.preco_jogo_avulso ?? null;
   }
 
   document.getElementById("reserva-slot-info").textContent =

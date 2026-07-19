@@ -1035,6 +1035,21 @@ async function loadConfiguracoes() {
     document.getElementById('cfg-anual').value       = cfg.preco_anual
     document.getElementById('cfg-locacao').value = cfg.preco_locacao_hora
     document.getElementById('cfg-jogo-avulso').value = cfg.preco_jogo_avulso
+
+    document.getElementById('cfg-planos-ativa').checked   = cfg.contratacao_planos_ativa
+    document.getElementById('cfg-reservas-ativa').checked = cfg.reservas_ativas
+    document.getElementById('cfg-msg-planos').value       = cfg.msg_planos_desabilitado
+    document.getElementById('cfg-msg-reservas').value     = cfg.msg_reservas_desabilitado
+
+    document.getElementById('cfg-ant-ranking-min').value    = cfg.ranking_antecedencia_minima_horas
+    document.getElementById('cfg-ant-ranking-ultima').value = cfg.ranking_ultima_hora_horas
+    document.getElementById('cfg-ant-jogo-avulso').value    = cfg.jogo_avulso_ultima_hora_horas
+    document.getElementById('cfg-ant-locacao').value        = cfg.locacao_libera_slot_ranking_horas
+
+    // Mantém a explicação da seção de slots do ranking coerente com a config
+    const srHoras = document.getElementById('sr-horas-libera')
+    if (srHoras) srHoras.textContent = cfg.locacao_libera_slot_ranking_horas
+
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
   } catch (err) {
@@ -1082,6 +1097,19 @@ function _renderTabelaParcelas(cfg) {
 async function salvarConfiguracoes(e) {
   e.preventDefault()
   showErr('cfg-erro', '')
+
+  const antMin    = parseInt(document.getElementById('cfg-ant-ranking-min').value, 10)
+  const antUltima = parseInt(document.getElementById('cfg-ant-ranking-ultima').value, 10)
+  if (antUltima >= antMin) {
+    showErr('cfg-erro', 'A janela de última hora do ranking deve ser menor que a antecedência mínima.')
+    return
+  }
+  if (!document.getElementById('cfg-msg-planos').value.trim() ||
+      !document.getElementById('cfg-msg-reservas').value.trim()) {
+    showErr('cfg-erro', 'As mensagens de aviso não podem ficar vazias.')
+    return
+  }
+
   const btn = e.submitter
   btn.disabled = true
   try {
@@ -1094,6 +1122,16 @@ async function salvarConfiguracoes(e) {
         preco_anual:       parseFloat(document.getElementById('cfg-anual').value),
         preco_locacao_hora: parseFloat(document.getElementById('cfg-locacao').value),
         preco_jogo_avulso: parseFloat(document.getElementById('cfg-jogo-avulso').value),
+
+        contratacao_planos_ativa:  document.getElementById('cfg-planos-ativa').checked,
+        reservas_ativas:           document.getElementById('cfg-reservas-ativa').checked,
+        msg_planos_desabilitado:   document.getElementById('cfg-msg-planos').value,
+        msg_reservas_desabilitado: document.getElementById('cfg-msg-reservas').value,
+
+        ranking_antecedencia_minima_horas: parseInt(document.getElementById('cfg-ant-ranking-min').value, 10),
+        ranking_ultima_hora_horas:         parseInt(document.getElementById('cfg-ant-ranking-ultima').value, 10),
+        jogo_avulso_ultima_hora_horas:     parseInt(document.getElementById('cfg-ant-jogo-avulso').value, 10),
+        locacao_libera_slot_ranking_horas: parseInt(document.getElementById('cfg-ant-locacao').value, 10),
       }),
     })
     // Recarrega _precos para atualizar o modal de assinatura

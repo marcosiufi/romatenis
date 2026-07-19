@@ -365,6 +365,21 @@
     @media (max-width: 520px) { .form-grid-2 { grid-template-columns: 1fr; } }
     .form-section-label { font-size: 0.72rem; font-weight: 700; color: var(--clr-accent); text-transform: uppercase; letter-spacing: .06em; margin: 1rem 0 0.4rem; border-bottom: 1px solid var(--clr-border); padding-bottom: 0.25rem; }
 
+    /* Configurações — toggles e antecedências */
+    .cfg-toggle { font-weight: 600; }
+    .cfg-toggle input[type=checkbox] { width: 1.05rem; height: 1.05rem; accent-color: var(--clr-accent); }
+    .cfg-grid-horas {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 0.75rem 1.25rem;
+    }
+    .cfg-hint { font-size: 0.72rem; color: var(--clr-text-muted); margin-top: 0.25rem; line-height: 1.4; }
+    .cfg-off-badge {
+      display: inline-block; font-size: 0.68rem; font-weight: 700;
+      padding: 0.1rem 0.45rem; border-radius: 20px; margin-left: 0.4rem;
+      background: rgba(224,112,64,.18); color: #e08050;
+    }
+
     .season-card {
       background: var(--clr-surface);
       border: 1px solid var(--clr-border);
@@ -696,6 +711,69 @@
             </div>
           </div>
 
+          <hr style="border:none;border-top:1px solid var(--clr-border);margin:1.75rem 0">
+
+          <p class="form-section-label" style="margin-bottom:.35rem">Disponibilidade Comercial</p>
+          <p style="font-size:.78rem;opacity:.6;margin-bottom:.9rem">
+            Desligue para divulgar antes da abertura. O cadastro de jogadores e a
+            entrada na lista de espera continuam funcionando normalmente.
+          </p>
+
+          <div style="display:flex;gap:2rem;flex-wrap:wrap">
+            <div style="flex:1;min-width:280px">
+              <label class="form-check cfg-toggle">
+                <input type="checkbox" id="cfg-planos-ativa">
+                <span>Contratação de planos habilitada</span>
+              </label>
+              <div class="form-row" style="margin-top:.5rem;margin-bottom:0">
+                <label>Aviso quando desabilitado</label>
+                <textarea id="cfg-msg-planos" rows="3" required
+                          style="width:100%;resize:vertical"></textarea>
+              </div>
+            </div>
+            <div style="flex:1;min-width:280px">
+              <label class="form-check cfg-toggle">
+                <input type="checkbox" id="cfg-reservas-ativa">
+                <span>Reservas de quadra habilitadas</span>
+              </label>
+              <div class="form-row" style="margin-top:.5rem;margin-bottom:0">
+                <label>Aviso quando desabilitado</label>
+                <textarea id="cfg-msg-reservas" rows="3" required
+                          style="width:100%;resize:vertical"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--clr-border);margin:1.75rem 0">
+
+          <p class="form-section-label" style="margin-bottom:.35rem">Regras de Antecedência</p>
+          <p style="font-size:.78rem;opacity:.6;margin-bottom:.9rem">
+            Todos os valores em horas.
+          </p>
+
+          <div class="cfg-grid-horas">
+            <div class="form-row">
+              <label>Ranking — antecedência mínima</label>
+              <input type="number" id="cfg-ant-ranking-min" min="0" max="168" step="1" required>
+              <p class="cfg-hint">Abaixo disso, só na janela de última hora.</p>
+            </div>
+            <div class="form-row">
+              <label>Ranking — janela de última hora</label>
+              <input type="number" id="cfg-ant-ranking-ultima" min="0" max="168" step="1" required>
+              <p class="cfg-hint">Libera qualquer horário livre. Deve ser menor que a mínima.</p>
+            </div>
+            <div class="form-row">
+              <label>Jogo avulso — janela de última hora</label>
+              <input type="number" id="cfg-ant-jogo-avulso" min="0" max="168" step="1" required>
+              <p class="cfg-hint">Só pode ser reservado dentro desta janela.</p>
+            </div>
+            <div class="form-row">
+              <label>Locação — libera horário do ranking</label>
+              <input type="number" id="cfg-ant-locacao" min="0" max="168" step="1" required>
+              <p class="cfg-hint">Horário do ranking vira locação avulsa faltando este tempo.</p>
+            </div>
+          </div>
+
           <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.75rem"></div>
           <div style="margin-top:1.5rem">
             <button type="submit" class="btn-xs primary">Salvar Configurações</button>
@@ -723,7 +801,7 @@
           <button class="btn-xs primary" onclick="abrirModalSlotRanking()">+ Adicionar</button>
         </div>
         <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">
-          Nesses horários, o aluguel público só é permitido nas 6 horas que antecedem o jogo, caso o slot esteja livre.
+          Nesses horários, o aluguel público só é permitido nas <strong id="sr-horas-libera">6</strong> horas que antecedem o jogo, caso o slot esteja livre.
         </p>
         <table class="admin-table" id="tbl-slots-ranking">
           <thead><tr><th>Dia</th><th>Início</th><th>Fim</th><th>Status</th><th></th></tr></thead>
