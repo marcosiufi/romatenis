@@ -47,6 +47,11 @@ class Match(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
+    # Evita reenviar o lembrete a cada ciclo do scheduler
+    lembrete_enviado: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     season: Mapped["Season | None"] = relationship(back_populates="matches")
     participantes: Mapped[list["MatchParticipant"]] = relationship(
         back_populates="match", cascade="all, delete-orphan"

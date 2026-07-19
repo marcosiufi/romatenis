@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 async def _scheduler_loop() -> None:
     """Roda a cada hora: expirações, avisos de vencimento, fila e contratos."""
     from app.core.database import async_session_factory
+    from app.services.match_service import MatchService
     from app.services.subscription_service import SubscriptionService
 
     await asyncio.sleep(60)  # aguarda o app subir completamente
@@ -35,11 +36,13 @@ async def _scheduler_loop() -> None:
                 # vaga para sempre e ninguém mais é chamado.
                 convocacoes = await svc.verificar_convocacoes_expiradas()
                 lembretes = await svc.enviar_lembretes_contrato()
-                if expiradas or avisos or resetados or convocacoes or lembretes:
+                partidas = await MatchService(db).enviar_lembretes_partida()
+                if expiradas or avisos or resetados or convocacoes or lembretes or partidas:
                     logger.info(
                         "Scheduler: %d expiradas, %d avisos, %d niveis zerados, "
-                        "%d convocacoes expiradas, %d lembretes de contrato",
-                        expiradas, avisos, resetados, convocacoes, lembretes,
+                        "%d convocacoes expiradas, %d lembretes de contrato, "
+                        "%d lembretes de partida",
+                        expiradas, avisos, resetados, convocacoes, lembretes, partidas,
                     )
         except Exception as exc:
             logger.error("Scheduler error: %s", exc)

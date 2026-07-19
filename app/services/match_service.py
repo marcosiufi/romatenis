@@ -17,7 +17,9 @@ Classificação A/B/C/D:
   Apenas jogadores com ≥ 5 partidas computadas.
 """
 
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
@@ -26,7 +28,16 @@ from app.core.database import AsyncSession
 from app.models.booking import Booking, StatusReserva
 from app.models.match import LadoPartida, Match, MatchParticipant, StatusPartida, TipoPartida
 from app.models.player import NivelJogador, Player
+from app.services import email_service
 from app.services.whatsapp_service import WhatsAppService
+
+logger = logging.getLogger(__name__)
+
+FUSO_BR = ZoneInfo("America/Sao_Paulo")
+
+# Janela do lembrete de partida. Maior que o intervalo do scheduler (1h) para
+# nenhuma partida cair entre dois ciclos.
+LEMBRETE_PARTIDA_ANTES = timedelta(hours=3)
 
 
 class MatchError(ValueError):
@@ -99,6 +110,71 @@ class MatchService:
             )
         result = await self.db.execute(stmt)
         return list(result.scalars().unique().all())
+
+    async def enviar_lembretes_partida(self) -> int:
+        """
+        Lembra por e-mail quem tem partida nas próximas horas.
+
+        A janela é maior que o intervalo do scheduler para nenhuma partida
+        escapar entre dois ciclos; a flag no Match impede o reenvio. Jogos
+        marcados em cima da hora ficam de fora — a pessoa acabou de agendar.
+        """
+        agora = datetime.now(timezone.utc)
+        limite = agora + LEMBRETE_PARTIDA_ANTES
+
+        result = await self.db.execute(
+            select(Match)
+            .options(
+                selectinload(Match.participantes).selectinload(MatchParticipant.player),
+                selectinload(Match.participantes).selectinload(MatchParticipant.convidado),
+            )
+            .where(
+                Match.status == StatusPartida.AGENDADO,
+                Match.lembrete_enviado.is_(False),
+                Match.data_hora > agora,
+                Match.data_hora <= limite,
+            )
+        )
+        partidas = list(result.scalars().unique().all())
+
+        enviados = 0
+        for match in partidas:
+            quando = match.data_hora.astimezone(FUSO_BR).strftime("%H:%M")
+            tipo = "Simples" if match.tipo == TipoPartida.SIMPLES else "Duplas"
+            if match.avulso:
+                tipo += " (jogo avulso)"
+
+            for part in match.participantes:
+                player = part.player
+                if not player or not player.email:
+                    continue  # convidados de jogo avulso não recebem
+                adversarios = self._nomes_lado_oposto(match, part.lado)
+                try:
+                    await email_service.enviar_lembrete_partida(
+                        player.nome, player.email, quando, adversarios, tipo,
+                    )
+                    enviados += 1
+                except Exception as exc:
+                    logger.error("Falha no lembrete de partida para %s: %s", player.email, exc)
+
+            match.lembrete_enviado = True
+
+        if partidas:
+            await self.db.commit()
+        return enviados
+
+    @staticmethod
+    def _nomes_lado_oposto(match: Match, lado: LadoPartida) -> str:
+        oposto = LadoPartida.B if lado == LadoPartida.A else LadoPartida.A
+        nomes = []
+        for p in match.participantes:
+            if p.lado != oposto:
+                continue
+            if p.player:
+                nomes.append(p.player.apelido or p.player.nome.split()[0])
+            elif p.convidado:
+                nomes.append(p.convidado.nome_exibicao)
+        return " / ".join(nomes)
 
     # ── Ações ──────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 """Endpoints públicos: disponibilidade de quadra, cadastro e reserva avulsa."""
+import logging
 import re
 from datetime import date, datetime, time, timedelta
 from typing import Annotated, Literal
@@ -25,6 +26,10 @@ from app.models.player import Player, StatusJogador
 from app.models.season import Season, StatusTemporada
 from app.models.slot_ranking import SlotRanking
 from app.schemas.player import TokenResponse
+from app.services import email_service
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/public", tags=["public"])
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
@@ -254,6 +259,14 @@ async def cadastro_publico(
     db.add(player)
     await db.commit()
     await db.refresh(player)
+
+    # Falha no e-mail não pode impedir o cadastro já gravado
+    try:
+        await email_service.enviar_boas_vindas(
+            player.nome, player.email, f"{settings.DOMAIN}/app/"
+        )
+    except Exception as exc:
+        logger.error("Falha ao enviar boas-vindas para %s: %s", player.email, exc)
 
     return TokenResponse(
         access_token=create_access_token(player.id, player.is_admin),

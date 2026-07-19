@@ -86,6 +86,88 @@ async def send_email(to_email: str, subject: str, html: str) -> None:
 
 # ── Templates ─────────────────────────────────────────────────────────────────
 
+async def enviar_boas_vindas(nome: str, email: str, link_app: str) -> None:
+    """Enviado no cadastro, antes de qualquer contratação."""
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>! 👋</p>
+    <p style="color:#555;line-height:1.6">
+      Que bom ter você por aqui. Sua conta no <strong>Roma Tênis</strong> foi criada
+      com sucesso — já dá para entrar no app e explorar.
+    </p>
+    <p style="text-align:center">{_btn("Acessar o app", link_app)}</p>
+    <div style="background:#f7f3ee;border-radius:6px;padding:16px 20px;margin:20px 0">
+      <p style="color:#333;margin:0 0 10px;font-weight:700;font-size:.92rem">O que você encontra por lá</p>
+      <p style="color:#555;margin:0;line-height:1.8;font-size:.9rem">
+        🏆 Classificação e pontuação da temporada<br>
+        📅 Agendamento das suas partidas do ranking<br>
+        🎾 Aluguel de quadra avulso<br>
+        📊 Seu histórico de jogos e evolução
+      </p>
+    </div>
+    <p style="color:#888;font-size:.85rem;line-height:1.6">
+      Dúvidas? É só responder este e-mail ou chamar a gente no WhatsApp.
+    </p>"""
+    await send_email(
+        email,
+        "🎾 Bem-vindo ao Roma Tênis!",
+        _html_base("Sua conta foi criada", corpo),
+    )
+
+
+async def enviar_abertura_inscricoes(nome: str, email: str, link: str) -> None:
+    """Avisa quem está na lista de espera que as contratações abriram."""
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <div style="background:#eaf7ee;border-left:4px solid #4ab870;padding:16px 20px;margin:18px 0;border-radius:4px">
+      <p style="color:#1e7a3e;margin:0;line-height:1.6;font-size:1rem">
+        🎉 <strong>As inscrições do ranking estão abertas!</strong>
+      </p>
+    </div>
+    <p style="color:#555;line-height:1.6">
+      Você estava na nossa lista de espera e agora já pode escolher seu plano e
+      garantir sua vaga no Programa de Ranking Roma Tênis.
+    </p>
+    <p style="text-align:center">{_btn("Ver planos e contratar", link)}</p>
+    <p style="color:#888;font-size:.85rem;line-height:1.6">
+      As vagas são limitadas e preenchidas por ordem de contratação — vale não deixar para depois.
+    </p>"""
+    await send_email(
+        email,
+        "🎉 As inscrições do ranking abriram — Roma Tênis",
+        _html_base("Inscrições abertas", corpo),
+    )
+
+
+async def enviar_lembrete_partida(
+    nome: str, email: str, quando: str, adversarios: str, tipo: str,
+) -> None:
+    """Lembrete algumas horas antes da partida agendada."""
+    adv = (
+        f'<tr><td><strong>Contra</strong></td><td>{adversarios}</td></tr>'
+        if adversarios else ""
+    )
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">
+      Passando para lembrar da sua partida de hoje. 🎾
+    </p>
+    <div style="background:#f7f3ee;border-left:4px solid #c0622a;padding:16px 20px;margin:18px 0;border-radius:4px">
+      <table cellpadding="5" style="font-size:.95rem;color:#555;border-collapse:collapse">
+        <tr><td><strong>Horário</strong></td><td>{quando}</td></tr>
+        <tr><td><strong>Modalidade</strong></td><td>{tipo}</td></tr>
+        {adv}
+      </table>
+    </div>
+    <p style="color:#888;font-size:.85rem;line-height:1.6">
+      Não vai conseguir ir? Cancele pelo app o quanto antes para liberar o horário
+      para outros jogadores.
+    </p>"""
+    await send_email(
+        email,
+        f"🎾 Sua partida é hoje às {quando}",
+        _html_base("Lembrete de partida", corpo),
+    )
+
 async def enviar_aviso_vencimento(nome: str, email: str, plano: str, dias: int, data_exp: str, link_renovacao: str) -> None:
     urgencia = "⚠️ HOJE" if dias <= 1 else f"em {dias} dias"
     corpo = f"""

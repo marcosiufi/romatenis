@@ -1121,7 +1121,7 @@ async function salvarConfiguracoes(e) {
   const btn = e.submitter
   btn.disabled = true
   try {
-    await api('/admin/configuracoes', {
+    const resp = await api('/admin/configuracoes', {
       method: 'PUT',
       body: JSON.stringify({
         preco_mensal:      parseFloat(document.getElementById('cfg-mensal').value),
@@ -1154,7 +1154,10 @@ async function salvarConfiguracoes(e) {
     }
     _atualizarInfoPrecos(cfg)
     _renderTabelaParcelas(cfg)
-    toast('Configurações salvas')
+    const avisados = resp?.lista_espera_avisada || 0
+    toast(avisados > 0
+      ? `Configurações salvas · ${avisados} pessoa(s) da lista de espera avisada(s) da abertura`
+      : 'Configurações salvas')
   } catch (err) {
     showErr('cfg-erro', err.message)
   } finally {

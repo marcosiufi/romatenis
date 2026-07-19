@@ -265,6 +265,10 @@ async def put_configuracoes(
     db=Depends(get_db),
 ):
     cfg = await Configuracao.get(db)
+    # Só a transição desligado → ligado avisa a lista de espera; salvar a tela
+    # de novo com o toggle já ligado não reenvia nada.
+    abriu_contratacao = body.contratacao_planos_ativa and not cfg.contratacao_planos_ativa
+
     cfg.preco_mensal       = body.preco_mensal
     cfg.preco_trimestral   = body.preco_trimestral
     cfg.preco_semestral    = body.preco_semestral
@@ -283,7 +287,13 @@ async def put_configuracoes(
     cfg.locacao_libera_slot_ranking_horas = body.locacao_libera_slot_ranking_horas
 
     await db.commit()
-    return {"ok": True}
+
+    avisados = 0
+    if abriu_contratacao:
+        from app.services.subscription_service import SubscriptionService
+        avisados = await SubscriptionService(db).avisar_lista_espera_abertura()
+
+    return {"ok": True, "lista_espera_avisada": avisados}
 
 
 # ── Contratos (Autentique) ────────────────────────────────────────────────────

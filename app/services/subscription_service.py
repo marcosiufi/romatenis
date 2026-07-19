@@ -616,6 +616,37 @@ class SubscriptionService:
             await self.db.commit()
         return enviados
 
+    async def avisar_lista_espera_abertura(self) -> int:
+        """
+        Avisa quem aguarda na fila que as contratações abriram.
+
+        Chamado quando o admin liga o toggle de planos. Não altera o status das
+        entradas: continuam AGUARDANDO e o fluxo normal de convocação segue
+        valendo caso o ranking encha.
+        """
+        from app.core.config import settings as cfg
+
+        result = await self.db.execute(
+            select(ListaEspera)
+            .options(selectinload(ListaEspera.player))
+            .where(ListaEspera.status == StatusListaEspera.AGUARDANDO)
+            .order_by(ListaEspera.data_inscricao.asc())
+        )
+
+        enviados = 0
+        for entrada in result.scalars().all():
+            player = entrada.player
+            if not player or not player.email:
+                continue
+            try:
+                await email_service.enviar_abertura_inscricoes(
+                    player.nome, player.email, f"{cfg.DOMAIN}/#planos"
+                )
+                enviados += 1
+            except Exception as exc:
+                logger.error("Falha ao avisar %s da abertura: %s", player.email, exc)
+        return enviados
+
     async def _alertar_admins_falha_contrato(self, player: Player, erro: str) -> None:
         """Avisa todos os admins. Nunca propaga erro: a assinatura já foi paga."""
         try:
