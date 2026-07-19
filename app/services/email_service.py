@@ -2,7 +2,9 @@
 
 import asyncio
 import logging
+import re
 import smtplib
+from html import unescape
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -29,7 +31,7 @@ def _html_base(titulo: str, corpo: str) -> str:
           {corpo}
         </td></tr>
         <tr><td style="padding:16px;text-align:center;font-size:0.75rem;color:#888">
-          Roma Tênis · Este é um e-mail automático, não responda.
+          {settings.SMTP_FROM_NAME} · Em caso de dúvida, basta responder este e-mail.
         </td></tr>
       </table>
     </td></tr>
@@ -103,6 +105,31 @@ def remetente() -> str:
     return settings.SMTP_FROM.strip() or settings.SMTP_USER
 
 
+def html_para_texto(html: str) -> str:
+    """
+    Versão em texto puro do e-mail.
+
+    Um multipart/alternative sem a parte text/plain é lido pelos filtros como
+    estrutura malformada e pesa contra a entrega na caixa de entrada.
+    """
+    txt = re.sub(r"(?is)<(script|style)\b.*?</\1>", "", html)
+    # Preserva o destino dos links: "texto (url)"
+    txt = re.sub(
+        r'(?is)<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+        lambda m: f"{re.sub(r'<[^>]+>', '', m.group(2)).strip()} ({m.group(1)})",
+        txt,
+    )
+    txt = re.sub(r"(?i)<br\s*/?>", "\n", txt)
+    txt = re.sub(r"(?i)</(p|div|tr|h[1-6]|li)>", "\n", txt)
+    txt = re.sub(r"(?i)</t[dh]>", " ", txt)
+    txt = re.sub(r"<[^>]+>", "", txt)
+    txt = unescape(txt)
+    txt = re.sub(r"[ \t ]+", " ", txt)
+    txt = re.sub(r" *\n *", "\n", txt)
+    txt = re.sub(r"\n{3,}", "\n\n", txt)
+    return txt.strip()
+
+
 def _send_sync(to_email: str, subject: str, html: str) -> None:
     if not settings.SMTP_HOST or not settings.SMTP_USER:
         raise EmailNaoConfigurado(
@@ -118,6 +145,9 @@ def _send_sync(to_email: str, subject: str, html: str) -> None:
     msg["To"] = to_email
     # Respostas voltam para o remetente exibido, não para a conta de autenticação
     msg["Reply-To"] = de
+    # A ordem importa: em multipart/alternative o cliente exibe a última parte
+    # que souber renderizar, então o HTML vem depois do texto.
+    msg.attach(MIMEText(html_para_texto(html), "plain", "utf-8"))
     msg.attach(MIMEText(html, "html", "utf-8"))
 
     porta = settings.SMTP_PORT
