@@ -188,7 +188,15 @@ async function loadDashboard() {
            <div class="dc-val" style="color:#e0a040">${d.pausas_pendentes} aguardando aprovação →</div>
          </div>`
       : ''
+    // Pagou mas a Autentique nunca enviou o contrato: fica bloqueado em silêncio
+    const contratoCard = d.contratos_nao_enviados > 0
+      ? `<div class="dash-card" style="border-left:3px solid #c0392b;cursor:pointer" onclick="switchTab('jogadores')">
+           <div class="dc-label">🚨 Contrato não enviado</div>
+           <div class="dc-val" style="color:#e06060">${d.contratos_nao_enviados} jogador(es) pagos e bloqueados →</div>
+         </div>`
+      : ''
     extra.innerHTML = `
+      ${contratoCard}
       ${pausaCard}
       <div class="dash-card">
         <div class="dc-label">Temporada</div>

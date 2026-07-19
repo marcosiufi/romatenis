@@ -88,6 +88,21 @@ async def dashboard(
         )
     ) or 0
 
+    # Assinou e pagou, mas a Autentique nunca chegou a enviar o contrato:
+    # o jogador fica bloqueado sem que nada apareça no painel.
+    contratos_nao_enviados = (
+        await db.scalar(
+            select(func.count(func.distinct(Player.id)))
+            .select_from(Player)
+            .join(Subscription, Subscription.player_id == Player.id)
+            .where(
+                Player.contrato_enviado_em.is_(None),
+                Player.contrato_assinado.is_(False),
+                Subscription.status != StatusAssinatura.CANCELADA,
+            )
+        )
+    ) or 0
+
     return {
         "total_jogadores": total_jogadores,
         "assinaturas_ativas": assinaturas_ativas,
@@ -113,6 +128,7 @@ async def dashboard(
             else None
         ),
         "pausas_pendentes": pausas_pendentes,
+        "contratos_nao_enviados": contratos_nao_enviados,
     }
 
 

@@ -160,6 +160,43 @@ async def enviar_contrato_pendente(nome: str, email: str, whatsapp: str = "") ->
     )
 
 
+async def alertar_admin_falha_contrato(
+    admin_email: str, jogador_nome: str, jogador_email: str,
+    jogador_telefone: str, erro: str,
+) -> None:
+    """
+    Avisa o administrador que a Autentique não conseguiu enviar o contrato.
+
+    Sem contrato o jogador fica pago porém bloqueado, e a falha é silenciosa —
+    daí o alerta ativo em vez de só registrar no log.
+    """
+    tel = _fmt_whatsapp(jogador_telefone) or jogador_telefone or "—"
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Falha no envio automático de contrato</p>
+    <div style="background:#fdeaea;border-left:4px solid #c0392b;padding:14px 18px;margin:18px 0;border-radius:4px">
+      <p style="color:#7a1e1e;margin:0;line-height:1.6">
+        O contrato de <strong>{jogador_nome}</strong> não pôde ser enviado pela Autentique.
+        O jogador <strong>pagou mas está bloqueado</strong> até assinar.
+      </p>
+    </div>
+    <table cellpadding="6" style="font-size:.9rem;color:#555;border-collapse:collapse">
+      <tr><td><strong>Jogador</strong></td><td>{jogador_nome}</td></tr>
+      <tr><td><strong>E-mail</strong></td><td>{jogador_email}</td></tr>
+      <tr><td><strong>WhatsApp</strong></td><td>{tel}</td></tr>
+      <tr><td><strong>Erro</strong></td><td style="color:#c0392b">{erro}</td></tr>
+    </table>
+    <p style="color:#555;line-height:1.6;margin-top:18px">
+      <strong>O que fazer:</strong> abra o painel em <em>Jogadores</em>, localize o jogador
+      e use <em>Enviar contrato</em> para tentar de novo. Se a Autentique seguir
+      falhando, confirme a assinatura manualmente por lá.
+    </p>"""
+    await send_email(
+        admin_email,
+        f"🚨 Falha ao enviar contrato — {jogador_nome}",
+        _html_base("Ação necessária", corpo),
+    )
+
+
 async def enviar_contrato_assinado(nome: str, email: str) -> None:
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>

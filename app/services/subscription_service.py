@@ -241,6 +241,7 @@ class SubscriptionService:
                 result.contrato_link = link
             except AutentiqueError as e:
                 logger.error("Erro ao enviar contrato automático: %s", e)
+                await self._alertar_admins_falha_contrato(player, str(e))
             player.status = StatusJogador.ASSINATURA.value
         else:
             result.contrato_link = player.contrato_link_assinatura
@@ -614,6 +615,23 @@ class SubscriptionService:
         if enviados:
             await self.db.commit()
         return enviados
+
+    async def _alertar_admins_falha_contrato(self, player: Player, erro: str) -> None:
+        """Avisa todos os admins. Nunca propaga erro: a assinatura já foi paga."""
+        try:
+            admins = (await self.db.execute(
+                select(Player).where(
+                    Player.is_admin.is_(True),
+                    Player.email.isnot(None),
+                )
+            )).scalars().all()
+            for admin in admins:
+                await email_service.alertar_admin_falha_contrato(
+                    admin.email, player.nome, player.email,
+                    player.telefone or "", erro,
+                )
+        except Exception as exc:
+            logger.error("Falha ao alertar admins sobre contrato: %s", exc)
 
     async def enviar_lembretes_contrato(self) -> int:
         """
