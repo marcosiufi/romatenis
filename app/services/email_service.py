@@ -61,6 +61,43 @@ class EmailNaoConfigurado(RuntimeError):
     """SMTP_HOST/SMTP_USER ausentes — nada é enviado."""
 
 
+def explicar_erro_smtp(exc: Exception) -> str:
+    """Traduz as falhas mais comuns em instruções acionáveis."""
+    txt = str(exc).lower()
+
+    if "application-specific password required" in txt or "534" in txt:
+        return (
+            "O Google exige uma Senha de App. Ative a verificação em duas etapas "
+            "e gere uma senha em myaccount.google.com/apppasswords — a senha "
+            "normal da conta não funciona."
+        )
+    if "username and password not accepted" in txt or "535" in txt:
+        return (
+            "Usuário ou senha recusados. Confirme que SMTP_PASS é uma Senha de App "
+            "de 16 caracteres (sem espaços) e que SMTP_USER é o endereço completo. "
+            "No Google Workspace, o administrador também precisa manter o acesso "
+            "SMTP habilitado."
+        )
+    if "not authorized" in txt or "550" in txt or "553" in txt:
+        return (
+            "O servidor recusou o remetente. O endereço em SMTP_FROM precisa ser "
+            "a própria conta autenticada ou um alias autorizado nela."
+        )
+    if "timed out" in txt or "timeout" in txt:
+        return (
+            "Tempo esgotado ao conectar. Verifique se o servidor libera a porta de "
+            "saída configurada (587 ou 465)."
+        )
+    if "connection refused" in txt or "getaddrinfo" in txt or "name or service" in txt:
+        return "Não foi possível conectar ao servidor SMTP. Confira SMTP_HOST e SMTP_PORT."
+    if "wrong version number" in txt or "ssl" in txt:
+        return (
+            "Incompatibilidade de criptografia: use porta 587 (STARTTLS) ou "
+            "465 (SSL) conforme o provedor."
+        )
+    return f"{type(exc).__name__}: {exc}"
+
+
 def remetente() -> str:
     """Endereço que aparece como remetente (From)."""
     return settings.SMTP_FROM.strip() or settings.SMTP_USER

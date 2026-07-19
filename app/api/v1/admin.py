@@ -344,7 +344,7 @@ async def testar_email(
     except email_service.EmailNaoConfigurado as e:
         raise HTTPException(422, str(e))
     except Exception as e:
-        raise HTTPException(502, f"{type(e).__name__}: {e}")
+        raise HTTPException(502, email_service.explicar_erro_smtp(e))
 
     return {"ok": True, "enviado_para": body.destinatario,
             "remetente": email_service.remetente()}

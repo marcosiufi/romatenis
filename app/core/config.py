@@ -2,7 +2,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # encoding explícito: SMTP_FROM_NAME tem acento e um .env salvo noutra
+    # codificação quebraria a leitura de forma difícil de diagnosticar
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     DATABASE_URL: str = "postgresql+asyncpg://ranking:ranking@localhost:5432/ranking_tenis"
     SECRET_KEY: str = "dev-secret-key"
