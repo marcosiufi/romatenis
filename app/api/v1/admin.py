@@ -296,6 +296,60 @@ async def put_configuracoes(
     return {"ok": True, "lista_espera_avisada": avisados}
 
 
+# ── Diagnóstico de e-mail ─────────────────────────────────────────────────────
+
+@router.get("/email/status")
+async def email_status(_admin: Player = Depends(get_current_admin)):
+    """Mostra como o SMTP está configurado, sem expor a senha."""
+    from app.core.config import settings
+    from app.services import email_service
+
+    return {
+        "configurado": bool(settings.SMTP_HOST and settings.SMTP_USER),
+        "host": settings.SMTP_HOST or None,
+        "porta": settings.SMTP_PORT,
+        "usuario": settings.SMTP_USER or None,
+        "senha_definida": bool(settings.SMTP_PASS),
+        "remetente": email_service.remetente() or None,
+        "remetente_nome": settings.SMTP_FROM_NAME,
+        # Alias exige autorização no provedor; sinaliza para conferência
+        "usa_alias": bool(settings.SMTP_FROM.strip())
+        and settings.SMTP_FROM.strip() != settings.SMTP_USER,
+    }
+
+
+class TesteEmailIn(BaseModel):
+    destinatario: EmailStr
+
+
+@router.post("/email/testar")
+async def testar_email(
+    body: TesteEmailIn,
+    admin: Player = Depends(get_current_admin),
+):
+    """Envia um e-mail de teste e devolve o erro real do servidor SMTP."""
+    from app.services import email_service
+
+    corpo = (
+        '<p style="color:#333">Se você está lendo isto, o envio de e-mails do '
+        "Roma Tênis está funcionando. ✅</p>"
+        '<p style="color:#888;font-size:.85rem">Disparado pelo painel administrativo.</p>'
+    )
+    try:
+        await email_service.send_email_estrito(
+            body.destinatario,
+            "✅ Teste de envio — Roma Tênis",
+            email_service._html_base("Teste de configuração", corpo),
+        )
+    except email_service.EmailNaoConfigurado as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+
+    return {"ok": True, "enviado_para": body.destinatario,
+            "remetente": email_service.remetente()}
+
+
 # ── Contratos (Autentique) ────────────────────────────────────────────────────
 
 @router.post("/players/{player_id}/enviar-contrato", response_model=PlayerOut)

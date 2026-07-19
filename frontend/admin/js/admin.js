@@ -158,7 +158,7 @@ function switchTab(tab) {
     case 'assinaturas':    loadAssinaturas(); break
     case 'locacoes':       loadLocacoes(); break
     case 'matchmaking':    loadInvitations(); break
-    case 'configuracoes':  loadConfiguracoes(); loadSlotsRanking(); loadHorariosEspeciais(); loadHorarios(); break
+    case 'configuracoes':  loadConfiguracoes(); loadEmailStatus(); loadSlotsRanking(); loadHorariosEspeciais(); loadHorarios(); break
     case 'lista-espera':   loadListaEspera(); break
     case 'contrato':       loadContrato(); break
     case 'empresa':        loadEmpresa(); break
@@ -1100,6 +1100,53 @@ function _renderTabelaParcelas(cfg) {
       <td>R$ ${fmtR$(total)}</td>
     </tr>`
   }).join('')
+}
+
+// ── Diagnóstico de e-mail ─────────────────────────────────────────────────────
+
+async function loadEmailStatus() {
+  const el = document.getElementById('email-status')
+  if (!el) return
+  try {
+    const s = await api('/admin/email/status')
+    if (!s.configurado) {
+      el.innerHTML = `<span class="cfg-off-badge">SMTP não configurado</span>
+        <div style="opacity:.65;margin-top:.4rem">
+          Defina SMTP_HOST, SMTP_USER e SMTP_PASS no <code>.env</code> do servidor.
+        </div>`
+      return
+    }
+    const alias = s.usa_alias
+      ? `<div style="opacity:.65;margin-top:.3rem">
+           Enviando como <strong>${escHtml(s.remetente)}</strong> usando a conta
+           <strong>${escHtml(s.usuario)}</strong> — o provedor precisa autorizar este alias.
+         </div>`
+      : ''
+    el.innerHTML = `
+      <div><strong>Servidor:</strong> ${escHtml(s.host)}:${s.porta}</div>
+      <div><strong>Remetente:</strong> ${escHtml(s.remetente_nome)} &lt;${escHtml(s.remetente)}&gt;</div>
+      <div><strong>Senha:</strong> ${s.senha_definida ? 'definida' : '<span style="color:#e06060">ausente</span>'}</div>
+      ${alias}`
+  } catch (err) {
+    el.innerHTML = `<span style="color:#e06060">Erro ao ler status: ${escHtml(err.message)}</span>`
+  }
+}
+
+async function testarEmail() {
+  const dest = document.getElementById('email-teste-dest').value.trim()
+  const out = document.getElementById('email-teste-result')
+  if (!dest) { out.innerHTML = '<span style="color:#e0a040">Informe um e-mail de destino.</span>'; return }
+  out.innerHTML = 'Enviando…'
+  try {
+    const r = await api('/admin/email/testar', {
+      method: 'POST',
+      body: JSON.stringify({ destinatario: dest }),
+    })
+    out.innerHTML = `<span style="color:#4ab870">✅ Enviado para ${escHtml(r.enviado_para)}
+      como ${escHtml(r.remetente)}. Confira a caixa de entrada (e o spam).</span>`
+  } catch (err) {
+    out.innerHTML = `<span style="color:#e06060">❌ Falhou: ${escHtml(err.message)}</span>`
+  }
 }
 
 async function salvarConfiguracoes(e) {

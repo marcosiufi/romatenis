@@ -37,8 +37,14 @@ class Settings(BaseSettings):
     # SMTP para notificações por e-mail
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
-    SMTP_USER: str = ""
+    SMTP_USER: str = ""      # conta usada para autenticar
     SMTP_PASS: str = ""
+    # Remetente exibido. Deixe vazio para usar o SMTP_USER. Só preencha com um
+    # endereço diferente se o servidor autorizar enviar em nome dele (alias
+    # verificado no Gmail ou caixa do próprio domínio) — caso contrário o
+    # provedor rejeita ou a mensagem cai em spam.
+    SMTP_FROM: str = ""
+    SMTP_FROM_NAME: str = "Roma Tênis"
 
     WHATSAPP_TOKEN: str = ""
     WHATSAPP_PHONE_NUMBER_ID: str = ""

@@ -778,6 +778,23 @@
           <div style="margin-top:1.5rem">
             <button type="submit" class="btn-xs primary">Salvar Configurações</button>
           </div>
+
+          <hr style="border:none;border-top:1px solid var(--clr-border);margin:1.75rem 0">
+
+          <p class="form-section-label" style="margin-bottom:.35rem">Envio de E-mails</p>
+          <p style="font-size:.78rem;opacity:.6;margin-bottom:.9rem">
+            Configurado no arquivo <code>.env</code> do servidor. Use o teste abaixo
+            para conferir se está funcionando.
+          </p>
+          <div id="email-status" style="font-size:.82rem;margin-bottom:.9rem">Carregando…</div>
+          <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-row" style="margin-bottom:0;flex:1;min-width:220px;max-width:340px">
+              <label>Enviar teste para</label>
+              <input type="email" id="email-teste-dest" placeholder="seu@email.com">
+            </div>
+            <button type="button" class="btn-xs sec" onclick="testarEmail()">Enviar teste</button>
+          </div>
+          <div id="email-teste-result" style="font-size:.82rem;margin-top:.7rem"></div>
         </form>
       </div>
 

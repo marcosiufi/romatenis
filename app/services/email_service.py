@@ -3,8 +3,10 @@
 import asyncio
 import logging
 import smtplib
+from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
 from functools import partial
 
 from app.core.config import settings
@@ -55,31 +57,67 @@ def _fmt_whatsapp(numero: str) -> str:
     return ""
 
 
+class EmailNaoConfigurado(RuntimeError):
+    """SMTP_HOST/SMTP_USER ausentes — nada é enviado."""
+
+
+def remetente() -> str:
+    """Endereço que aparece como remetente (From)."""
+    return settings.SMTP_FROM.strip() or settings.SMTP_USER
+
+
 def _send_sync(to_email: str, subject: str, html: str) -> None:
     if not settings.SMTP_HOST or not settings.SMTP_USER:
-        logger.warning("SMTP não configurado — e-mail não enviado para %s", to_email)
-        return
+        raise EmailNaoConfigurado(
+            "SMTP_HOST e SMTP_USER precisam estar definidos no .env do servidor."
+        )
 
+    de = remetente()
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"Roma Tênis <{settings.SMTP_USER}>"
+    # formataddr codifica só o nome; sem isso o acento de "Roma Tênis" faz o
+    # Python codificar o header inteiro e o endereço vira ilegível para o SMTP.
+    msg["From"] = formataddr((str(Header(settings.SMTP_FROM_NAME, "utf-8")), de))
     msg["To"] = to_email
+    # Respostas voltam para o remetente exibido, não para a conta de autenticação
+    msg["Reply-To"] = de
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as s:
+    porta = settings.SMTP_PORT
+    if porta == 465:
+        smtp_cm = smtplib.SMTP_SSL(settings.SMTP_HOST, porta, timeout=20)
+    else:
+        smtp_cm = smtplib.SMTP(settings.SMTP_HOST, porta, timeout=20)
+
+    with smtp_cm as s:
+        s.ehlo()
+        if porta != 465:
+            s.starttls()
             s.ehlo()
-            if settings.SMTP_PORT != 465:
-                s.starttls()
-            if settings.SMTP_PASS:
-                s.login(settings.SMTP_USER, settings.SMTP_PASS)
-            s.sendmail(settings.SMTP_USER, to_email, msg.as_string())
-        logger.info("E-mail enviado para %s — %s", to_email, subject)
+        if settings.SMTP_PASS:
+            s.login(settings.SMTP_USER, settings.SMTP_PASS)
+        # envelope-from = conta autenticada; o From exibido pode ser um alias
+        s.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+    logger.info("E-mail enviado para %s — %s", to_email, subject)
+
+
+def _send_sync_silencioso(to_email: str, subject: str, html: str) -> None:
+    """Usado nos disparos automáticos: registra a falha sem derrubar o fluxo."""
+    try:
+        _send_sync(to_email, subject, html)
     except Exception as exc:
         logger.error("Falha ao enviar e-mail para %s: %s", to_email, exc)
 
 
 async def send_email(to_email: str, subject: str, html: str) -> None:
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None, partial(_send_sync_silencioso, to_email, subject, html)
+    )
+
+
+async def send_email_estrito(to_email: str, subject: str, html: str) -> None:
+    """Igual a send_email, mas propaga o erro — para o teste do painel."""
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, partial(_send_sync, to_email, subject, html))
 
