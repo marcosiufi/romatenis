@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _scheduler_loop() -> None:
-    """Roda a cada hora: verifica expirações e envia avisos de vencimento."""
+    """Roda a cada hora: expirações, avisos de vencimento, fila e contratos."""
     from app.core.database import async_session_factory
     from app.services.subscription_service import SubscriptionService
 
@@ -31,10 +31,15 @@ async def _scheduler_loop() -> None:
                 expiradas = await svc.verificar_expiracoes()
                 avisos = await svc.enviar_avisos_vencimento()
                 resetados = await svc.resetar_nivel_inativos()
-                if expiradas or avisos or resetados:
+                # Sem isto a fila trava: uma convocação não atendida segura a
+                # vaga para sempre e ninguém mais é chamado.
+                convocacoes = await svc.verificar_convocacoes_expiradas()
+                lembretes = await svc.enviar_lembretes_contrato()
+                if expiradas or avisos or resetados or convocacoes or lembretes:
                     logger.info(
-                        "Scheduler: %d expiradas, %d avisos, %d niveis zerados",
-                        expiradas, avisos, resetados,
+                        "Scheduler: %d expiradas, %d avisos, %d niveis zerados, "
+                        "%d convocacoes expiradas, %d lembretes de contrato",
+                        expiradas, avisos, resetados, convocacoes, lembretes,
                     )
         except Exception as exc:
             logger.error("Scheduler error: %s", exc)
@@ -42,12 +47,16 @@ async def _scheduler_loop() -> None:
 
 
 async def _expirar_reservas_loop() -> None:
-    """A cada 2 min: cancela reservas de locação pendentes há mais de 10 min."""
-    from sqlalchemy import and_, or_, select
+    """A cada 2 min: cancela pré-reservas não pagas há mais de 10 min."""
+    from sqlalchemy import and_, select
     from app.core.database import async_session_factory
     from app.models.booking import Booking, StatusReserva, TipoReserva
+    from app.models.match import Match, StatusPartida
     from app.models.payment import Payment, StatusPagamento
     from app.services.asaas_client import AsaasClient
+
+    # Ambos geram cobrança antes de confirmar o horário
+    TIPOS_COM_PAGAMENTO = (TipoReserva.LOCACAO_AVULSA, TipoReserva.JOGO_AVULSO)
 
     await asyncio.sleep(30)
     while True:
@@ -58,7 +67,7 @@ async def _expirar_reservas_loop() -> None:
                     select(Booking).where(
                         and_(
                             Booking.status == StatusReserva.AGUARDANDO_PAGAMENTO,
-                            Booking.tipo == TipoReserva.LOCACAO_AVULSA,
+                            Booking.tipo.in_(TIPOS_COM_PAGAMENTO),
                             Booking.criado_em <= cutoff,
                         )
                     )
@@ -66,6 +75,12 @@ async def _expirar_reservas_loop() -> None:
 
                 for booking in expiradas:
                     booking.status = StatusReserva.CANCELADA
+                    # Jogo avulso cria uma partida junto: cancela também, senão
+                    # ela segue "agendada" e consome a cota semanal do jogador.
+                    if booking.match_id:
+                        match = await db.get(Match, booking.match_id)
+                        if match and match.status == StatusPartida.AGENDADO:
+                            match.status = StatusPartida.CANCELADO_SEM_PLACAR
                     payment = await db.scalar(
                         select(Payment).where(Payment.booking_id == booking.id)
                     )

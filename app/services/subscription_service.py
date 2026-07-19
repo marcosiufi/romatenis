@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSession
@@ -61,6 +61,12 @@ METODO_MAP: dict[FormaPagamento, MetodoPagamento] = {
     FormaPagamento.BOLETO_AVISTA: MetodoPagamento.BOLETO,
     FormaPagamento.CARTAO_PARCELADO: MetodoPagamento.CARTAO,
 }
+
+# Lembretes de contrato pendente: 1º após 1 dia, depois a cada 3 dias, até 3 no
+# total. A assinatura em si é feita pelo link que a Autentique envia no WhatsApp.
+LEMBRETE_CONTRATO_APOS = timedelta(days=1)
+LEMBRETE_CONTRATO_INTERVALO = timedelta(days=3)
+LEMBRETES_CONTRATO_MAX = 3
 
 
 class SubscriptionError(ValueError):
@@ -609,6 +615,46 @@ class SubscriptionService:
             await self.db.commit()
         return enviados
 
+    async def enviar_lembretes_contrato(self) -> int:
+        """
+        Lembra por e-mail quem tem contrato pendente.
+
+        A assinatura em si acontece pelo link que a Autentique manda por
+        WhatsApp; o e-mail só avisa e explica que o plano fica bloqueado até lá.
+        Envia no máximo LEMBRETES_CONTRATO_MAX vezes, respeitando o intervalo.
+        """
+        agora = datetime.now(timezone.utc)
+        primeiro = agora - LEMBRETE_CONTRATO_APOS
+        result = await self.db.execute(
+            select(Player).where(
+                Player.contrato_assinado.is_(False),
+                Player.contrato_enviado_em.isnot(None),
+                Player.contrato_enviado_em <= primeiro,
+                Player.contrato_lembretes_enviados < LEMBRETES_CONTRATO_MAX,
+                or_(
+                    Player.contrato_ultimo_lembrete_em.is_(None),
+                    Player.contrato_ultimo_lembrete_em <= agora - LEMBRETE_CONTRATO_INTERVALO,
+                ),
+            )
+        )
+
+        enviados = 0
+        for player in result.scalars().all():
+            try:
+                await email_service.enviar_contrato_pendente(
+                    player.nome, player.email, player.telefone or ""
+                )
+            except Exception as exc:
+                logger.error("Falha no lembrete de contrato de %s: %s", player.email, exc)
+                continue
+            player.contrato_lembretes_enviados += 1
+            player.contrato_ultimo_lembrete_em = agora
+            enviados += 1
+
+        if enviados:
+            await self.db.commit()
+        return enviados
+
     # ── Lista de Espera ───────────────────────────────────────────────────────
 
     async def entrar_na_lista_espera(self, player: Player) -> ListaEspera:
@@ -743,7 +789,10 @@ class SubscriptionService:
             entrada.status = StatusListaEspera.EXPIRADO
         if expirados:
             await self.db.commit()
-            await self.notificar_proximo_na_fila()
+            # Uma convocação nova por vaga devolvida: chamar só uma vez deixaria
+            # as demais vagas sem convocado até o próximo evento da fila.
+            for _ in expirados:
+                await self.notificar_proximo_na_fila()
         return len(expirados)
 
     async def vagas_ranking(self) -> dict:

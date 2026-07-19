@@ -43,6 +43,18 @@ def _btn(texto: str, link: str) -> str:
     )
 
 
+def _fmt_whatsapp(numero: str) -> str:
+    """'16991828504' → '(16) 99182-8504'. Aceita com ou sem DDI 55."""
+    d = "".join(c for c in numero if c.isdigit())
+    if len(d) in (12, 13) and d.startswith("55"):
+        d = d[2:]
+    if len(d) == 11:
+        return f"({d[:2]}) {d[2:7]}-{d[7:]}"
+    if len(d) == 10:
+        return f"({d[:2]}) {d[2:6]}-{d[6:]}"
+    return ""
+
+
 def _send_sync(to_email: str, subject: str, html: str) -> None:
     if not settings.SMTP_HOST or not settings.SMTP_USER:
         logger.warning("SMTP não configurado — e-mail não enviado para %s", to_email)
@@ -105,24 +117,46 @@ async def enviar_confirmacao_pagamento(nome: str, email: str, plano: str, data_e
     )
 
 
-async def enviar_contrato_pendente(nome: str, email: str, link_assinatura: str) -> None:
+async def enviar_contrato_pendente(nome: str, email: str, whatsapp: str = "") -> None:
+    """
+    Lembrete de contrato pendente.
+
+    A assinatura acontece pelo link que a Autentique envia por WhatsApp — este
+    e-mail apenas avisa e direciona para lá, sem link próprio de assinatura.
+    """
+    fmt = _fmt_whatsapp(whatsapp)
+    numero = (
+        f'<p style="color:#555;line-height:1.6;margin-top:.5rem">'
+        f'Enviamos para o WhatsApp <strong>{fmt}</strong>.</p>'
+    ) if fmt else ""
+
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <p style="color:#555;line-height:1.6">
-      Para ativar sua conta no ranking Roma Tênis, assine o Termo de Adesão clicando no botão abaixo.
+      Seu <strong>Termo de Adesão</strong> ainda está aguardando assinatura.
     </p>
-    <p style="text-align:center;margin:1.5rem 0">
-      <a href="{link_assinatura}" style="background:#c0622a;color:#fff;padding:.7rem 1.5rem;border-radius:6px;text-decoration:none;font-weight:700">
-        Assinar Contrato
-      </a>
-    </p>
-    <p style="color:#888;font-size:.85rem">
-      O link acima é de uso exclusivo e pessoal. Não compartilhe com terceiros.
+    <div style="background:#f7f3ee;border-left:4px solid #c0622a;padding:14px 18px;margin:20px 0;border-radius:4px">
+      <p style="color:#333;margin:0;line-height:1.6">
+        📲 <strong>O contrato foi enviado pelo WhatsApp</strong>, pela plataforma Autentique.
+        Para assinar, abra a conversa no WhatsApp e siga o link enviado por lá.
+      </p>
+      {numero}
+    </div>
+    <div style="background:#fdf6e8;border:1px solid #e0a040;padding:14px 18px;margin:20px 0;border-radius:6px">
+      <p style="color:#7a5a1e;margin:0;line-height:1.6;font-size:.92rem">
+        ⚠️ <strong>Importante:</strong> enquanto o contrato não for assinado, você
+        <strong>não consegue reservar horários nem participar das partidas do ranking</strong>,
+        mesmo com o pagamento já confirmado.
+      </p>
+    </div>
+    <p style="color:#888;font-size:.85rem;line-height:1.6">
+      Não encontrou a mensagem? Verifique se o WhatsApp cadastrado está correto no
+      seu perfil, ou entre em contato com a gente.
     </p>"""
     await send_email(
         email,
-        "📄 Assine seu Termo de Adesão — Roma Tênis",
-        _html_base("Assine seu Contrato", corpo),
+        "📄 Seu contrato está aguardando assinatura — Roma Tênis",
+        _html_base("Contrato Pendente", corpo),
     )
 
 

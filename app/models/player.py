@@ -72,6 +72,13 @@ class Player(Base):
     contrato_assinado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     contrato_enviado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     contrato_assinado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Lembretes por e-mail enquanto o contrato segue pendente (limitados)
+    contrato_lembretes_enviados: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    contrato_ultimo_lembrete_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     reset_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
     reset_token_expiracao: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
