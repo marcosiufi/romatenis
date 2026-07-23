@@ -101,6 +101,7 @@ class BookingCreateJogoAvulso(BaseModel):
     data_hora: datetime
     tipo: TipoPartida
     metodo_pagamento: Literal["pix", "cartao"]
+    cupom_codigo: str | None = None
     # Membros do ranking (inclui obrigatoriamente quem reserva, no lado A)
     membros_a: list[int] = []
     membros_b: list[int] = []

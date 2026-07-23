@@ -16,6 +16,7 @@ class SubscriptionCreate(BaseModel):
 class SubscriptionRenovar(BaseModel):
     plano: PlanoAssinatura
     forma_pagamento: FormaPagamento = FormaPagamento.PIX_AVISTA
+    cupom_codigo: str | None = None
 
 
 class SubscriptionAdminUpdate(BaseModel):

@@ -22,6 +22,7 @@ from app.services.booking_service import (
     BookingService,
     ReservasDesabilitadasError,
 )
+from app.services.cupom_service import CupomError
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -106,7 +107,10 @@ async def criar_jogo_avulso(body: BookingCreateJogoAvulso, player: _Player, db: 
             membros_b=body.membros_b,
             convidados=body.convidados,
             metodo_pagamento=body.metodo_pagamento,
+            cupom_codigo=body.cupom_codigo,
         )
+    except CupomError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     except BookingError as e:
         raise _booking_error(e)
 

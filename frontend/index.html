@@ -289,7 +289,15 @@
       <p id="bm-pmt-info" style="font-size:.78rem;color:var(--muted);margin:.6rem 0 1rem;line-height:1.45">
         PIX com confirmação imediata. Sem taxas adicionais.
       </p>
-      <p class="bm-erro" id="bm-res-erro" hidden></p>
+      <div class="bm-field">
+        <label style="font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Cupom de desconto</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="bm-cupom" class="bm-input" placeholder="Tem um cupom?" style="flex:1;text-transform:uppercase" oninput="bkCupomInput()">
+          <button type="button" id="bm-cupom-btn" onclick="bkAplicarCupom()" class="btn-land btn-ghost" style="white-space:nowrap;padding:.6rem 1rem">Aplicar</button>
+        </div>
+        <p id="bm-cupom-msg" style="font-size:.8rem;margin:.4rem 0 0;display:none"></p>
+      </div>
+      <p class="bm-erro" id="bm-res-erro" hidden style="margin-top:.75rem"></p>
       <button class="btn-land btn-primary" id="bm-btn-confirmar"
               style="width:100%;font-size:1rem;padding:.85rem">
         Confirmar e Gerar PIX
@@ -430,6 +438,14 @@
           <button class="mod-btn active" data-pmt="pix_avista" onclick="plSetPmt(this)">PIX <span style="font-size:.72rem;opacity:.8">(5% off)</span></button>
           <button class="mod-btn" data-pmt="cartao_parcelado" onclick="plSetPmt(this)">Cartão de Crédito</button>
         </div>
+      </div>
+      <div class="bm-field" style="margin-top:1rem">
+        <label>Cupom de desconto</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="pl-cupom" class="bm-input" placeholder="Tem um cupom?" style="flex:1;text-transform:uppercase" oninput="plCupomInput()">
+          <button type="button" id="pl-cupom-btn" onclick="plAplicarCupom()" class="btn-land btn-ghost" style="white-space:nowrap;padding:.6rem 1rem">Aplicar</button>
+        </div>
+        <p id="pl-cupom-msg" style="font-size:.8rem;margin-top:.4rem;display:none"></p>
       </div>
       <p id="pl-res-erro" hidden class="bm-erro" style="margin-top:.5rem"></p>
       <button id="pl-btn-confirmar" onclick="plConfirmar()" class="btn-land btn-primary" style="width:100%;margin-top:1.25rem">Confirmar e Contratar</button>
@@ -779,6 +795,9 @@ function plAbrirModal(plano) {
   });
   plPmt = 'pix_avista';
   document.querySelectorAll('#pl-s-plano .mod-btn').forEach(b => b.classList.toggle('active', b.dataset.pmt === 'pix_avista'));
+  plCupom = null;
+  const cupomInp = document.getElementById('pl-cupom');
+  if (cupomInp) { cupomInp.value = ''; document.getElementById('pl-cupom-msg').style.display = 'none'; document.getElementById('pl-cupom-btn').textContent = 'Aplicar'; }
   plPasso('regras');
 }
 
@@ -825,17 +844,77 @@ function plSetPmt(el) {
   plRenderResumo();
 }
 
+let plCupom = null;  // { codigo, percentual } quando aplicado
+
+function plCupomInput() {
+  // Editar o campo invalida o cupom aplicado
+  if (plCupom) { plCupom = null; plRenderResumo(); }
+  const msg = document.getElementById('pl-cupom-msg');
+  msg.style.display = 'none';
+  document.getElementById('pl-cupom-btn').textContent = 'Aplicar';
+}
+
+async function plAplicarCupom() {
+  const codigo = document.getElementById('pl-cupom').value.trim().toUpperCase();
+  const msg = document.getElementById('pl-cupom-msg');
+  if (!codigo) return;
+  if (plCupom) { plRemoverCupom(); return; }
+  try {
+    const token = localStorage.getItem('access_token');
+    const r = await fetch('/api/v1/cupons/validar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ codigo }),
+    });
+    const d = await r.json();
+    if (d.valido) {
+      plCupom = { codigo: d.codigo, percentual: d.percentual };
+      msg.textContent = `✓ ${d.percentual}% de desconto aplicado`;
+      msg.style.color = '#4ab870';
+      document.getElementById('pl-cupom-btn').textContent = 'Remover';
+    } else {
+      plCupom = null;
+      msg.textContent = d.msg || 'Cupom inválido.';
+      msg.style.color = '#e06060';
+    }
+    msg.style.display = 'block';
+    plRenderResumo();
+  } catch {
+    msg.textContent = 'Erro ao validar o cupom.';
+    msg.style.color = '#e06060'; msg.style.display = 'block';
+  }
+}
+
+function plRemoverCupom() {
+  plCupom = null;
+  document.getElementById('pl-cupom').value = '';
+  document.getElementById('pl-cupom-msg').style.display = 'none';
+  document.getElementById('pl-cupom-btn').textContent = 'Aplicar';
+  plRenderResumo();
+}
+
 function plRenderResumo() {
   const p = (window.__plPrecos || {})[plPlano] || {};
   const meses = _PL_MESES[plPlano] || 1;
   const valorTotal = p.valor_total || 0;
   const valorMensal = p.valor_mensal || 0;
-  const valorFinal = plPmt === 'pix_avista' ? valorTotal * 0.95 : valorTotal;
-  const descPmt = plPmt === 'pix_avista' ? 'PIX à vista (5% desc)' : `Cartão${meses > 1 ? ' ' + meses + 'x' : ''}`;
+  // Cupom substitui o desconto do PIX
+  let valorFinal, descLinha;
+  if (plCupom) {
+    valorFinal = valorTotal * (1 - plCupom.percentual / 100);
+    descLinha = `Cupom ${plCupom.codigo} (${plCupom.percentual}% desc)`;
+  } else if (plPmt === 'pix_avista') {
+    valorFinal = valorTotal * 0.95;
+    descLinha = 'PIX à vista (5% desc)';
+  } else {
+    valorFinal = valorTotal;
+    descLinha = `Cartão${meses > 1 ? ' ' + meses + 'x' : ''}`;
+  }
+  const riscado = valorFinal < valorTotal
+    ? `<span style="text-decoration:line-through;opacity:.5;font-size:.85rem">R$ ${fmtR(valorTotal)}</span> ` : '';
   document.getElementById('pl-resumo-plano').innerHTML = `
     <div class="bk-r-data">Plano ${_PL_NOMES[plPlano]} — ${meses} ${meses === 1 ? 'mês' : 'meses'}</div>
     <div class="bk-r-hora" style="font-size:1rem">R$ ${fmtR(valorMensal)}/mês</div>
-    <div class="bk-r-preco">${descPmt}: <strong>R$ ${fmtR(valorFinal)}</strong></div>`;
+    <div class="bk-r-preco">${descLinha}: ${riscado}<strong>R$ ${fmtR(valorFinal)}</strong></div>`;
 }
 
 document.getElementById('pl-btn-cad').addEventListener('click', async () => {
@@ -913,7 +992,7 @@ async function plConfirmar() {
     const token = localStorage.getItem('access_token');
     const r = await fetch('/api/v1/subscriptions/contratar', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-      body: JSON.stringify({ plano: plPlano, forma_pagamento: plPmt }),
+      body: JSON.stringify({ plano: plPlano, forma_pagamento: plPmt, cupom_codigo: plCupom ? plCupom.codigo : null }),
     });
     const d = await r.json();
     if (!r.ok) {
@@ -1084,17 +1163,59 @@ function bkVoltarSlots() {
   document.getElementById('bk-step-data').hidden = false;
 }
 
+let bkCupom = null;  // { codigo, percentual }
+
 function bkRenderResumo(targetId) {
   if (!bkSlot || !bkData) return;
   const dataBr = new Date(bkData + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' });
-  const total = bkPreco * bkNumHoras;
-  const precoHtml = bkNumHoras > 1
-    ? `R$ ${fmtR(bkPreco)}/h × ${bkNumHoras}h = <strong>R$ ${fmtR(total)}</strong>`
-    : `<strong>R$ ${fmtR(total)}</strong>`;
+  const bruto = bkPreco * bkNumHoras;
+  const total = bkCupom ? bruto * (1 - bkCupom.percentual / 100) : bruto;
+  const base = bkNumHoras > 1 ? `R$ ${fmtR(bkPreco)}/h × ${bkNumHoras}h = ` : '';
+  const riscado = bkCupom ? `<span style="text-decoration:line-through;opacity:.5">R$ ${fmtR(bruto)}</span> ` : '';
   document.getElementById(targetId).innerHTML = `
     <div class="bk-r-data">${dataBr} · ${bkTipo === 'duplas' ? 'Duplas' : 'Simples'}</div>
     <div class="bk-r-hora">${bkSlot.hora_inicio} – ${bkSlot.hora_fim}</div>
-    <div class="bk-r-preco">${precoHtml}</div>`;
+    <div class="bk-r-preco">${base}${riscado}<strong>R$ ${fmtR(total)}</strong></div>`;
+}
+
+function bkCupomInput() {
+  if (bkCupom) { bkCupom = null; bkRenderResumo('bm-conf-resumo'); }
+  document.getElementById('bm-cupom-msg').style.display = 'none';
+  document.getElementById('bm-cupom-btn').textContent = 'Aplicar';
+}
+
+async function bkAplicarCupom() {
+  const codigo = document.getElementById('bm-cupom').value.trim().toUpperCase();
+  const msg = document.getElementById('bm-cupom-msg');
+  if (!codigo) return;
+  if (bkCupom) {  // remover
+    bkCupom = null;
+    document.getElementById('bm-cupom').value = '';
+    msg.style.display = 'none';
+    document.getElementById('bm-cupom-btn').textContent = 'Aplicar';
+    bkRenderResumo('bm-conf-resumo');
+    return;
+  }
+  try {
+    const token = localStorage.getItem('access_token');
+    const r = await fetch('/api/v1/cupons/validar', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body: JSON.stringify({ codigo }),
+    });
+    const d = await r.json();
+    if (d.valido) {
+      bkCupom = { codigo: d.codigo, percentual: d.percentual };
+      msg.textContent = `✓ ${d.percentual}% de desconto aplicado`; msg.style.color = '#4ab870';
+      document.getElementById('bm-cupom-btn').textContent = 'Remover';
+    } else {
+      bkCupom = null;
+      msg.textContent = d.msg || 'Cupom inválido.'; msg.style.color = '#e06060';
+    }
+    msg.style.display = 'block';
+    bkRenderResumo('bm-conf-resumo');
+  } catch {
+    msg.textContent = 'Erro ao validar o cupom.'; msg.style.color = '#e06060'; msg.style.display = 'block';
+  }
 }
 
 document.getElementById('bk-btn-reservar').addEventListener('click', bkAbrirModal);
@@ -1108,6 +1229,9 @@ function bkAbrirModal() {
     e.hidden = false;
     return;
   }
+  bkCupom = null;
+  const bmCupom = document.getElementById('bm-cupom');
+  if (bmCupom) { bmCupom.value = ''; document.getElementById('bm-cupom-msg').style.display = 'none'; document.getElementById('bm-cupom-btn').textContent = 'Aplicar'; }
   ['bm-slot-ref','bm-conf-resumo','bm-pix-resumo','bm-ok-resumo','bm-cartao-resumo'].forEach(id => bkRenderResumo(id));
   document.getElementById('bk-modal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -1215,7 +1339,7 @@ document.getElementById('bm-btn-confirmar').addEventListener('click', async () =
     const token = localStorage.getItem('access_token');
     const r = await fetch('/api/v1/public/reserva', {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo, metodo_pagamento:bkPmt, num_horas:bkNumHoras }),
+      body:JSON.stringify({ data:bkData, hora_inicio:bkSlot.hora_inicio, tipo:bkTipo, metodo_pagamento:bkPmt, num_horas:bkNumHoras, cupom_codigo: bkCupom ? bkCupom.codigo : null }),
     });
     const d = await r.json();
     if (!r.ok) {

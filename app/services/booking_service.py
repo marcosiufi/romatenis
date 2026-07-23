@@ -45,6 +45,7 @@ from app.models.player import Player
 from app.models.season import Season, StatusTemporada
 from app.models.subscription import StatusAssinatura, Subscription
 from app.schemas.booking import ConvidadoIn, JogadorSlot, SlotDisponivel
+from app.services import cupom_service
 from app.services.whatsapp_service import WhatsAppService
 
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
@@ -342,6 +343,7 @@ class BookingService:
         membros_b: list[int],
         convidados: list[ConvidadoIn],
         metodo_pagamento: str,
+        cupom_codigo: str | None = None,
     ) -> dict:
         """
         Reserva de última hora entre membros e convidados de fora do ranking.
@@ -355,7 +357,10 @@ class BookingService:
         )
 
         cfg = await Configuracao.get(self.db)
-        valor = float(cfg.preco_jogo_avulso) * len(convidados)
+        valor_base = float(cfg.preco_jogo_avulso) * len(convidados)
+        cupom = await cupom_service.validar_cupom(self.db, cupom_codigo) if cupom_codigo else None
+        calc = cupom_service.calcular_valor(valor_base, cupom, pix=False)
+        valor = calc["valor_final"]
 
         match = Match(
             tipo=tipo,
@@ -400,7 +405,9 @@ class BookingService:
         self.db.add(booking)
         await self.db.flush()
 
-        cobranca = await self._cobrar_jogo_avulso(player, booking, valor, metodo_pagamento, data_hora)
+        cobranca = await self._cobrar_jogo_avulso(
+            player, booking, valor, metodo_pagamento, data_hora, cupom, calc["desconto"]
+        )
 
         await self.db.commit()
         return {"booking_id": booking.id, "match_id": match.id, "valor": valor, **cobranca}
@@ -412,6 +419,8 @@ class BookingService:
         valor: float,
         metodo_pagamento: str,
         data_hora: datetime,
+        cupom=None,
+        desconto: float | None = None,
     ) -> dict:
         """Gera a cobrança no Asaas. Sem cobrança não há reserva — erro aborta tudo."""
         from app.services.asaas_client import AsaasClient
@@ -447,7 +456,11 @@ class BookingService:
                 metodo=MetodoPagamento.CARTAO if metodo_pagamento == "cartao" else MetodoPagamento.PIX,
                 status=StatusPagamento.PENDENTE,
                 gateway_id=asaas_payment_id,
+                cupom_codigo=cupom.codigo if cupom else None,
+                valor_desconto=desconto if cupom else None,
             ))
+            if cupom:
+                await cupom_service.registrar_uso(self.db, cupom)
 
             if metodo_pagamento == "cartao":
                 return {

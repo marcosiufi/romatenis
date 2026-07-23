@@ -40,5 +40,10 @@ class Payment(Base):
     gateway_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     data_pagamento: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Cupom aplicado — snapshot por código (sem FK, para preservar o histórico
+    # mesmo que o cupom seja excluído depois)
+    cupom_codigo: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    valor_desconto: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+
     booking: Mapped["Booking | None"] = relationship(back_populates="payments")
     subscription: Mapped["Subscription | None"] = relationship(back_populates="payments")

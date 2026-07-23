@@ -159,6 +159,7 @@ function switchTab(tab) {
     case 'locacoes':       loadLocacoes(); break
     case 'matchmaking':    loadInvitations(); break
     case 'configuracoes':  loadConfiguracoes(); loadEmailStatus(); loadSlotsRanking(); loadHorariosEspeciais(); loadHorarios(); break
+    case 'cupons':         loadCupons(); break
     case 'lista-espera':   loadListaEspera(); break
     case 'contrato':       loadContrato(); break
     case 'empresa':        loadEmpresa(); break
@@ -1027,6 +1028,90 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+// ── Cupons ────────────────────────────────────────────────────────────────────
+
+function _cupomStatus(c) {
+  const agora = new Date()
+  if (!c.ativo) return { txt: 'Inativo', cor: '#888' }
+  if (c.validade_inicio && new Date(c.validade_inicio) > agora) return { txt: 'Agendado', cor: '#e0a040' }
+  if (c.validade_fim && new Date(c.validade_fim) < agora) return { txt: 'Expirado', cor: '#e06060' }
+  if (c.max_usos != null && c.usos >= c.max_usos) return { txt: 'Esgotado', cor: '#e06060' }
+  return { txt: 'Ativo', cor: '#4ab870' }
+}
+
+async function loadCupons() {
+  const wrap = document.getElementById('cupons-tabela-wrap')
+  try {
+    const cupons = await api('/admin/cupons')
+    if (!cupons.length) {
+      wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Nenhum cupom criado ainda.</p>'
+      return
+    }
+    const linhas = cupons.map(c => {
+      const st = _cupomStatus(c)
+      const usos = c.max_usos != null ? `${c.usos} / ${c.max_usos}` : `${c.usos} / ∞`
+      const prazo = c.validade_fim ? `até ${fmtD(c.validade_fim)}` : 'sem prazo'
+      return `<tr>
+        <td><strong>${escHtml(c.codigo)}</strong>${c.descricao ? `<br><span style="font-size:.75rem;color:var(--clr-text-muted)">${escHtml(c.descricao)}</span>` : ''}</td>
+        <td>${c.percentual}%</td>
+        <td>${prazo}</td>
+        <td>${usos}</td>
+        <td><span style="color:${st.cor};font-weight:600">${st.txt}</span></td>
+        <td style="white-space:nowrap;text-align:right">
+          <button class="btn-xs sec" onclick="toggleCupom(${c.id}, ${!c.ativo})">${c.ativo ? 'Desativar' : 'Ativar'}</button>
+          <button class="btn-xs bnc" onclick="excluirCupom(${c.id}, '${escHtml(c.codigo)}')">Excluir</button>
+        </td>
+      </tr>`
+    }).join('')
+    wrap.innerHTML = `<table class="data-table" style="width:100%">
+      <thead><tr><th>Código</th><th>Desconto</th><th>Prazo</th><th>Usos</th><th>Status</th><th></th></tr></thead>
+      <tbody>${linhas}</tbody></table>`
+  } catch (err) {
+    wrap.innerHTML = `<p style="color:#e06060;text-align:center;padding:2rem">Erro ao carregar: ${escHtml(err.message)}</p>`
+  }
+}
+
+async function criarCupom(e) {
+  e.preventDefault()
+  const erro = document.getElementById('cupom-erro')
+  erro.style.display = 'none'
+  const v = (id) => document.getElementById(id).value.trim()
+  const body = {
+    codigo: v('cupom-codigo').toUpperCase(),
+    percentual: parseInt(v('cupom-percentual'), 10),
+    descricao: v('cupom-descricao') || null,
+    max_usos: v('cupom-max-usos') ? parseInt(v('cupom-max-usos'), 10) : null,
+    validade_inicio: v('cupom-inicio') ? new Date(v('cupom-inicio')).toISOString() : null,
+    validade_fim: v('cupom-fim') ? new Date(v('cupom-fim')).toISOString() : null,
+    ativo: true,
+  }
+  try {
+    await api('/admin/cupons', { method: 'POST', body: JSON.stringify(body) })
+    document.getElementById('cupom-form').reset()
+    toast('Cupom criado')
+    loadCupons()
+  } catch (err) {
+    erro.textContent = err.message
+    erro.style.display = 'block'
+  }
+}
+
+async function toggleCupom(id, ativo) {
+  try {
+    await api(`/admin/cupons/${id}`, { method: 'PATCH', body: JSON.stringify({ ativo }) })
+    loadCupons()
+  } catch (err) { toast(err.message, true) }
+}
+
+async function excluirCupom(id, codigo) {
+  if (!confirm(`Excluir o cupom ${codigo}? Pagamentos que já o usaram não são afetados.`)) return
+  try {
+    await api(`/admin/cupons/${id}`, { method: 'DELETE' })
+    toast('Cupom excluído')
+    loadCupons()
+  } catch (err) { toast(err.message, true) }
 }
 
 // ── Configurações ─────────────────────────────────────────────────────────────

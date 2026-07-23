@@ -26,7 +26,7 @@ from app.models.player import Player, StatusJogador
 from app.models.season import Season, StatusTemporada
 from app.models.slot_ranking import SlotRanking
 from app.schemas.player import TokenResponse
-from app.services import email_service
+from app.services import cupom_service, email_service
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -282,6 +282,7 @@ class ReservaIn(BaseModel):
     tipo: Literal["simples", "duplas"] = "simples"
     metodo_pagamento: Literal["pix", "cartao"] = "pix"
     num_horas: int = 1
+    cupom_codigo: str | None = None
 
     @field_validator("num_horas")
     @classmethod
@@ -319,7 +320,16 @@ async def reservar(
     cfg = await Configuracao.get(db)
     if not cfg.reservas_ativas:
         raise HTTPException(status_code=403, detail=cfg.msg_reservas_desabilitado)
-    valor = float(cfg.preco_locacao_hora) * body.num_horas
+    valor_base = float(cfg.preco_locacao_hora) * body.num_horas
+    # Locação não tem desconto de PIX próprio; o cupom aplica direto
+    cupom = None
+    if body.cupom_codigo:
+        try:
+            cupom = await cupom_service.validar_cupom(db, body.cupom_codigo)
+        except cupom_service.CupomError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+    _calc = cupom_service.calcular_valor(valor_base, cupom, pix=False)
+    valor = _calc["valor_final"]
 
     # Horário base: config por dia da semana > global
     dia_cfg_r = await db.scalar(
@@ -449,8 +459,12 @@ async def reservar(
             metodo=MetodoPagamento.CARTAO if body.metodo_pagamento == "cartao" else MetodoPagamento.PIX,
             status=StatusPagamento.PENDENTE,
             gateway_id=asaas_payment_id,
+            cupom_codigo=cupom.codigo if cupom else None,
+            valor_desconto=_calc["desconto"] if cupom else None,
         )
         db.add(payment)
+        if cupom:
+            await cupom_service.registrar_uso(db, cupom)
     except Exception:
         pass  # Se Asaas falhar, mantém a reserva sem pagamento online
 

@@ -492,6 +492,14 @@ async function carregarPerfil() {
             <option value="cartao_parcelado">Cartão de Crédito</option>
           </select>
         </div>
+        <div class="campo">
+          <label>Cupom de desconto</label>
+          <div style="display:flex;gap:.5rem">
+            <input type="text" id="renovar-cupom" placeholder="Tem um cupom?" style="flex:1;text-transform:uppercase" oninput="renovarCupomInput()" />
+            <button type="button" id="renovar-cupom-btn" class="btn btn-secundario" style="white-space:nowrap;padding:.5rem .9rem" onclick="aplicarCupomRenovar()">Aplicar</button>
+          </div>
+          <p id="renovar-cupom-msg" style="font-size:.78rem;margin-top:.35rem;display:none"></p>
+        </div>
         <div id="renovar-pix-box" style="display:none" class="pix-box">
           <p class="pix-label">⚡ PIX gerado — copie e pague:</p>
           <div class="pix-row">
@@ -684,9 +692,69 @@ function abrirRenovarUI(titulo) {
   document.getElementById("renovar-erro").hidden = true;
   document.getElementById("renovar-btn").style.display = "";
   document.getElementById("renovar-titulo").textContent = titulo || "Contratar / Renovar Plano";
+  if (typeof _cupomRenovarUI !== "undefined") _cupomRenovarUI.limpar();
   atualizarFormasPagamento();
 }
 function fecharRenovarUI() { document.getElementById("sub-renovar-ui").style.display = "none"; }
+
+// ── Cupom (compartilhado pelos fluxos de pagamento do app) ───────────────────
+async function validarCupom(codigo) {
+  const c = (codigo || "").trim().toUpperCase();
+  if (!c) return { valido: false, msg: "Informe um código." };
+  try {
+    return await apiFetch("/cupons/validar", { method: "POST", body: JSON.stringify({ codigo: c }) });
+  } catch {
+    return { valido: false, msg: "Erro ao validar o cupom." };
+  }
+}
+
+/**
+ * Liga um campo de cupom a um estado. Devolve helpers para o fluxo.
+ * getState() lê o cupom aplicado; onChange roda ao aplicar/remover.
+ */
+function criarCupomUI(prefixo, onChange) {
+  const inp = () => document.getElementById(`${prefixo}-cupom`);
+  const btn = () => document.getElementById(`${prefixo}-cupom-btn`);
+  const msg = () => document.getElementById(`${prefixo}-cupom-msg`);
+  let estado = null;
+
+  async function aplicar() {
+    const codigo = inp().value.trim().toUpperCase();
+    if (!codigo) return;
+    if (estado) { limpar(true); return; }
+    const d = await validarCupom(codigo);
+    if (d.valido) {
+      estado = { codigo: d.codigo, percentual: d.percentual };
+      msg().textContent = `✓ ${d.percentual}% de desconto aplicado`;
+      msg().style.color = "#4ab870";
+      btn().textContent = "Remover";
+    } else {
+      estado = null;
+      msg().textContent = d.msg || "Cupom inválido.";
+      msg().style.color = "#e06060";
+    }
+    msg().style.display = "block";
+    if (onChange) onChange(estado);
+  }
+  function digitou() {
+    if (estado) { estado = null; if (onChange) onChange(estado); }
+    msg().style.display = "none";
+    btn().textContent = "Aplicar";
+  }
+  function limpar(soEstado) {
+    estado = null;
+    if (!soEstado && inp()) inp().value = "";
+    if (msg()) msg().style.display = "none";
+    if (btn()) btn().textContent = "Aplicar";
+    if (onChange) onChange(estado);
+  }
+  return { aplicar, digitou, limpar, get: () => estado };
+}
+
+let _cupomRenovar = null;
+const _cupomRenovarUI = criarCupomUI("renovar", (c) => { _cupomRenovar = c; });
+function aplicarCupomRenovar() { _cupomRenovarUI.aplicar(); }
+function renovarCupomInput() { _cupomRenovarUI.digitou(); }
 
 async function confirmarRenovar() {
   const btn = document.getElementById("renovar-btn");
@@ -698,7 +766,7 @@ async function confirmarRenovar() {
     const forma_pagamento = document.getElementById("renovar-forma").value;
     const res = await apiFetch("/subscriptions/renovar", {
       method: "POST",
-      body: JSON.stringify({ plano, forma_pagamento }),
+      body: JSON.stringify({ plano, forma_pagamento, cupom_codigo: _cupomRenovar ? _cupomRenovar.codigo : null }),
     });
     if (res?.pix_copia_e_cola) {
       document.getElementById("renovar-pix-input").value = res.pix_copia_e_cola;
@@ -957,10 +1025,19 @@ function _renderFormsConvidados() {
   if (!posConv.length || _precoJogoAvulso == null) {
     total.textContent = "";
   } else {
-    total.innerHTML = `Total: <strong>${fmtBRL(_precoJogoAvulso * posConv.length)}</strong>`
+    const bruto = _precoJogoAvulso * posConv.length;
+    const final = _cupomAvulso ? bruto * (1 - _cupomAvulso.percentual / 100) : bruto;
+    const riscado = _cupomAvulso
+      ? `<span style="text-decoration:line-through;opacity:.5;font-weight:400">${fmtBRL(bruto)}</span> ` : "";
+    total.innerHTML = `Total: ${riscado}<strong>${fmtBRL(final)}</strong>`
       + `<span style="opacity:.6;font-weight:400"> · ${posConv.length} × ${fmtBRL(_precoJogoAvulso)}</span>`;
   }
 }
+
+let _cupomAvulso = null;
+const _cupomAvulsoUI = criarCupomUI("avulso", (c) => { _cupomAvulso = c; _renderFormsConvidados(); });
+function aplicarCupomAvulso() { _cupomAvulsoUI.aplicar(); }
+function avulsoCupomInput() { _cupomAvulsoUI.digitou(); }
 
 function _renderSelectsJogadores() {
   const opts = _jogadores
@@ -997,6 +1074,7 @@ async function selecionarSlot(idx) {
     `${fmtHora(_slotSelecionado.data_hora_inicio)} – ${fmtHora(_slotSelecionado.data_hora_fim)}`;
 
   _convidadosData = {};
+  _cupomAvulsoUI.limpar();
   document.getElementById("chk-jogo-avulso").checked = false;
   document.getElementById("campo-avulso-toggle").hidden = !_slotEhUltimaHora(_slotSelecionado);
   document.getElementById("avulso-cobranca").hidden = true;
@@ -1078,6 +1156,7 @@ async function confirmarJogoAvulso() {
         membros_a,
         membros_b,
         convidados,
+        cupom_codigo: _cupomAvulso ? _cupomAvulso.codigo : null,
       }),
     });
 
@@ -1446,19 +1525,34 @@ document.getElementById("btn-verificar-loc").addEventListener("click", async () 
   }
 });
 
-function locSelecionarSlot(data, hora, numHoras) {
-  _locSelecionado = { data, hora, numHoras };
+function _locRenderResumo() {
+  if (!_locSelecionado) return;
+  const { data, hora, numHoras } = _locSelecionado;
   const hFim = String(parseInt(hora) + numHoras).padStart(2, "0") + ":00";
   const [ano, mes, dia] = data.split("-");
-  const total = (_locPrecoHora * numHoras).toFixed(2).replace(".", ",");
+  const bruto = _locPrecoHora * numHoras;
+  const final = _cupomLoc ? bruto * (1 - _cupomLoc.percentual / 100) : bruto;
+  const riscado = _cupomLoc
+    ? `<span style="text-decoration:line-through;opacity:.5">R$ ${bruto.toFixed(2).replace(".", ",")}</span> ` : "";
   document.getElementById("loc-s3-info").innerHTML =
     `<strong>${dia}/${mes}/${ano}</strong> · ${hora} às ${hFim}<br>` +
-    `${numHoras}h · <strong>R$ ${total}</strong>`;
+    `${numHoras}h · ${riscado}<strong>R$ ${final.toFixed(2).replace(".", ",")}</strong>`;
+}
+
+function locSelecionarSlot(data, hora, numHoras) {
+  _locSelecionado = { data, hora, numHoras };
+  _cupomLocUI.limpar();
+  _locRenderResumo();
   document.getElementById("loc-s3-erro").hidden = true;
   const pixRadio = document.querySelector('input[name="loc-pagto"][value="pix"]');
   if (pixRadio) pixRadio.checked = true;
   locIrStep(3);
 }
+
+let _cupomLoc = null;
+const _cupomLocUI = criarCupomUI("loc", (c) => { _cupomLoc = c; _locRenderResumo(); });
+function aplicarCupomLoc() { _cupomLocUI.aplicar(); }
+function locCupomInput() { _cupomLocUI.digitou(); }
 
 document.getElementById("btn-loc-confirmar").addEventListener("click", async () => {
   if (!_locSelecionado) return;
@@ -1478,6 +1572,7 @@ document.getElementById("btn-loc-confirmar").addEventListener("click", async () 
         hora_inicio: hora,
         num_horas: numHoras,
         metodo_pagamento: metodo,
+        cupom_codigo: _cupomLoc ? _cupomLoc.codigo : null,
       }),
     });
 

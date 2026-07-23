@@ -19,6 +19,8 @@ from app.models.match import Match, StatusPartida
 from app.models.player import NivelJogador, Player, StatusJogador
 from app.models.season import Season, StatusTemporada
 from app.models.subscription import StatusAssinatura, Subscription
+from app.models.cupom import Cupom
+from app.schemas.cupom import CupomCreate, CupomOut, CupomUpdate
 from app.schemas.player import PlayerOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -348,6 +350,68 @@ async def testar_email(
 
     return {"ok": True, "enviado_para": body.destinatario,
             "remetente": email_service.remetente()}
+
+
+# ── Cupons de desconto ────────────────────────────────────────────────────────
+
+@router.get("/cupons", response_model=list[CupomOut])
+async def listar_cupons(_admin: Player = Depends(get_current_admin), db=Depends(get_db)):
+    rows = (await db.execute(select(Cupom).order_by(Cupom.criado_em.desc()))).scalars().all()
+    return list(rows)
+
+
+@router.post("/cupons", response_model=CupomOut, status_code=201)
+async def criar_cupom(body: CupomCreate, _admin: Player = Depends(get_current_admin), db=Depends(get_db)):
+    existe = (await db.execute(
+        select(Cupom).where(func.upper(Cupom.codigo) == body.codigo)
+    )).scalar_one_or_none()
+    if existe:
+        raise HTTPException(409, "Já existe um cupom com esse código.")
+    if body.validade_inicio and body.validade_fim and body.validade_fim <= body.validade_inicio:
+        raise HTTPException(422, "A data final deve ser posterior à inicial.")
+
+    cupom = Cupom(
+        codigo=body.codigo,
+        percentual=body.percentual,
+        descricao=body.descricao,
+        validade_inicio=body.validade_inicio,
+        validade_fim=body.validade_fim,
+        max_usos=body.max_usos,
+        ativo=body.ativo,
+    )
+    db.add(cupom)
+    await db.commit()
+    await db.refresh(cupom)
+    return cupom
+
+
+@router.patch("/cupons/{cupom_id}", response_model=CupomOut)
+async def atualizar_cupom(
+    cupom_id: int, body: CupomUpdate,
+    _admin: Player = Depends(get_current_admin), db=Depends(get_db),
+):
+    cupom = await db.get(Cupom, cupom_id)
+    if not cupom:
+        raise HTTPException(404, "Cupom não encontrado.")
+    dados = body.model_dump(exclude_unset=True)
+    for campo, valor in dados.items():
+        setattr(cupom, campo, valor)
+    ini = cupom.validade_inicio
+    fim = cupom.validade_fim
+    if ini and fim and fim <= ini:
+        raise HTTPException(422, "A data final deve ser posterior à inicial.")
+    await db.commit()
+    await db.refresh(cupom)
+    return cupom
+
+
+@router.delete("/cupons/{cupom_id}", status_code=204)
+async def excluir_cupom(cupom_id: int, _admin: Player = Depends(get_current_admin), db=Depends(get_db)):
+    cupom = await db.get(Cupom, cupom_id)
+    if not cupom:
+        raise HTTPException(404, "Cupom não encontrado.")
+    await db.delete(cupom)
+    await db.commit()
 
 
 # ── Contratos (Autentique) ────────────────────────────────────────────────────

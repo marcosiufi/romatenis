@@ -485,6 +485,7 @@
       <button data-tab="locacoes" onclick="switchTab('locacoes')">Locações</button>
       <button data-tab="matchmaking" onclick="switchTab('matchmaking')">Matchmaking</button>
       <button data-tab="configuracoes" onclick="switchTab('configuracoes')">Configurações</button>
+      <button data-tab="cupons" onclick="switchTab('cupons')">Cupons</button>
       <button data-tab="lista-espera" onclick="switchTab('lista-espera')">Lista de Espera</button>
       <button data-tab="contrato" onclick="switchTab('contrato')">Contrato</button>
       <button data-tab="empresa" onclick="switchTab('empresa')">Empresa</button>
@@ -886,6 +887,55 @@
     </div>
 
     <!-- Lista de Espera -->
+    <section id="sec-cupons" class="admin-section">
+      <div class="section-header">
+        <h2>Cupons de Desconto</h2>
+        <button class="btn-xs sec" onclick="loadCupons()">↺ Atualizar</button>
+      </div>
+      <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
+        Cupons valem para planos, locação de quadra e jogo avulso. O desconto do
+        cupom substitui o desconto do PIX (não acumulam).
+      </p>
+
+      <form id="cupom-form" onsubmit="criarCupom(event)" style="background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:10px;padding:18px 20px;margin-bottom:1.5rem">
+        <p class="form-section-label" style="margin-top:0">Novo cupom</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem 1rem">
+          <div class="form-row" style="margin-bottom:0">
+            <label>Código *</label>
+            <input type="text" id="cupom-codigo" maxlength="40" placeholder="Ex: BOASVINDAS" required style="text-transform:uppercase">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <label>Desconto (%) *</label>
+            <input type="number" id="cupom-percentual" min="1" max="100" step="1" required>
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <label>Limite de usos</label>
+            <input type="number" id="cupom-max-usos" min="1" step="1" placeholder="ilimitado">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <label>Válido a partir de</label>
+            <input type="datetime-local" id="cupom-inicio">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <label>Válido até</label>
+            <input type="datetime-local" id="cupom-fim">
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <label>Descrição (interna)</label>
+            <input type="text" id="cupom-descricao" maxlength="200" placeholder="Opcional">
+          </div>
+        </div>
+        <p id="cupom-erro" class="erro-msg" style="display:none;margin-top:.75rem"></p>
+        <div style="margin-top:1rem">
+          <button type="submit" class="btn-xs primary">Criar cupom</button>
+        </div>
+      </form>
+
+      <div id="cupons-tabela-wrap">
+        <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
+      </div>
+    </section>
+
     <section id="sec-lista-espera" class="admin-section">
       <div class="section-header">
         <h2>Lista de Espera do Ranking</h2>

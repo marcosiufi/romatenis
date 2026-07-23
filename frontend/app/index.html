@@ -150,6 +150,14 @@
                   <option value="cartao">Cartão de Crédito</option>
                 </select>
               </div>
+              <div class="campo">
+                <label>Cupom de desconto</label>
+                <div style="display:flex;gap:.5rem">
+                  <input type="text" id="avulso-cupom" placeholder="Tem um cupom?" style="flex:1;text-transform:uppercase" oninput="avulsoCupomInput()" />
+                  <button type="button" id="avulso-cupom-btn" class="btn btn-secundario" style="white-space:nowrap;padding:.5rem .9rem" onclick="aplicarCupomAvulso()">Aplicar</button>
+                </div>
+                <p id="avulso-cupom-msg" style="font-size:.78rem;margin-top:.35rem;display:none"></p>
+              </div>
               <p id="avulso-total" class="avulso-total"></p>
             </div>
 
@@ -259,6 +267,14 @@
                 <label class="radio-opt"><input type="radio" name="loc-pagto" value="pix" checked /> PIX</label>
                 <label class="radio-opt"><input type="radio" name="loc-pagto" value="cartao" /> Cartão de crédito</label>
               </div>
+            </div>
+            <div class="campo">
+              <label>Cupom de desconto</label>
+              <div style="display:flex;gap:.5rem">
+                <input type="text" id="loc-cupom" placeholder="Tem um cupom?" style="flex:1;text-transform:uppercase" oninput="locCupomInput()" />
+                <button type="button" id="loc-cupom-btn" class="btn btn-secundario" style="white-space:nowrap;padding:.5rem .9rem" onclick="aplicarCupomLoc()">Aplicar</button>
+              </div>
+              <p id="loc-cupom-msg" style="font-size:.78rem;margin-top:.35rem;display:none"></p>
             </div>
             <p id="loc-s3-erro" class="erro" hidden></p>
             <div style="display:flex;gap:.5rem;margin-top:.75rem">

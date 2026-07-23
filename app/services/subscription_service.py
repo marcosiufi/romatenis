@@ -37,7 +37,8 @@ from app.models.subscription import (
     Subscription,
 )
 from app.services.asaas_client import BILLING_TYPE_MAP, AsaasClient, AsaasError
-from app.services import email_service
+from app.services import cupom_service, email_service
+from app.services.cupom_service import CupomError
 
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
 
@@ -107,6 +108,7 @@ class SubscriptionService:
         forma_pagamento: FormaPagamento,
         valor_mensal: float,
         parcelas: int = 1,
+        cupom_codigo: str | None = None,
     ) -> AssinaturaResult:
         player = await self.db.get(Player, player_id)
         if not player:
@@ -120,10 +122,13 @@ class SubscriptionService:
             raise SubscriptionError("Jogador já possui assinatura ativa")
 
         meses = PLANO_MESES[plano]
-        valor_total = round(valor_mensal * meses, 2)
-        # PIX: 5% de desconto, sempre à vista
-        if forma_pagamento == FormaPagamento.PIX_AVISTA:
-            valor_total = round(valor_total * 0.95, 2)
+        valor_base = round(valor_mensal * meses, 2)
+        # Cupom substitui o desconto do PIX; sem cupom, PIX à vista mantém 5%
+        cupom = await cupom_service.validar_cupom(self.db, cupom_codigo) if cupom_codigo else None
+        calc = cupom_service.calcular_valor(
+            valor_base, cupom, pix=(forma_pagamento == FormaPagamento.PIX_AVISTA)
+        )
+        valor_total = calc["valor_final"]
         now_br = datetime.now(FUSO_BR)
         expiracao = now_br + timedelta(days=meses * 30)
 
@@ -181,8 +186,12 @@ class SubscriptionService:
             metodo=METODO_MAP[forma_pagamento],
             status=StatusPagamento.PENDENTE,
             gateway_id=cobranca["id"],
+            cupom_codigo=cupom.codigo if cupom else None,
+            valor_desconto=calc["desconto"] if cupom else None,
         )
         self.db.add(payment)
+        if cupom:
+            await cupom_service.registrar_uso(self.db, cupom)
         await self.db.commit()
         await self.db.refresh(sub)
 
@@ -250,7 +259,8 @@ class SubscriptionService:
         await self.db.commit()
         return result
 
-    async def contratar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento) -> "AssinaturaResult":
+    async def contratar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento,
+                        cupom_codigo: str | None = None) -> "AssinaturaResult":
         """Primeira contratação pelo próprio jogador a partir da landing page."""
         if await self._get_ativa(player.id):
             raise SubscriptionError("Você já possui uma assinatura ativa.")
@@ -269,9 +279,11 @@ class SubscriptionService:
         }
         valor_mensal_unitario = round(precos_totais[plano] / meses, 2)
         parcelas = PLANO_PARCELAS[plano]
-        return await self.criar_assinatura(player.id, plano, forma_pagamento, valor_mensal_unitario, parcelas)
+        return await self.criar_assinatura(player.id, plano, forma_pagamento,
+                                           valor_mensal_unitario, parcelas, cupom_codigo)
 
-    async def renovar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento) -> "AssinaturaResult":
+    async def renovar(self, player: Player, plano: PlanoAssinatura, forma_pagamento: FormaPagamento,
+                     cupom_codigo: str | None = None) -> "AssinaturaResult":
         """Jogador renova sua própria assinatura (expirada ou expirando em ≤7 dias)."""
         from app.core.config import settings as cfg
 
@@ -294,7 +306,8 @@ class SubscriptionService:
         valor_total_plano = precos_totais[plano]
         valor_mensal_unitario = round(valor_total_plano / meses, 2)
         parcelas = PLANO_PARCELAS[plano]
-        return await self.criar_assinatura(player.id, plano, forma_pagamento, valor_mensal_unitario, parcelas)
+        return await self.criar_assinatura(player.id, plano, forma_pagamento,
+                                           valor_mensal_unitario, parcelas, cupom_codigo)
 
     async def admin_atualizar_status(
         self,

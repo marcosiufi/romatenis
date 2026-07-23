@@ -15,6 +15,7 @@ from app.schemas.subscription import (
     SubscriptionOut,
     SubscriptionRenovar,
 )
+from app.services.cupom_service import CupomError
 from app.services.subscription_service import (
     ContratacaoDesabilitadaError,
     RankingCheioError,
@@ -140,11 +141,13 @@ async def contratar_plano(
 ):
     """Contratação de novo plano pelo próprio jogador (landing page)."""
     try:
-        res = await svc.contratar(player, body.plano, body.forma_pagamento)
+        res = await svc.contratar(player, body.plano, body.forma_pagamento, body.cupom_codigo)
     except RankingCheioError as e:
         raise HTTPException(409, detail={"code": "ranking_cheio", "limite": e.limite})
     except ContratacaoDesabilitadaError as e:
         raise HTTPException(403, str(e))
+    except CupomError as e:
+        raise HTTPException(422, str(e))
     except SubscriptionError as e:
         raise HTTPException(422, str(e))
     out = SubscriptionCreateOut.model_validate(res.subscription)
@@ -219,9 +222,11 @@ async def renovar(
     svc: SubscriptionService = Depends(_svc),
 ):
     try:
-        res = await svc.renovar(player, body.plano, body.forma_pagamento)
+        res = await svc.renovar(player, body.plano, body.forma_pagamento, body.cupom_codigo)
     except ContratacaoDesabilitadaError as e:
         raise HTTPException(403, str(e))
+    except CupomError as e:
+        raise HTTPException(422, str(e))
     except SubscriptionError as e:
         raise HTTPException(422, str(e))
 
