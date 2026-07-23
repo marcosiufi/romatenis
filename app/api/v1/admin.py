@@ -217,6 +217,7 @@ class ConfiguracaoIn(BaseModel):
     ranking_ultima_hora_horas: int = Field(ge=0, le=168)
     jogo_avulso_ultima_hora_horas: int = Field(ge=0, le=168)
     locacao_libera_slot_ranking_horas: int = Field(ge=0, le=168)
+    cancelamento_antecedencia_horas: int = Field(ge=0, le=168)
 
     @model_validator(mode="after")
     def validar_janelas(self) -> "ConfiguracaoIn":
@@ -257,6 +258,7 @@ async def get_configuracoes(
         "ranking_ultima_hora_horas":         cfg.ranking_ultima_hora_horas,
         "jogo_avulso_ultima_hora_horas":     cfg.jogo_avulso_ultima_hora_horas,
         "locacao_libera_slot_ranking_horas": cfg.locacao_libera_slot_ranking_horas,
+        "cancelamento_antecedencia_horas":   cfg.cancelamento_antecedencia_horas,
     }
 
 
@@ -287,6 +289,7 @@ async def put_configuracoes(
     cfg.ranking_ultima_hora_horas         = body.ranking_ultima_hora_horas
     cfg.jogo_avulso_ultima_hora_horas     = body.jogo_avulso_ultima_hora_horas
     cfg.locacao_libera_slot_ranking_horas = body.locacao_libera_slot_ranking_horas
+    cfg.cancelamento_antecedencia_horas   = body.cancelamento_antecedencia_horas
 
     await db.commit()
 

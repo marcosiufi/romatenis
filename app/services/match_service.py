@@ -241,25 +241,45 @@ class MatchService:
         return match
 
     async def cancelar_por_jogador(self, match_id: int, player: Player) -> Match:
-        """Qualquer participante pode cancelar uma partida futura ainda agendada."""
+        """
+        Qualquer participante cancela uma partida futura agendada.
+
+        Política de prazo (cancelamento_antecedencia_horas, config):
+          - Com antecedência ≥ prazo → cancelamento limpo, sem penalidade.
+          - Abaixo do prazo → o jogo vira WO e conta no saldo semanal de quem
+            cancelou (os demais recuperam a vaga). Não pontua ninguém.
+        Em ambos os casos o horário é liberado na agenda.
+        """
+        from app.models.configuracao import Configuracao
+
+        agora = datetime.now(timezone.utc)
         match = await self._get_match(match_id)
         if match is None:
             raise MatchError("Partida não encontrada")
         if match.status != StatusPartida.AGENDADO:
             raise MatchError("Só é possível cancelar partidas com status Agendado")
-        if match.data_hora <= datetime.now(timezone.utc):
+        if match.data_hora <= agora:
             raise MatchError("Não é possível cancelar uma partida que já iniciou")
         ids_participantes = {p.player_id for p in match.participantes}
         if not player.is_admin and player.id not in ids_participantes:
             raise MatchError("Você não é participante desta partida")
 
-        match.status = StatusPartida.CANCELADO_SEM_PLACAR
+        cfg = await Configuracao.get(self.db)
+        prazo = timedelta(hours=cfg.cancelamento_antecedencia_horas)
+        # Admin cancela sempre sem penalidade
+        tardio = (not player.is_admin) and (match.data_hora - agora < prazo)
 
-        # Libera o slot na agenda
-        booking_res = await self.db.execute(
+        if tardio:
+            # WO sem pontuação; conta só para quem cancelou (via cancelado_por_id)
+            match.status = StatusPartida.WO
+            match.cancelado_por_id = player.id
+        else:
+            match.status = StatusPartida.CANCELADO_SEM_PLACAR
+
+        # Libera o slot na agenda em ambos os casos
+        booking = await self.db.scalar(
             select(Booking).where(Booking.match_id == match_id)
         )
-        booking = booking_res.scalar_one_or_none()
         if booking:
             booking.status = StatusReserva.CANCELADA
 

@@ -52,6 +52,13 @@ class Match(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
+    # Cancelamento tardio: marca quem cancelou fora do prazo. O jogo vira WO
+    # (sem pontuar) e só conta no saldo semanal desse jogador — os demais
+    # participantes recuperam a vaga.
+    cancelado_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("players.id"), nullable=True
+    )
+
     season: Mapped["Season | None"] = relationship(back_populates="matches")
     participantes: Mapped[list["MatchParticipant"]] = relationship(
         back_populates="match", cascade="all, delete-orphan"

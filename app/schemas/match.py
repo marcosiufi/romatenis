@@ -54,6 +54,7 @@ class MatchOut(BaseModel):
     lado_vencedor: str | None
     season_id: int | None
     avulso: bool = False
+    cancelado_por_id: int | None = None
     participantes: list[MatchParticipantOut]
 
 

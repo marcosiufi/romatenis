@@ -698,7 +698,14 @@ class BookingService:
     async def _contar_jogos_semana(
         self, player_id: int, tipo: TipoPartida, data_hora: datetime
     ) -> int:
-        """Partidas confirmadas do tipo na semana do slot — inclui jogos avulsos."""
+        """
+        Jogos do tipo que pesam no saldo semanal do jogador.
+
+        Conta partidas ativas/realizadas/WO com reserva confirmada, MAIS os
+        cancelamentos tardios feitos por este jogador (que viram WO e liberam a
+        reserva, mas ainda assim consomem a cota de quem cancelou). Um
+        cancelamento tardio NÃO conta para os demais participantes.
+        """
         inicio_utc, fim_utc, _, _ = self._semana_do_slot(data_hora)
         result = await self.db.execute(
             select(func.count(MatchParticipant.id))
@@ -707,10 +714,18 @@ class BookingService:
             .where(
                 MatchParticipant.player_id == player_id,
                 Match.tipo == tipo,
-                Match.status != StatusPartida.CANCELADO_SEM_PLACAR,
-                Booking.status == StatusReserva.CONFIRMADA,
                 Booking.data_hora_inicio >= inicio_utc,
                 Booking.data_hora_inicio < fim_utc,
+                or_(
+                    # Jogo normal com reserva confirmada
+                    and_(
+                        Match.cancelado_por_id.is_(None),
+                        Match.status != StatusPartida.CANCELADO_SEM_PLACAR,
+                        Booking.status == StatusReserva.CONFIRMADA,
+                    ),
+                    # Cancelamento tardio deste jogador
+                    Match.cancelado_por_id == player_id,
+                ),
             )
         )
         return result.scalar() or 0

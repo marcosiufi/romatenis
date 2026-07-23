@@ -506,6 +506,8 @@ async def empresa_publica(db: AsyncSession = Depends(get_db)):
         "reservas_ativas":           cfg.reservas_ativas,
         "msg_planos_desabilitado":   cfg.msg_planos_desabilitado,
         "msg_reservas_desabilitado": cfg.msg_reservas_desabilitado,
+        # Prazo de cancelamento sem penalidade (horas)
+        "cancelamento_antecedencia_horas": cfg.cancelamento_antecedencia_horas,
     }
 
 

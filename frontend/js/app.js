@@ -1303,7 +1303,7 @@ function renderPartida(p, aguardandoPlacar) {
   } else if (p.status === "realizado") {
     statusCls = "status-realizado"; statusTxt = "Realizado"; cardCls += " realizado";
   } else if (p.status === "wo") {
-    statusCls = "status-wo"; statusTxt = "W.O."; cardCls += " cancelado";
+    statusCls = "status-wo"; statusTxt = p.cancelado_por_id ? "W.O. (cancel. tardio)" : "W.O."; cardCls += " cancelado";
   } else {
     statusCls = "status-cancelado"; statusTxt = "Cancelado"; cardCls += " cancelado";
   }
@@ -1374,10 +1374,22 @@ async function carregarPartidas() {
 }
 
 async function cancelarPartida(matchId) {
-  if (!confirm("Cancelar esta partida? O horário será liberado na agenda.")) return;
+  const p = (_partidas || []).find((m) => m.id === matchId);
+  const emp = await getEmpresa();
+  const prazoH = emp?.cancelamento_antecedencia_horas ?? 3;
+  const faltaMs = p ? new Date(p.data_hora) - new Date() : Infinity;
+  const tardio = faltaMs < prazoH * 3600 * 1000;
+
+  const msg = tardio
+    ? `Faltam menos de ${prazoH}h para o jogo. Ao cancelar agora, ele será `
+      + `contabilizado como W.O. e abatido do seu saldo semanal. Deseja continuar?`
+    : "Cancelar esta partida? O horário será liberado na agenda e não afeta seu saldo.";
+  if (!confirm(msg)) return;
+
   try {
     await apiFetch(`/matches/${matchId}/cancelar-jogador`, { method: "POST" });
     carregarPartidas();
+    carregarUsoSemanal();
   } catch (e) {
     alert(e.message || "Erro ao cancelar partida.");
   }

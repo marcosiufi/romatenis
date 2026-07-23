@@ -71,6 +71,11 @@ class Configuracao(Base):
     locacao_libera_slot_ranking_horas: Mapped[int] = mapped_column(
         Integer, nullable=False, default=6, server_default="6"
     )
+    # Cancelamento de jogos (ranking e avulso): cancelar com menos que este
+    # tempo de antecedência abate o jogo do saldo semanal (conta como WO).
+    cancelamento_antecedencia_horas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=3, server_default="3"
+    )
 
     # Dados da empresa
     razao_social: Mapped[str] = mapped_column(String(300), nullable=False, default="Rosangela Pioli Siufi")

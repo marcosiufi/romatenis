@@ -1138,6 +1138,7 @@ async function loadConfiguracoes() {
     document.getElementById('cfg-ant-ranking-ultima').value = cfg.ranking_ultima_hora_horas
     document.getElementById('cfg-ant-jogo-avulso').value    = cfg.jogo_avulso_ultima_hora_horas
     document.getElementById('cfg-ant-locacao').value        = cfg.locacao_libera_slot_ranking_horas
+    document.getElementById('cfg-cancelamento').value       = cfg.cancelamento_antecedencia_horas
 
     // Mantém a explicação da seção de slots do ranking coerente com a config
     const srHoras = document.getElementById('sr-horas-libera')
@@ -1272,6 +1273,7 @@ async function salvarConfiguracoes(e) {
         ranking_ultima_hora_horas:         parseInt(document.getElementById('cfg-ant-ranking-ultima').value, 10),
         jogo_avulso_ultima_hora_horas:     parseInt(document.getElementById('cfg-ant-jogo-avulso').value, 10),
         locacao_libera_slot_ranking_horas: parseInt(document.getElementById('cfg-ant-locacao').value, 10),
+        cancelamento_antecedencia_horas: parseInt(document.getElementById('cfg-cancelamento').value, 10),
       }),
     })
     // Recarrega _precos para atualizar o modal de assinatura
