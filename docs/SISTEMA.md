@@ -420,6 +420,14 @@ cd /opt/romatenis && git rev-parse --short HEAD && sha256sum frontend/<arquivo> 
 Compare os três: commit certo, disco certo, **container diferente** = cache do
 build. Resolva com `--no-cache`.
 
+### Comandos úteis no servidor
+
+```bash
+docker compose logs --tail=80 api          # logs da API
+docker compose exec api alembic current    # migration aplicada
+docker compose exec api python scripts/seed_admin.py   # cria o primeiro admin
+```
+
 ---
 
 ## 12. Convenções do projeto
