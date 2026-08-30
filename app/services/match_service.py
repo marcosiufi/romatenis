@@ -343,6 +343,15 @@ class MatchService:
         return result.scalar_one_or_none()
 
     async def _processar_resultado(self, match: Match, is_wo: bool) -> None:
+        # Convidado não tem player_id e não pontua. Hoje isso é impedido antes,
+        # porque placar e W.O. rejeitam partida avulsa — mas se um convidado
+        # chegasse aqui o KeyError estouraria no meio das mutações, deixando o
+        # resultado pela metade. Falha cedo e com mensagem clara.
+        if any(p.player_id is None for p in match.participantes):
+            raise MatchError(
+                "Partida com convidado não pontua no ranking e não pode ser processada."
+            )
+
         lado_a = [p for p in match.participantes if p.lado == LadoPartida.A]
         lado_b = [p for p in match.participantes if p.lado == LadoPartida.B]
 

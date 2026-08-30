@@ -565,7 +565,18 @@ rollback.
   restringe a alfanumérico, hífen e underline), mas o render deixa de depender
   desse invariante distante.
 
-### 15.7 Verificado e correto (sem alteração)
+### 15.7 Crash latente com convidado no processamento de resultado (baixo)
+
+`_processar_resultado` faz `by_id[part.player_id]`, e convidado tem
+`player_id = None` — o que daria `KeyError: None` **no meio das mutações**,
+deixando pontos e rating pela metade. Hoje não acontece, porque placar e W.O.
+rejeitam partida avulsa e convidados só existem em partida avulsa. Mas o
+invariante mora longe de quem depende dele.
+
+**Correção:** guarda no início de `_processar_resultado` que falha cedo com
+`MatchError` claro se algum participante não tiver `player_id`.
+
+### 15.8 Verificado e correto (sem alteração)
 
 - **Autenticação:** os únicos endpoints públicos restantes são intencionais —
   `precos` e `vagas-ranking` (informação pública) e `webhook` (validado por token
@@ -579,3 +590,21 @@ rollback.
   já cobriam corretamente reservas multi-hora; a falha era só a janela de corrida.
 - **`expire_on_commit=False`** no sessionmaker: objetos não expiram após commit
   (uma anotação antiga afirmava o contrário e estava errada).
+- **Matemática do ranking:** 30 casos testados nas funções puras — validação
+  Set Pro (8-6, 9-7, 8-8 com tiebreak, e as rejeições: 8-7, 9-8, 10-8, tiebreak
+  fora do 8-8, tiebreak empatado), expectativa de Elo (simetria e soma 1),
+  fator K (32 abaixo de 20 partidas, 16 a partir de 20, metade em duplas) e as
+  quatro tabelas de pontos. Todos corretos.
+- **`recalcular_classificacao`:** sem divisão por zero com lista vazia; os
+  percentis distribuem corretamente. Note que a reclassificação **não** é
+  automática após cada partida — depende do botão no painel.
+- **`_notificar_resultado`:** já ignora convidados com segurança
+  (`by_id.get(...)` seguido de `continue`).
+
+### 15.9 Atenção no deploy da migration 0030
+
+A constraint só pode ser criada se **não houver sobreposição pré-existente**
+entre reservas ativas. A migration verifica isso antes e falha com uma mensagem
+dizendo quantos pares estão em conflito, em vez de criar a constraint pela
+metade. Se isso acontecer, cancele as reservas duplicadas no painel e rode o
+`alembic upgrade head` de novo.
