@@ -901,7 +901,7 @@ function plRenderResumo() {
   let valorFinal, descLinha;
   if (plCupom) {
     valorFinal = valorTotal * (1 - plCupom.percentual / 100);
-    descLinha = `Cupom ${plCupom.codigo} (${plCupom.percentual}% desc)`;
+    descLinha = `Cupom ${escSite(plCupom.codigo)} (${plCupom.percentual}% desc)`;
   } else if (plPmt === 'pix_avista') {
     valorFinal = valorTotal * 0.95;
     descLinha = 'PIX à vista (5% desc)';
@@ -1374,6 +1374,13 @@ function bkCopiarPix() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') bkFecharModal(); });
 document.getElementById('bk-modal').addEventListener('click', function(e) { if (e.target === this) bkFecharModal(); });
+
+// Escape de HTML — o código do cupom é validado no backend, mas escapar aqui
+// evita depender desse invariante para a segurança do render.
+function escSite(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
 
 // ── Estado comercial (pré-lançamento) ───────────────────────────────────────
 // Preenchido pelo /public/empresa logo abaixo. Enquanto não chega, assume tudo

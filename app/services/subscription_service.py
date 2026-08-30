@@ -129,6 +129,10 @@ class SubscriptionService:
             valor_base, cupom, pix=(forma_pagamento == FormaPagamento.PIX_AVISTA)
         )
         valor_total = calc["valor_final"]
+        # Consome a vaga do cupom ANTES de gerar cobrança: se o limite estourar
+        # na corrida, falha aqui e o rollback desfaz — sem cobrança órfã no Asaas.
+        if cupom:
+            await cupom_service.registrar_uso(self.db, cupom)
         now_br = datetime.now(FUSO_BR)
         expiracao = now_br + timedelta(days=meses * 30)
 
@@ -190,8 +194,6 @@ class SubscriptionService:
             valor_desconto=calc["desconto"] if cupom else None,
         )
         self.db.add(payment)
-        if cupom:
-            await cupom_service.registrar_uso(self.db, cupom)
         await self.db.commit()
         await self.db.refresh(sub)
 
@@ -498,8 +500,18 @@ class SubscriptionService:
             return
 
         asaas_status = payment_data.get("status", "")
+        e_pagamento = (
+            event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED")
+            or asaas_status in ("RECEIVED", "CONFIRMED")
+        )
 
-        if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED") or asaas_status in ("RECEIVED", "CONFIRMED"):
+        # Idempotência: o Asaas reenvia eventos e manda RECEIVED e CONFIRMED
+        # para a mesma cobrança. Sem esta guarda, o e-mail de confirmação sai
+        # repetido e um retry tardio reativaria uma assinatura já estornada.
+        if e_pagamento and payment.status == StatusPagamento.PAGO:
+            return
+
+        if e_pagamento:
             payment.status = StatusPagamento.PAGO
             payment.data_pagamento = datetime.now(timezone.utc)
             if payment.booking_id:

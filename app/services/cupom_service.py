@@ -7,7 +7,7 @@ Regra de negócio combinada com o admin:
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cupom import Cupom
@@ -75,6 +75,32 @@ def calcular_valor(valor_base: float, cupom: Cupom | None, pix: bool) -> dict:
 
 
 async def registrar_uso(db: AsyncSession, cupom: Cupom) -> None:
-    """Incrementa o contador de usos. Chamar na criação da cobrança."""
-    cupom.usos = (cupom.usos or 0) + 1
-    db.add(cupom)
+    """
+    Incrementa o contador de usos. Chamar na criação da cobrança.
+
+    O incremento é feito em SQL (`usos = usos + 1`) com o limite na cláusula
+    WHERE: um read-modify-write em Python deixaria dois pedidos simultâneos
+    lerem o mesmo valor e gravarem o mesmo número, estourando o `max_usos`.
+    """
+    resultado = await db.execute(
+        update(Cupom)
+        .where(
+            Cupom.id == cupom.id,
+            or_(Cupom.max_usos.is_(None), Cupom.usos < Cupom.max_usos),
+        )
+        .values(usos=Cupom.usos + 1)
+    )
+    if resultado.rowcount == 0:
+        # Outro pedido consumiu a última vaga entre a validação e o commit
+        raise CupomError("Este cupom atingiu o limite de usos.")
+    # Mantém o objeto em memória coerente com o banco
+    await db.refresh(cupom)
+
+
+async def devolver_uso(db: AsyncSession, codigo: str) -> None:
+    """Devolve uma vaga do cupom (pré-reserva que expirou sem pagamento)."""
+    await db.execute(
+        update(Cupom)
+        .where(func.upper(Cupom.codigo) == codigo.upper(), Cupom.usos > 0)
+        .values(usos=Cupom.usos - 1)
+    )

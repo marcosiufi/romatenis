@@ -30,6 +30,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, extract, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -54,6 +55,14 @@ LIMITE_SEMANAL = {TipoPartida.SIMPLES: 3, TipoPartida.DUPLAS: 2}
 
 # Uma pré-reserva não paga segura o slot por este tempo antes de liberá-lo
 JANELA_PRE_RESERVA = timedelta(minutes=10)
+
+
+CONSTRAINT_SOBREPOSICAO = "bookings_sem_sobreposicao"
+
+
+def _e_conflito_de_horario(exc: IntegrityError) -> bool:
+    """A constraint EXCLUDE do banco disparou (corrida por um mesmo slot)."""
+    return CONSTRAINT_SOBREPOSICAO in str(getattr(exc, "orig", exc))
 
 
 class BookingError(ValueError):
@@ -113,6 +122,25 @@ class BookingService:
         cfg = await Configuracao.get(self.db)
         if not cfg.reservas_ativas:
             raise ReservasDesabilitadasError(cfg.msg_reservas_desabilitado)
+
+    async def _commit_reserva(self) -> None:
+        """
+        Commit que traduz a corrida por horário em erro de negócio.
+
+        A checagem de sobreposição na aplicação (SELECT) não fecha a janela até
+        o INSERT; a constraint EXCLUDE do banco fecha. Quando ela dispara, o
+        outro pedido chegou primeiro.
+        """
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:
+            await self.db.rollback()
+            if _e_conflito_de_horario(exc):
+                raise BookingError(
+                    "Este horário acabou de ser reservado por outra pessoa. "
+                    "Escolha outro horário."
+                ) from exc
+            raise
 
     # ── Consultas ─────────────────────────────────────────────────────────────
 
@@ -299,7 +327,7 @@ class BookingService:
             match_id=match.id,
         )
         self.db.add(booking)
-        await self.db.commit()
+        await self._commit_reserva()
         await self.db.refresh(booking)
         await self.db.refresh(match)
         await self._notificar_reserva(match, lado_a, lado_b)
@@ -330,7 +358,7 @@ class BookingService:
             valor=float((await Configuracao.get(self.db)).preco_locacao_hora),
         )
         self.db.add(booking)
-        await self.db.commit()
+        await self._commit_reserva()
         await self.db.refresh(booking)
         return booking
 
@@ -361,6 +389,9 @@ class BookingService:
         cupom = await cupom_service.validar_cupom(self.db, cupom_codigo) if cupom_codigo else None
         calc = cupom_service.calcular_valor(valor_base, cupom, pix=False)
         valor = calc["valor_final"]
+        # Consome a vaga do cupom antes da cobrança (ver criar_assinatura)
+        if cupom:
+            await cupom_service.registrar_uso(self.db, cupom)
 
         match = Match(
             tipo=tipo,
@@ -409,7 +440,7 @@ class BookingService:
             player, booking, valor, metodo_pagamento, data_hora, cupom, calc["desconto"]
         )
 
-        await self.db.commit()
+        await self._commit_reserva()
         return {"booking_id": booking.id, "match_id": match.id, "valor": valor, **cobranca}
 
     async def _cobrar_jogo_avulso(
@@ -459,8 +490,6 @@ class BookingService:
                 cupom_codigo=cupom.codigo if cupom else None,
                 valor_desconto=desconto if cupom else None,
             ))
-            if cupom:
-                await cupom_service.registrar_uso(self.db, cupom)
 
             if metodo_pagamento == "cartao":
                 return {

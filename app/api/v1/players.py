@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_admin, get_current_player, hash_password
 from app.core.database import get_db
 from app.models.player import Player, StatusJogador
-from app.schemas.player import PlayerCreate, PlayerOut, PlayerUpdate
+from app.schemas.player import PlayerCreate, PlayerOut, PlayerRankingOut, PlayerUpdate
 
 _UPLOAD_DIR = "/app/uploads/avatars"
 _ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -18,8 +18,9 @@ _MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 router = APIRouter(prefix="/players", tags=["players"])
 
 
-@router.get("", response_model=list[PlayerOut])
+@router.get("", response_model=list[PlayerRankingOut])
 async def list_players(
+    _current: Annotated[Player, Depends(get_current_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
     apenas_ativos: bool = False,
 ):
@@ -119,16 +120,21 @@ async def update_me(
     return player
 
 
-@router.get("/{player_id}", response_model=PlayerOut)
+# response_model=None: o retorno varia entre PlayerOut e PlayerRankingOut e a
+# serialização é feita pelo próprio modelo, sem depender de union do Pydantic.
+@router.get("/{player_id}", response_model=None)
 async def get_player(
     player_id: int,
     _current: Annotated[Player, Depends(get_current_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    """Dados completos apenas para o próprio jogador ou admin; demais veem a visão pública."""
     player = await db.get(Player, player_id)
     if player is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jogador não encontrado")
-    return player
+    if _current.is_admin or _current.id == player_id:
+        return PlayerOut.model_validate(player)
+    return PlayerRankingOut.model_validate(player)
 
 
 @router.patch("/{player_id}", response_model=PlayerOut)

@@ -3,7 +3,7 @@
 > Documento de referência do sistema. Mantido manualmente — ao mudar regra de
 > negócio, modelo ou fluxo, **atualize a seção correspondente aqui**.
 >
-> Última atualização: migration `0029`, service worker `v57`.
+> Última atualização: migration `0030`, service worker `v58`.
 
 ---
 
@@ -70,7 +70,7 @@ app/
   schemas/                Pydantic (booking, cupom, match, player, season, subscription)
   services/               regra de negócio
   api/v1/                 rotas
-alembic/versions/         29 migrations (0001 … 0029)
+alembic/versions/         30 migrations (0001 … 0030)
 frontend/
   index.html              site institucional (JS inline)
   app/index.html          PWA do membro
@@ -462,7 +462,7 @@ Título: Cinzel (serif romana)   Corpo: Inter / Segoe UI
 | **`booking_service` ignora `HorarioDiaSemana`** | Usa 6–22 fixo como fallback, enquanto `public.py` respeita a config. Divergência entre app e site |
 | **`hora_abertura`/`hora_fechamento`** | Vestigiais em `Configuracao`, mantidos só como fallback |
 | **E-mail de abertura em lote** | Envio sequencial dentro da request; lista grande pode travar a tela e esbarrar no limite do Gmail |
-| **Escape XSS** | Aplicado nos pontos críticos; varredura completa do restante não foi feita |
+| **Escape XSS** | Varredura completa feita na auditoria — sem pendências (seção 15) |
 | **CSP** | Não há `Content-Security-Policy`; exigiria remover `onclick` inline |
 | **Reputação de e-mail** | Domínio novo — mensagens podem cair em spam até criar histórico |
 
@@ -482,3 +482,100 @@ Título: Cinzel (serif romana)   Corpo: Inter / Segoe UI
 | 0027 | `Match.lembrete_enviado` |
 | 0028 | **Cupons** + snapshot no Payment |
 | 0029 | **Política de cancelamento**: prazo configurável + `cancelado_por_id` |
+| 0030 | **Constraint EXCLUDE** em bookings: impede reserva dupla no banco |
+
+---
+
+## 15. Auditoria de 30/08/2026 — falhas encontradas e corrigidas
+
+Revisão sistemática do sistema por categoria (autorização, corrida, integridade
+de dados, idempotência, XSS). Registro do que foi encontrado e como foi tratado.
+
+### 15.1 Vazamento de dados pessoais (crítico)
+
+`GET /api/v1/players` **não exigia autenticação** e devolvia `PlayerOut`, que
+inclui `cpf`, `telefone`, `email`, `data_nascimento` e o endereço completo de
+todos os membros. Qualquer pessoa na internet podia coletar esses dados com uma
+requisição. Havia ainda uma exposição secundária: `GET /players/{id}` exigia
+login, mas qualquer membro podia ler o cadastro completo de qualquer outro.
+
+**Correção:** criado `PlayerRankingOut`, uma visão sem dados pessoais (id, nome,
+apelido, foto, nível, rating, pontos, status). A listagem passou a exigir
+autenticação e a usar essa visão; o endpoint individual só devolve `PlayerOut`
+para o próprio jogador ou para admin.
+
+> **Regra a manter:** `PlayerOut` é a visão privada. Nunca use em endpoint que
+> outros jogadores possam ler.
+
+### 15.2 Reserva dupla por condição de corrida (alto)
+
+A checagem de sobreposição existia só na aplicação: `SELECT` para ver se o slot
+está livre, depois `INSERT`. Duas requisições simultâneas passavam as duas —
+alcançável com 2 workers uvicorn, sobretudo na disputa por um horário liberado
+na janela de última hora.
+
+**Correção:** constraint `EXCLUDE USING gist` sobre `tstzrange(inicio, fim)` para
+reservas em `confirmada` ou `aguardando_pagamento` (migration 0030). A garantia
+passa a ser do banco, então nenhuma corrida escapa. Usa intervalo, não hora de
+início, para cobrir locações de 2–4 h. A violação é traduzida em mensagem de
+negócio ("Este horário acabou de ser reservado por outra pessoa").
+
+Nota: reservas que apenas encostam (14–15 h e 15–16 h) **não** conflitam —
+`tstzrange` usa limites `[início, fim)`.
+
+### 15.3 Webhook de pagamento não idempotente (alto)
+
+O Asaas reenvia eventos e manda `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED` para a
+mesma cobrança. O código reprocessava: e-mail de confirmação duplicado e, pior,
+um retry tardio após estorno **reativaria** a assinatura cancelada.
+
+**Correção:** guarda de idempotência — se o pagamento já está `PAGO`, o evento
+de pagamento é ignorado.
+
+### 15.4 Contador de cupom com read-modify-write (médio)
+
+`registrar_uso` fazia `cupom.usos = cupom.usos + 1` em Python. Dois pedidos
+simultâneos liam o mesmo valor e gravavam o mesmo número, permitindo estourar o
+`max_usos`.
+
+**Correção:** incremento atômico em SQL (`usos = usos + 1`) com o limite na
+cláusula `WHERE`; `rowcount == 0` significa que a última vaga acabou de ser
+consumida e vira `CupomError`. Criado `devolver_uso` com a mesma abordagem, usado
+pelo loop de expiração.
+
+### 15.5 Cobrança órfã ao esgotar cupom (médio — introduzido por 15.4)
+
+Como `registrar_uso` passou a poder falhar, e era chamado **depois** de criar a
+cobrança no Asaas, uma corrida pela última vaga deixaria uma cobrança sem reserva
+— o cliente poderia pagar por algo que não existe.
+
+**Correção:** o consumo da vaga foi movido para **antes** da criação da cobrança
+nos três fluxos (assinatura, locação, jogo avulso). Como é um `UPDATE` na mesma
+transação ainda não commitada, qualquer falha posterior desfaz o incremento pelo
+rollback.
+
+> **Regra a manter:** nada que possa falhar deve ficar entre a criação da
+> cobrança e o commit.
+
+### 15.6 Ajustes menores
+
+- `GET /bookings/feriados` estava marcado como `tags=["admin"]` mas não exigia
+  autenticação, ao contrário do `POST` e do `DELETE` irmãos — corrigido.
+- Código de cupom passou a ser escapado no site. Não era explorável (o backend
+  restringe a alfanumérico, hífen e underline), mas o render deixa de depender
+  desse invariante distante.
+
+### 15.7 Verificado e correto (sem alteração)
+
+- **Autenticação:** os únicos endpoints públicos restantes são intencionais —
+  `precos` e `vagas-ranking` (informação pública) e `webhook` (validado por token
+  no header).
+- **XSS:** varredura completa em `app.js`, `admin.js` e `index.html` — sem
+  pendências. O `instagram` no site vai para `href` com prefixo `https://` fixo
+  e para `textContent`, ambos seguros por construção.
+- **Cadeia de migrations:** 30 migrations, linear de 0001 a 0030, sem
+  ramificação nem órfãs.
+- **Sobreposição na aplicação:** a lógica de `_slot_ocupado` e a do `public.py`
+  já cobriam corretamente reservas multi-hora; a falha era só a janela de corrida.
+- **`expire_on_commit=False`** no sessionmaker: objetos não expiram após commit
+  (uma anotação antiga afirmava o contrário e estava errada).

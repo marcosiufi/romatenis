@@ -48,6 +48,29 @@ class PlayerUpdate(BaseModel):
     cep: str | None = None
 
 
+class PlayerRankingOut(BaseModel):
+    """
+    Visão pública de jogador — SEM dados pessoais.
+
+    Usada na listagem do ranking e nos seletores de adversário, que são vistos
+    por todos os membros. Nunca inclua CPF, endereço, telefone, e-mail ou
+    nascimento aqui: para esses dados existe PlayerOut, restrito ao próprio
+    jogador e ao admin.
+    """
+
+    model_config = {"from_attributes": True}
+
+    id: int
+    nome: str
+    apelido: str | None = None
+    foto_url: str | None = None
+    rating_atual: float
+    nivel: NivelJogador
+    partidas_computadas_rating: int
+    pontos_ranking_temporada_atual: int
+    status: StatusJogador = StatusJogador.ATIVO
+
+
 class PlayerOut(PlayerBase):
     model_config = {"from_attributes": True}
 

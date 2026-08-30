@@ -144,7 +144,7 @@ async def cancelar_reserva(booking_id: int, player: _Player, db: _DB):
 # ── Feriados (admin) ──────────────────────────────────────────────────────────
 
 @router.get("/feriados", tags=["admin"])
-async def listar_feriados(db: _DB):
+async def listar_feriados(_admin: _Admin, db: _DB):
     from sqlalchemy import select
     result = await db.execute(select(Feriado).order_by(Feriado.data))
     return result.scalars().all()

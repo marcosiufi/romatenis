@@ -51,10 +51,10 @@ async def _scheduler_loop() -> None:
 
 async def _expirar_reservas_loop() -> None:
     """A cada 2 min: cancela pré-reservas não pagas há mais de 10 min."""
-    from sqlalchemy import and_, func, select
+    from sqlalchemy import and_, select
     from app.core.database import async_session_factory
     from app.models.booking import Booking, StatusReserva, TipoReserva
-    from app.models.cupom import Cupom
+    from app.services import cupom_service
     from app.models.match import Match, StatusPartida
     from app.models.payment import Payment, StatusPagamento
     from app.services.asaas_client import AsaasClient
@@ -97,11 +97,7 @@ async def _expirar_reservas_loop() -> None:
                         # Cupom foi contado na criação; a pré-reserva expirou sem
                         # pagar, então devolve a vaga do cupom.
                         if payment.cupom_codigo:
-                            cupom = await db.scalar(
-                                select(Cupom).where(func.upper(Cupom.codigo) == payment.cupom_codigo.upper())
-                            )
-                            if cupom and cupom.usos > 0:
-                                cupom.usos -= 1
+                            await cupom_service.devolver_uso(db, payment.cupom_codigo)
 
                 if expiradas:
                     await db.commit()

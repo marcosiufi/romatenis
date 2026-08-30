@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import and_, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import (
@@ -330,6 +331,12 @@ async def reservar(
             raise HTTPException(status_code=422, detail=str(e))
     _calc = cupom_service.calcular_valor(valor_base, cupom, pix=False)
     valor = _calc["valor_final"]
+    if cupom:
+        # Consome a vaga antes da cobrança; rollback desfaz se algo falhar
+        try:
+            await cupom_service.registrar_uso(db, cupom)
+        except cupom_service.CupomError as e:
+            raise HTTPException(status_code=422, detail=str(e))
 
     # Horário base: config por dia da semana > global
     dia_cfg_r = await db.scalar(
@@ -409,7 +416,18 @@ async def reservar(
         valor=valor,
     )
     db.add(booking)
-    await db.flush()
+    try:
+        # A constraint EXCLUDE dispara aqui — antes de gerar qualquer cobrança
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        from app.services.booking_service import _e_conflito_de_horario
+        if _e_conflito_de_horario(exc):
+            raise HTTPException(
+                status_code=409,
+                detail="Este horário acabou de ser reservado por outra pessoa. Escolha outro horário.",
+            )
+        raise
 
     # Tentar criar cobrança Asaas
     pix_copia_cola = None
@@ -463,8 +481,6 @@ async def reservar(
             valor_desconto=_calc["desconto"] if cupom else None,
         )
         db.add(payment)
-        if cupom:
-            await cupom_service.registrar_uso(db, cupom)
     except Exception:
         pass  # Se Asaas falhar, mantém a reserva sem pagamento online
 
