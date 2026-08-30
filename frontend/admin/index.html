@@ -7,7 +7,7 @@
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     /* ── Variáveis e reset base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -434,6 +434,347 @@
     .dash-card { background: var(--clr-surface); border: 1px solid var(--clr-border); border-radius: 0.5rem; padding: 1rem; }
     .dash-card .dc-label { font-size: 0.75rem; color: var(--clr-text-muted); margin-bottom: 0.25rem; }
     .dash-card .dc-val { font-size: 1rem; font-weight: 700; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Refinamentos de design — 2026-08-30
+       Reescreve tokens e componentes-chave sobre a base acima, mantendo
+       todos os seletores existentes. Objetivo: mais contraste entre
+       superfícies, ritmo de espaçamento consistente, tipografia da marca
+       e alvos de toque/clique maiores.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    :root {
+      /* Superfícies: fundo mais profundo para os painéis ganharem separação */
+      --clr-bg:            #0c1a11;
+      --clr-surface:       #162c1d;
+      --clr-surface-alt:   #1d3826;
+      --clr-surface-soft:  rgba(255,255,255,.045);
+
+      --clr-border:        rgba(255,255,255,.09);
+      --clr-border-strong: rgba(255,255,255,.17);
+
+      --clr-accent:        #c0622a;
+      --clr-accent-hover:  #d97742;
+      --clr-accent-soft:   rgba(192,98,42,.15);
+
+      --clr-text:          #f0ebe4;
+      /* verde-acinzentado no lugar do branco transparente: harmoniza com o
+         fundo e mantém contraste legível */
+      --clr-text-muted:    #a9c0b0;
+      --clr-text-faint:    #7d9686;
+
+      --clr-ok:            #5cc182;
+      --clr-warn:          #e3ab4d;
+      --clr-danger:        #e8785f;
+
+      --ar-1: 6px; --ar-2: 10px; --ar-3: 14px; --ar-full: 999px;
+      --sb-1: 0 1px 2px rgba(0,0,0,.24);
+      --sb-2: 0 6px 20px rgba(0,0,0,.30);
+    }
+
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Tipografia da marca nos títulos ─────────────────────────────── */
+    .section-header h2,
+    .admin-sidebar-marca,
+    .login-card h1 {
+      font-family: "Cinzel", Georgia, serif;
+      letter-spacing: .03em;
+    }
+    .section-header h2 { font-size: 1.2rem; }
+    .section-header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    .admin-sidebar { background: var(--clr-surface); }
+
+    .admin-nav button {
+      position: relative;
+      padding: .7rem 1rem;
+      border-radius: 0;
+      font-size: .875rem;
+      font-weight: 500;
+      color: var(--clr-text-muted);
+      transition: color .15s, background .15s;
+    }
+    .admin-nav button:hover:not(.active) {
+      background: var(--clr-surface-soft);
+      color: var(--clr-text);
+    }
+    .admin-nav button.active {
+      background: var(--clr-accent-soft);
+      color: var(--clr-text);
+      font-weight: 600;
+    }
+    /* barra indicadora à esquerda do item ativo */
+    .admin-nav button.active::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--clr-accent);
+    }
+
+    /* ── Conteúdo ────────────────────────────────────────────────────── */
+    .admin-main, .admin-conteudo { background: var(--clr-bg); }
+
+    /* ── Tabelas ─────────────────────────────────────────────────────── */
+    .admin-table { font-size: .85rem; }
+    .admin-table th {
+      padding: .7rem .8rem;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--clr-text-faint);
+      background: var(--clr-surface-soft);
+      border-bottom: 1px solid var(--clr-border-strong);
+      white-space: nowrap;
+    }
+    .admin-table td {
+      padding: .75rem .8rem;
+      border-bottom: 1px solid var(--clr-border);
+      vertical-align: middle;
+    }
+    .admin-table tbody tr { transition: background .12s; }
+    .admin-table tbody tr:hover td { background: var(--clr-surface-soft); }
+    .admin-table tbody tr:last-child td { border-bottom: none; }
+    /* números alinhados para comparação vertical */
+    .admin-table td:has(+ td) { font-variant-numeric: tabular-nums; }
+
+    .admin-table-wrap {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--ar-3);
+      overflow: hidden;
+      overflow-x: auto;
+      box-shadow: var(--sb-1);
+    }
+
+    /* ── Campos de formulário ────────────────────────────────────────── */
+    .form-row label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--clr-text-muted);
+      letter-spacing: .01em;
+      margin-bottom: .35rem;
+    }
+    .form-row input,
+    .form-row select,
+    .form-row textarea,
+    #busca-jogador,
+    #filtro-sub-nome {
+      min-height: 40px;
+      padding: .55rem .75rem;
+      background: var(--clr-surface-soft);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--ar-1);
+      color: var(--clr-text);
+      font-family: inherit;
+      font-size: .875rem;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus,
+    #busca-jogador:focus,
+    #filtro-sub-nome:focus {
+      outline: none;
+      border-color: var(--clr-accent);
+      background: rgba(255,255,255,.07);
+      box-shadow: 0 0 0 3px var(--clr-accent-soft);
+    }
+    .form-row input::placeholder,
+    #busca-jogador::placeholder,
+    #filtro-sub-nome::placeholder { color: var(--clr-text-faint); }
+
+    select.form-control, .form-row select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9c0b0' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .6rem center;
+      background-size: 16px;
+      padding-right: 2.1rem;
+    }
+
+    /* ── Botões ──────────────────────────────────────────────────────── */
+    .btn-xs {
+      min-height: 32px;
+      padding: .4rem .8rem;
+      border-radius: var(--ar-1);
+      font-size: .8rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, transform .1s;
+    }
+    .btn-xs:active { transform: scale(.97); }
+    .btn-xs.primary { background: var(--clr-accent); color: #fff; }
+    .btn-xs.primary:hover { background: var(--clr-accent-hover); }
+    .btn-xs.sec {
+      background: transparent;
+      color: var(--clr-text);
+      border-color: var(--clr-border-strong);
+    }
+    .btn-xs.sec:hover { background: var(--clr-surface-soft); border-color: var(--clr-text-faint); }
+
+    /* ── Cards do dashboard ──────────────────────────────────────────── */
+    .stat-card, .dash-card, .season-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--ar-3);
+      box-shadow: var(--sb-1);
+    }
+    .stat-card { padding: 1.1rem 1.25rem; }
+    .stat-card .valor {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--clr-text);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-card .lbl {
+      font-size: .74rem;
+      color: var(--clr-text-muted);
+      margin-top: .35rem;
+      letter-spacing: .01em;
+    }
+    .dash-card .dc-label {
+      font-size: .72rem;
+      color: var(--clr-text-faint);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: .3rem;
+    }
+    .dash-card .dc-val { font-size: .95rem; font-weight: 600; }
+
+    /* ── Rótulo de seção do formulário ───────────────────────────────── */
+    .form-section-label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--clr-accent);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin: 1.25rem 0 .6rem;
+      padding-bottom: .35rem;
+      border-bottom: 1px solid var(--clr-border);
+    }
+
+    /* ── Badges ──────────────────────────────────────────────────────── */
+    .badge, .ba, .bb, .bc, .bd, .bnc {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.5rem;
+      padding: .15rem .5rem;
+      border-radius: var(--ar-full);
+      font-size: .72rem;
+      font-weight: 700;
+    }
+
+    /* ── Modais ──────────────────────────────────────────────────────── */
+    .modal {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border-strong);
+      border-radius: var(--ar-3);
+      box-shadow: var(--sb-2);
+    }
+    .modal-header {
+      font-family: "Cinzel", Georgia, serif;
+      letter-spacing: .02em;
+      border-bottom: 1px solid var(--clr-border);
+    }
+    .modal-footer { border-top: 1px solid var(--clr-border); }
+    .modal-overlay { background: rgba(6,14,9,.72); backdrop-filter: blur(2px); }
+
+    /* ── Login do admin ──────────────────────────────────────────────── */
+    .login-card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--ar-3);
+      box-shadow: var(--sb-2);
+    }
+
+    /* ── Mensagem de erro ────────────────────────────────────────────── */
+    .erro-msg {
+      color: var(--clr-danger);
+      font-size: .82rem;
+      background: rgba(232,120,95,.10);
+      border: 1px solid rgba(232,120,95,.28);
+      border-radius: var(--ar-1);
+      padding: .55rem .75rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+
+
+    /* ── Topo da sidebar ──────────────────────────────────────────────
+       Marca e botão de recolher dividem a primeira linha; o bloco do
+       usuário fica abaixo. Antes os três empilhavam e o "Sair" flutuava
+       solto quando o nome ainda não havia carregado.                    */
+    .admin-sidebar-top {
+      position: relative;
+      padding: 1rem;
+      gap: .6rem;
+    }
+    .admin-sidebar-marca {
+      font-size: 1rem;
+      /* espaço para o botão de recolher não encostar na marca */
+      padding-right: 2rem;
+    }
+    .sidebar-toggle {
+      position: absolute;
+      top: .85rem;
+      right: .75rem;
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--ar-1);
+      font-size: .7rem;
+      line-height: 1;
+      color: var(--clr-text-faint);
+      background: transparent;
+      border: 1px solid var(--clr-border);
+      cursor: pointer;
+      transition: color .15s, background .15s, border-color .15s;
+    }
+    .sidebar-toggle:hover {
+      color: var(--clr-accent);
+      background: var(--clr-surface-soft);
+      border-color: var(--clr-border-strong);
+    }
+    .admin-sidebar.collapsed .sidebar-toggle { position: static; align-self: center; }
+
+    .admin-sidebar-usuario {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      font-size: .8rem;
+      color: var(--clr-text-muted);
+      min-height: 32px;
+    }
+    .admin-sidebar-usuario #admin-nome {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Busca acima da tabela: largura confortável, sem esticar na tela cheia */
+    #busca-jogador { max-width: 320px; margin-bottom: .9rem; }
+
   </style>
 </head>
 <body>

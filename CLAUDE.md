@@ -31,6 +31,19 @@ Se o commit tiver migration, acrescente ao final:
 Ao mexer no frontend, **suba o `CACHE_NAME`** em `frontend/service-worker.js` —
 senão o PWA continua servindo o cache antigo mesmo após o deploy.
 
+## Design
+
+O app e o admin compartilham a mesma identidade: **Cinzel** nos títulos, **Inter**
+no corpo, escala de superfícies (fundo → superfície → elevado) e espaçamento de
+base 4px. Tokens em `frontend/css/style.css` (app) e no `<style>` de
+`frontend/admin/index.html`. Detalhes na seção 16 de `docs/SISTEMA.md`.
+
+Ao mexer em CSS: **confira os seletores contra o DOM real** (`querySelectorAll`)
+antes de dar por pronto — regra com seletor errado é válida e silenciosa. E fure
+o cache ao verificar, senão você avalia a versão antiga.
+
+Ponto de retorno do design anterior: tag `pre-redesign-2026-08-30`.
+
 ## Convenções
 
 - **Português** em código, comentários, commits e UI

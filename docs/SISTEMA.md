@@ -3,7 +3,7 @@
 > Documento de referência do sistema. Mantido manualmente — ao mudar regra de
 > negócio, modelo ou fluxo, **atualize a seção correspondente aqui**.
 >
-> Última atualização: migration `0030`, service worker `v58`.
+> Última atualização: migration `0030`, service worker `v59`.
 
 ---
 
@@ -446,10 +446,21 @@ docker compose exec api python scripts/seed_admin.py   # cria o primeiro admin
 ### Paleta e tipografia
 
 ```
-Verde escuro  #1a3320    Verde profundo #07100a
-Terracota     #C1502E    Claro          #F0EBE4
-Título: Cinzel (serif romana)   Corpo: Inter / Segoe UI
+App / Admin (escala de superfícies, do fundo ao elevado)
+  fundo       #0f1f15 (app) · #0c1a11 (admin)
+  superfície  #1b3324 (app) · #162c1d (admin)
+  elevado     #23422e (app) · #1d3826 (admin)
+
+Marca        terracota #c0622a  ·  hover #d97742
+Texto        #f0ebe4  ·  suave #a9c0b0  ·  fraco #7d9686
+Semânticas   sucesso #5cc182 · aviso #e3ab4d · perigo #e8785f
+
+Título: Cinzel 700 (serif romana)   Corpo: Inter 400/500/600/700
 ```
+
+O tom secundário é **verde-acinzentado**, não o azulado `#9ab` anterior nem
+branco transparente: harmoniza com o fundo em vez de brigar com ele. O site
+(`landing.css`) mantém a própria paleta, mais escura, já alinhada à marca.
 
 ---
 
@@ -615,3 +626,71 @@ entre reservas ativas. A migration verifica isso antes e falha com uma mensagem
 dizendo quantos pares estão em conflito, em vez de criar a constraint pela
 metade. Se isso acontecer, cancele as reservas duplicadas no painel e rode o
 `alembic upgrade head` de novo.
+
+---
+
+## 16. Redesign de interface — 30/08/2026
+
+Modernização do app do associado (web e mobile) e do painel admin, respeitando
+a identidade visual. Ponto de retorno: tag `pre-redesign-2026-08-30` e cópia do
+frontend em `Desenvolvimento/Backups/frontend-pre-redesign-2026-08-30/`.
+
+### 16.1 Sistema de design
+
+`frontend/css/style.css` foi reescrito em torno de tokens; o `<style>` do admin
+ganhou um bloco de refinamento sobre a base existente. Ambos passaram a ter:
+
+- **Escala de superfícies** (fundo → superfície → elevado). O fundo ficou mais
+  profundo para os cards ganharem separação real — antes card e fundo eram tons
+  quase iguais e a hierarquia sumia.
+- **Escala de espaçamento** de base 4px (`--e1` … `--e8`), no lugar de valores
+  soltos.
+- **Escala de raio e elevação** (`--r-sm/md/lg/full`, `--sombra-1/2`).
+- **Tipografia da marca**: Cinzel nos títulos, Inter no corpo. As duas fontes já
+  eram carregadas nos dois painéis, mas o CSS usava Segoe UI em tudo — a
+  identidade estava paga e ociosa. Os pesos do Inter passaram de só 500 para
+  400/500/600/700.
+
+Os nomes de variáveis antigos (`--cor-terracota` etc.) viraram aliases dos novos,
+para não quebrar os estilos inline espalhados pelo HTML e pelo JS.
+
+### 16.2 Alinhamentos corrigidos
+
+- **Badges dos horários**: cada rótulo tinha a largura do próprio texto e ficava
+  encostado à direita, deixando a borda esquerda irregular. A coluna passou a ter
+  largura fixa (7rem) com o rótulo ocupando 100% dela — os cinco badges agora têm
+  borda esquerda, direita e largura idênticas (verificado: 214/326/112px).
+- **Topo da sidebar do admin**: marca, usuário e botão de recolher empilhavam em
+  coluna e o "Sair" flutuava solto enquanto o nome não carregava. Agora marca e
+  botão de recolher dividem a primeira linha, e o usuário fica abaixo.
+- **Linhas do perfil**: rótulo à esquerda, valor à direita com quebra controlada
+  para endereços longos.
+- **Nav e header no desktop**: a barra ocupava a largura toda enquanto o conteúdo
+  tinha 640px, deixando os itens espalhados e desconectados. O fundo continua
+  cheio, mas os itens passaram a seguir a coluna do conteúdo.
+
+### 16.3 Mobile
+
+- Alvos de toque de no mínimo 44px em botões, campos e itens da navegação.
+- Campo de formulário com altura mínima consistente.
+- Item ativo da navegação com barra indicadora e cor de marca, além do ícone.
+- `padding-bottom` do `main` calculado a partir da altura da barra + safe area,
+  para o último item nunca ficar sob a navegação (verificado: 44px de folga).
+- Modalidade (simples/duplas) virou chip selecionável, com área de toque maior e
+  estado selecionado explícito, em vez de um radio pequeno.
+- `env(safe-area-inset-*)` no header e na navegação, para aparelhos com notch.
+- Animação de troca de tela respeitando `prefers-reduced-motion`.
+
+### 16.4 Armadilhas encontradas na verificação
+
+Duas classes de erro que só apareceram ao conferir contra a marcação real:
+
+- **Regras mortas por seletor errado**: `.stat-card .num` (a classe real é
+  `.valor`), `.busca-input` (os campos usam id) e `.modal-card` (a classe real é
+  `.modal`). O CSS era válido e silencioso — parecia aplicado, mas não fazia nada.
+  Corrigido conferindo cada seletor com `querySelectorAll` no DOM real.
+- **Cache do service worker e do navegador** mascara mudanças de CSS: sem furar o
+  cache, a verificação avalia a versão antiga e conclui que "nada mudou".
+
+> **Ao mexer em CSS:** confira os seletores contra o DOM real antes de dar por
+> pronto, e fure o cache ao verificar.
