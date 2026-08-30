@@ -54,6 +54,11 @@
 
   /* Altura da barra de navegação — usada no padding do main */
   --nav-h: 60px;
+  /* Folga obrigatória no fim do conteúdo para a barra fixa não cobrir o
+     último item. Inclui a borda de 1px da nav e a safe-area do iPhone.
+     Use SEMPRE este token — nunca redeclare padding-bottom do main com um
+     atalho `padding:`, senão a folga some e o fim da página fica inalcançável. */
+  --folga-nav: calc(var(--nav-h) + 1px + env(safe-area-inset-bottom) + var(--e6));
 
   /* Aliases legados (mantidos para não quebrar estilos inline existentes) */
   --cor-terracota: var(--terracota);
@@ -260,7 +265,7 @@ main {
   margin: 0 auto;
   padding: var(--e4) var(--e5);
   /* espaço para a barra fixa não cobrir o último item */
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + var(--e6));
+  padding-bottom: var(--folga-nav);
 }
 
 /* ── Cards ────────────────────────────────────────────────────────────── */
@@ -272,7 +277,10 @@ main {
   margin-bottom: var(--e4);
   box-shadow: var(--sombra-1);
 }
-.card:last-child { margin-bottom: 0; }
+/* NÃO zerar a margem do último card. Quase todo card do app vive dentro de um
+   wrapper de passo (#slots-container, #form-reserva, #form-placar, #loc-s2..s4),
+   então ele é sempre :last-child do wrapper — o reset deixava as bordas coladas
+   quando dois wrappers apareciam juntos. O padding do main já absorve a sobra. */
 
 .card-titulo {
   font-family: var(--fonte-titulo);
@@ -592,7 +600,10 @@ main {
   border-left: 3px solid transparent;
   background: var(--superficie-sutil);
 }
-.partida-card:last-child { margin-bottom: 0; }
+/* idem .card: a última partida cola no #form-placar se a margem for zerada.
+   A lista usa ritmo de 8px; o formulário abaixo é outro bloco e usa os 16px
+   padrão. Valor cheio porque a margem colapsa com a do último card da lista. */
+#form-placar { margin-top: var(--e4); }
 .partida-card.agendada          { border-left-color: var(--terracota); }
 .partida-card.aguardando-placar { border-left-color: var(--aviso); }
 .partida-card.realizado         { border-left-color: var(--sucesso); }
@@ -703,7 +714,7 @@ main {
 
 /* ── Telas maiores ────────────────────────────────────────────────────── */
 @media (min-width: 720px) {
-  main { padding: var(--e6) var(--e6) var(--e8); }
+  main { padding: var(--e6) var(--e6) var(--folga-nav); }
   .card { padding: var(--e6); }
 
   /* O fundo da barra continua ocupando a largura toda, mas os itens ficam

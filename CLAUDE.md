@@ -42,6 +42,15 @@ Ao mexer em CSS: **confira os seletores contra o DOM real** (`querySelectorAll`)
 antes de dar por pronto — regra com seletor errado é válida e silenciosa. E fure
 o cache ao verificar, senão você avalia a versão antiga.
 
+Duas armadilhas de espaçamento já custaram caro (seção 16.5 de `docs/SISTEMA.md`):
+
+- A folga da barra fixa sai de `--folga-nav`. **Nunca** redeclare o `padding` do
+  `main` com o atalho `padding:` sem repetir o token — o atalho zera a folga e o
+  fim da página fica sob a navegação, inalcançável.
+- **Não zere margem com `:last-child`** em cards. Quase todo card vive dentro de
+  um wrapper de passo (`#form-reserva`, `#loc-s3`…), então é sempre `:last-child`
+  do wrapper — o reset cola as bordas quando dois wrappers aparecem juntos.
+
 Ponto de retorno do design anterior: tag `pre-redesign-2026-08-30`.
 
 ## Convenções

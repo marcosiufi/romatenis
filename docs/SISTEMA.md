@@ -675,7 +675,8 @@ para não quebrar os estilos inline espalhados pelo HTML e pelo JS.
 - Campo de formulário com altura mínima consistente.
 - Item ativo da navegação com barra indicadora e cor de marca, além do ícone.
 - `padding-bottom` do `main` calculado a partir da altura da barra + safe area,
-  para o último item nunca ficar sob a navegação (verificado: 44px de folga).
+  para o último item nunca ficar sob a navegação. A regra do desktop desfazia
+  isso — ver 16.5.
 - Modalidade (simples/duplas) virou chip selecionável, com área de toque maior e
   estado selecionado explícito, em vez de um radio pequeno.
 - `env(safe-area-inset-*)` no header e na navegação, para aparelhos com notch.
@@ -694,3 +695,55 @@ Duas classes de erro que só apareceram ao conferir contra a marcação real:
 
 > **Ao mexer em CSS:** confira os seletores contra o DOM real antes de dar por
 > pronto, e fure o cache ao verificar.
+
+### 16.5 Espaçamento — correções de 30/08/2026 (pós-redesign)
+
+Dois defeitos reportados no uso real, com a mesma consequência visual: caixas
+encostadas e fim de página inalcançável.
+
+**1. Fim do conteúdo escondido sob a barra de navegação (desktop)**
+
+O `main` reservava a folga da barra fixa em `padding-bottom`, mas o bloco
+`@media (min-width: 720px)` redeclarava a caixa toda com o **atalho**
+`padding: var(--e6) var(--e6) var(--e8)`. O atalho reescreve os quatro lados: a
+folga caía de 85px para 32px, contra uma barra de **61px**. Resultado: mesmo com
+a rolagem no fim, 35px do último card ficavam sob a barra — o card parecia
+cortado e "grudado" nela, e o conteúdo era inalcançável.
+
+Corrigido com um token dedicado, usado nos dois lugares:
+
+```css
+--folga-nav: calc(var(--nav-h) + 1px + env(safe-area-inset-bottom) + var(--e6));
+```
+
+O `+ 1px` é a borda superior da nav — `--nav-h` é o `min-height` do item, não a
+altura da barra.
+
+> **Regra:** o `padding-bottom` do `main` sempre sai de `--folga-nav`. Nunca
+> redeclare o padding do `main` com o atalho `padding:` sem repetir o token.
+
+**2. Cards colados por reset de `:last-child`**
+
+`.card:last-child { margin-bottom: 0 }` e `.partida-card:last-child { … }`
+existiam para evitar sobra no fim da página. Mas quase todo card do app vive
+dentro de um wrapper de passo — `#slots-container`, `#form-reserva`,
+`#form-placar`, `#loc-s2`, `#loc-s3`, `#loc-s4` — e é sempre `:last-child` **do
+wrapper**. Quando dois wrappers aparecem juntos (horários + confirmação, lista de
+partidas + placar), as bordas ficavam com **0px** entre elas.
+
+Os dois resets foram removidos: todo card mantém a margem, e o `padding-bottom`
+do `main` já absorve a sobra do último. `#form-placar` recebeu `margin-top` de
+16px cheios porque a margem **colapsa** com a do último `.partida-card` — 8px lá
+não somariam 16px, resolveriam em `max(8, 8)`.
+
+Os resets de `:last-child` que sobraram (`.ranking-item`, `.perfil-linha`,
+`.slot-item`, `.uso-linha`) atuam em linhas dentro de um mesmo card e estão
+corretos.
+
+**Verificação** (agendar, partidas e locação, com os passos visíveis
+simultaneamente, em 375px e 900px): espaçamento uniforme de 16px entre blocos e
+8px no ritmo da lista de partidas; folga de 34px entre o último card e a barra;
+rolagem alcançando o fim; sem rolagem horizontal.
+
+O admin não tem o mesmo problema: `#admin-app` é `position: fixed; inset: 0`,
+`.admin-main` rola internamente e nada fixo cobre o rodapé.
