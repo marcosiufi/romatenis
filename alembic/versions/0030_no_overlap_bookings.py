@@ -12,6 +12,10 @@ na janela de ultima hora, quando varios membros disputam um slot liberado.
 A constraint EXCLUDE resolve no banco, entao nenhuma corrida escapa,
 independente do numero de workers. Usa tstzrange para cobrir tambem locacoes
 de 2 a 4 horas, que o indice por hora de inicio nao pegaria.
+
+Cuidado com o predicado: o PostgreSQL exige funcoes IMMUTABLE em predicado de
+indice, e `status::text` e apenas STABLE (rotulos de enum podem ser renomeados).
+Por isso a comparacao e feita direto com os literais do enum, sem cast.
 """
 from alembic import op
 
@@ -36,8 +40,8 @@ def upgrade() -> None:
           ON a.id < b.id
          AND a.data_hora_inicio < b.data_hora_fim
          AND b.data_hora_inicio < a.data_hora_fim
-        WHERE a.status::text IN {STATUS_ATIVOS}
-          AND b.status::text IN {STATUS_ATIVOS};
+        WHERE a.status IN {STATUS_ATIVOS}
+          AND b.status IN {STATUS_ATIVOS};
 
         IF conflitos > 0 THEN
             RAISE EXCEPTION
@@ -54,7 +58,7 @@ def upgrade() -> None:
         EXCLUDE USING gist (
             tstzrange(data_hora_inicio, data_hora_fim) WITH &&
         )
-        WHERE (status::text IN {STATUS_ATIVOS})
+        WHERE (status IN {STATUS_ATIVOS})
     """)
 
 

@@ -603,6 +603,13 @@ invariante mora longe de quem depende dele.
 
 ### 15.9 Atenção no deploy da migration 0030
 
+**Predicado sem cast.** O PostgreSQL exige funções `IMMUTABLE` em predicado de
+índice, e `status::text` é apenas `STABLE` (rótulos de enum podem ser
+renomeados). A comparação é feita direto com os literais do enum
+(`status IN ('confirmada', 'aguardando_pagamento')`), cuja igualdade é
+imutável. A primeira tentativa usava o cast e falhou com
+`functions in index predicate must be marked IMMUTABLE`.
+
 A constraint só pode ser criada se **não houver sobreposição pré-existente**
 entre reservas ativas. A migration verifica isso antes e falha com uma mensagem
 dizendo quantos pares estão em conflito, em vez de criar a constraint pela
