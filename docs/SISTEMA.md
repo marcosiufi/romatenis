@@ -747,3 +747,107 @@ rolagem alcançando o fim; sem rolagem horizontal.
 
 O admin não tem o mesmo problema: `#admin-app` é `position: fixed; inset: 0`,
 `.admin-main` rola internamente e nada fixo cobre o rodapé.
+
+## 17. Painel administrativo — redesign com temas, 05/09/2026
+
+O `<style>` de `frontend/admin/index.html` estava em duas camadas empilhadas: a
+base original e um bloco de refinamento acrescentado em 30/08. Regras
+concorrentes, dois conjuntos de tokens e nenhum caminho para tema claro. O bloco
+foi reescrito como um sistema único.
+
+### 17.1 Tema claro e escuro
+
+Três estados, guardados em `localStorage` sob a chave `tema`:
+
+| valor | comportamento |
+|---|---|
+| `auto` (padrão) | segue a configuração do sistema operacional |
+| `claro` | claro fixado pelo usuário |
+| `escuro` | escuro fixado pelo usuário |
+
+O CSS lê o atributo `data-tema` do `<html>`; no modo automático o atributo é
+**removido**, e aí só `prefers-color-scheme` decide:
+
+```css
+:root { /* tokens claros */ }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) { /* tokens escuros */ }
+}
+:root[data-tema="escuro"] { /* tokens escuros */ }
+```
+
+Os tokens escuros aparecem duas vezes de propósito. Sem o bloco do atributo,
+fixar "claro" num sistema escuro não venceria a media query — e sem o `:not()`,
+fixar "claro" seria ignorado. O trio de regras cobre as quatro combinações.
+
+O módulo de tema é um `<script>` **inline no `<head>`**, não em `admin.js`:
+`admin.js` carrega no fim do `<body>`, e aplicar o tema depois da primeira
+pintura faz a página piscar no tema errado.
+
+O botão fica no rodapé da barra lateral e cicla os três estados.
+
+O fundo escuro subiu de `#0c1a11` para `#14241b` — o anterior era quase preto e
+achatava a hierarquia entre fundo, card e superfície elevada.
+
+### 17.2 Barra lateral
+
+- Doze itens soltos viraram **cinco grupos** rotulados (Visão geral, Ranking,
+  Financeiro, Operação, Ajustes).
+- Cada item ganhou **ícone SVG** com `stroke="currentColor"`. Isso torna o modo
+  recolhido utilizável de verdade: antes ele escondia o rótulo com
+  `font-size: 0` e mostrava a primeira letra via `::first-letter`.
+- Usuário, tema e "Sair" saíram do topo apertado para um **rodapé fixo**, com
+  avatar de inicial. `admin.js` preenche `#admin-inicial` junto com `#admin-nome`.
+- Recolhida: 62px, ícones centralizados, rótulos de grupo viram separadores.
+
+### 17.3 Alinhamento dos campos
+
+Medido no DOM real, antes da correção:
+
+- `select` da barra de filtros: **30px**, ao lado de campos de **40px**. O bloco
+  de refinamento de agosto listava `#busca-jogador` e `#filtro-sub-nome` por id,
+  então só esses dois campos recebiam altura — os selects ficavam de fora.
+- Botões: 33px na mesma linha de campos de 40px.
+- `.form-grid-2` e `.form-grid-4`: `gap: 0 1rem`, ou seja **row-gap zero**; o
+  espaço entre linhas vinha da margem do `.form-row`.
+
+Agora existe um token único, `--h-controle: 40px`, aplicado a input, select,
+textarea e aos controles das barras de filtro e de cabeçalho de seção; as grades
+têm row-gap próprio e `align-items: start`. Verificado: todo controle em 40px e
+desvio zero entre campos da mesma linha, nas três grades do painel.
+
+### 17.4 Contraste
+
+Conferido com cálculo WCAG contra o fundo real (inclusive o fundo tingido do item
+ativo, que é translúcido sobre a superfície). Quatro ajustes foram necessários:
+
+- `--texto-fraco` do tema claro: `#65806f` dava 4.06:1 no cabeçalho de tabela →
+  `#5a7364` (4.86:1).
+- `--texto-fraco` do tema escuro: `#8ba394` dava 4.02:1 → `#9db5a5` (5.10:1).
+- O rótulo do item ativo usava a cor da marca sobre o próprio fundo tingido:
+  3.6:1 no escuro. A marca ficou no **ícone e na barra lateral** — elementos
+  gráficos, que pedem 3:1 — e o rótulo passou a usar tinta cheia (9.3:1 no
+  escuro, 13.5:1 no claro).
+
+Menor razão de texto hoje: 4.86:1.
+
+### 17.5 Cores fixas no JavaScript
+
+`admin.js` escrevia cores de status direto no `style` inline (`#4ab870`,
+`#e0a040`, `#e06060`…), todas claras, pensadas só para fundo escuro — no tema
+claro ficariam ilegíveis sobre o branco. As 25 ocorrências viraram
+`var(--ok)`, `var(--aviso)` e `var(--perigo)`.
+
+Os fundos sólidos de badge (`#2a6e3a`, `#1a3d6e`, `#7a3c00`…) continuam fixos:
+são pílulas saturadas com texto branco, legíveis nos dois temas.
+
+### 17.6 Regras mortas encontradas
+
+Cinco classes geradas por `admin.js` não tinham regra nenhuma:
+`.data-table`, `.contrato-clausula-card`, `.ct-titulo`, `.ct-texto`, `.ct-ativo`.
+Todas receberam estilo.
+
+> **Ao mexer no CSS do admin:** os nomes antigos (`--clr-bg`, `--clr-accent`…)
+> sobrevivem como **aliases** dos tokens novos, porque o HTML e o `admin.js`
+> têm estilos inline que ainda os usam. Não remova os aliases.
+

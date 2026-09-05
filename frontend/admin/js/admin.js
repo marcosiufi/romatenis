@@ -95,6 +95,8 @@ async function init() {
       return showLogin()
     }
     document.getElementById('admin-nome').textContent = me.nome
+    const inicial = document.getElementById('admin-inicial')
+    if (inicial) inicial.textContent = (me.nome || '?').trim().charAt(0).toUpperCase()
     document.getElementById('tela-login').style.display = 'none'
     document.getElementById('admin-app').style.display = ''
     // Set default matchmaking date to today
@@ -184,16 +186,16 @@ async function loadDashboard() {
       ? `${escHtml(d.lider_ranking.nome)} (${d.lider_ranking.pontos} pts)`
       : 'Sem pontuações ainda'
     const pausaCard = d.pausas_pendentes > 0
-      ? `<div class="dash-card" style="border-left:3px solid #e0a040;cursor:pointer" onclick="switchTab('assinaturas');filtrarPausasPendentes()">
+      ? `<div class="dash-card" style="border-left:3px solid var(--aviso);cursor:pointer" onclick="switchTab('assinaturas');filtrarPausasPendentes()">
            <div class="dc-label">⏸ Solicitações de Pausa</div>
-           <div class="dc-val" style="color:#e0a040">${d.pausas_pendentes} aguardando aprovação →</div>
+           <div class="dc-val" style="color:var(--aviso)">${d.pausas_pendentes} aguardando aprovação →</div>
          </div>`
       : ''
     // Pagou mas a Autentique nunca enviou o contrato: fica bloqueado em silêncio
     const contratoCard = d.contratos_nao_enviados > 0
-      ? `<div class="dash-card" style="border-left:3px solid #c0392b;cursor:pointer" onclick="switchTab('jogadores')">
+      ? `<div class="dash-card" style="border-left:3px solid var(--perigo);cursor:pointer" onclick="switchTab('jogadores')">
            <div class="dc-label">🚨 Contrato não enviado</div>
-           <div class="dc-val" style="color:#e06060">${d.contratos_nao_enviados} jogador(es) pagos e bloqueados →</div>
+           <div class="dc-val" style="color:var(--perigo)">${d.contratos_nao_enviados} jogador(es) pagos e bloqueados →</div>
          </div>`
       : ''
     extra.innerHTML = `
@@ -749,9 +751,9 @@ function subBadge(status) {
 
 function diasRestantes(iso) {
   const diff = Math.ceil((new Date(iso) - Date.now()) / 86400000)
-  if (diff < 0)  return `<span style="color:#e74c3c">${Math.abs(diff)}d atrás</span>`
-  if (diff <= 7) return `<span style="color:#e67e22">${diff}d</span>`
-  return `<span style="color:#27ae60">${diff}d</span>`
+  if (diff < 0)  return `<span style="color:var(--perigo)">${Math.abs(diff)}d atrás</span>`
+  if (diff <= 7) return `<span style="color:var(--aviso)">${diff}d</span>`
+  return `<span style="color:var(--ok)">${diff}d</span>`
 }
 
 async function loadAssinaturas() {
@@ -1008,7 +1010,7 @@ async function verPixSub(subId, gatewayId) {
       body.innerHTML = '<p style="color:var(--clr-text-muted);font-size:0.85rem">Nenhum PIX pendente encontrado para este jogador.</p>'
     }
   } catch (err) {
-    body.innerHTML = `<p style="color:#e74c3c;font-size:0.85rem">${escHtml(err.message)}</p>`
+    body.innerHTML = `<p style="color:var(--perigo);font-size:0.85rem">${escHtml(err.message)}</p>`
   }
 }
 
@@ -1035,10 +1037,10 @@ function escHtml(str) {
 function _cupomStatus(c) {
   const agora = new Date()
   if (!c.ativo) return { txt: 'Inativo', cor: '#888' }
-  if (c.validade_inicio && new Date(c.validade_inicio) > agora) return { txt: 'Agendado', cor: '#e0a040' }
-  if (c.validade_fim && new Date(c.validade_fim) < agora) return { txt: 'Expirado', cor: '#e06060' }
-  if (c.max_usos != null && c.usos >= c.max_usos) return { txt: 'Esgotado', cor: '#e06060' }
-  return { txt: 'Ativo', cor: '#4ab870' }
+  if (c.validade_inicio && new Date(c.validade_inicio) > agora) return { txt: 'Agendado', cor: 'var(--aviso)' }
+  if (c.validade_fim && new Date(c.validade_fim) < agora) return { txt: 'Expirado', cor: 'var(--perigo)' }
+  if (c.max_usos != null && c.usos >= c.max_usos) return { txt: 'Esgotado', cor: 'var(--perigo)' }
+  return { txt: 'Ativo', cor: 'var(--ok)' }
 }
 
 async function loadCupons() {
@@ -1069,7 +1071,7 @@ async function loadCupons() {
       <thead><tr><th>Código</th><th>Desconto</th><th>Prazo</th><th>Usos</th><th>Status</th><th></th></tr></thead>
       <tbody>${linhas}</tbody></table>`
   } catch (err) {
-    wrap.innerHTML = `<p style="color:#e06060;text-align:center;padding:2rem">Erro ao carregar: ${escHtml(err.message)}</p>`
+    wrap.innerHTML = `<p style="color:var(--perigo);text-align:center;padding:2rem">Erro ao carregar: ${escHtml(err.message)}</p>`
   }
 }
 
@@ -1211,27 +1213,27 @@ async function loadEmailStatus() {
     el.innerHTML = `
       <div><strong>Servidor:</strong> ${escHtml(s.host)}:${s.porta}</div>
       <div><strong>Remetente:</strong> ${escHtml(s.remetente_nome)} &lt;${escHtml(s.remetente)}&gt;</div>
-      <div><strong>Senha:</strong> ${s.senha_definida ? 'definida' : '<span style="color:#e06060">ausente</span>'}</div>
+      <div><strong>Senha:</strong> ${s.senha_definida ? 'definida' : '<span style="color:var(--perigo)">ausente</span>'}</div>
       ${alias}`
   } catch (err) {
-    el.innerHTML = `<span style="color:#e06060">Erro ao ler status: ${escHtml(err.message)}</span>`
+    el.innerHTML = `<span style="color:var(--perigo)">Erro ao ler status: ${escHtml(err.message)}</span>`
   }
 }
 
 async function testarEmail() {
   const dest = document.getElementById('email-teste-dest').value.trim()
   const out = document.getElementById('email-teste-result')
-  if (!dest) { out.innerHTML = '<span style="color:#e0a040">Informe um e-mail de destino.</span>'; return }
+  if (!dest) { out.innerHTML = '<span style="color:var(--aviso)">Informe um e-mail de destino.</span>'; return }
   out.innerHTML = 'Enviando…'
   try {
     const r = await api('/admin/email/testar', {
       method: 'POST',
       body: JSON.stringify({ destinatario: dest }),
     })
-    out.innerHTML = `<span style="color:#4ab870">✅ Enviado para ${escHtml(r.enviado_para)}
+    out.innerHTML = `<span style="color:var(--ok)">✅ Enviado para ${escHtml(r.enviado_para)}
       como ${escHtml(r.remetente)}. Confira a caixa de entrada (e o spam).</span>`
   } catch (err) {
-    out.innerHTML = `<span style="color:#e06060">❌ Falhou: ${escHtml(err.message)}</span>`
+    out.innerHTML = `<span style="color:var(--perigo)">❌ Falhou: ${escHtml(err.message)}</span>`
   }
 }
 
@@ -1349,7 +1351,7 @@ async function loadLocacoes() {
       const pgMetodo = l.pagamento_metodo ? `<small style="opacity:.6"> · ${l.pagamento_metodo}</small>` : ''
 
       const cancelBtn = l.status !== 'cancelada'
-        ? `<button class="btn-xs" style="background:var(--clr-danger,#c0392b);color:#fff;white-space:nowrap" onclick="cancelarLocacao(${l.id})">Cancelar</button>`
+        ? `<button class="btn-xs" style="background:var(--clr-danger,var(--perigo));color:#fff;white-space:nowrap" onclick="cancelarLocacao(${l.id})">Cancelar</button>`
         : ''
 
       return `<div class="locacao-card">
@@ -1405,7 +1407,7 @@ async function loadSlotsRanking() {
         <td>${s.hora_inicio.slice(0,5)}</td>
         <td>${s.hora_fim.slice(0,5)}</td>
         <td>
-          <span style="font-size:.78rem;padding:.2rem .5rem;border-radius:.35rem;background:${s.ativo ? 'rgba(111,207,151,.15)' : 'rgba(240,80,80,.12)'};color:${s.ativo ? '#6fcf97' : '#f08080'}">
+          <span style="font-size:.78rem;padding:.2rem .5rem;border-radius:.35rem;background:${s.ativo ? 'rgba(111,207,151,.15)' : 'rgba(240,80,80,.12)'};color:${s.ativo ? 'var(--ok)' : 'var(--perigo)'}">
             ${s.ativo ? 'Ativo' : 'Inativo'}
           </span>
         </td>
@@ -1416,7 +1418,7 @@ async function loadSlotsRanking() {
         </td>
       </tr>`).join('')
   } catch {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f08080;padding:1rem">Erro ao carregar.</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--perigo);padding:1rem">Erro ao carregar.</td></tr>'
   }
 }
 
@@ -1598,7 +1600,7 @@ async function loadListaEspera() {
 
     const rows = fila.map(e => {
       const statusLabel = { aguardando: 'Aguardando', convocado: 'Convocado' }[e.status] || e.status
-      const statusColor = e.status === 'convocado' ? '#e0a040' : '#4ab870'
+      const statusColor = e.status === 'convocado' ? 'var(--aviso)' : 'var(--ok)'
       const dtInscricao = new Date(e.data_inscricao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       const dtExpira = e.data_expiracao_convocacao
         ? new Date(e.data_expiracao_convocacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -1628,7 +1630,7 @@ async function loadListaEspera() {
       <tbody>${rows}</tbody>
     </table>`
   } catch (e) {
-    wrap.innerHTML = `<p style="color:#e74c3c;text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
+    wrap.innerHTML = `<p style="color:var(--perigo);text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
   }
 }
 
@@ -1665,7 +1667,7 @@ async function loadContrato() {
     _contratoClausulas = await api('/admin/contrato/clausulas')
     _renderContrato()
   } catch (e) {
-    wrap.innerHTML = `<p style="color:#e74c3c;text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
+    wrap.innerHTML = `<p style="color:var(--perigo);text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
   }
 }
 

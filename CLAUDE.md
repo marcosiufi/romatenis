@@ -36,7 +36,14 @@ senão o PWA continua servindo o cache antigo mesmo após o deploy.
 O app e o admin compartilham a mesma identidade: **Cinzel** nos títulos, **Inter**
 no corpo, escala de superfícies (fundo → superfície → elevado) e espaçamento de
 base 4px. Tokens em `frontend/css/style.css` (app) e no `<style>` de
-`frontend/admin/index.html`. Detalhes na seção 16 de `docs/SISTEMA.md`.
+`frontend/admin/index.html`. Detalhes nas seções 16 e 17 de `docs/SISTEMA.md`.
+
+O **admin tem tema claro e escuro** (seção 17): `localStorage.tema` guarda
+`auto` | `claro` | `escuro`, e o CSS lê `data-tema` no `<html>` — no automático o
+atributo é removido e `prefers-color-scheme` decide. O módulo é um `<script>`
+inline no `<head>`; movê-lo para `admin.js` faz a página piscar no tema errado.
+Ao acrescentar cor, use os tokens — cor fixa no `style` inline quebra um dos dois
+temas. Os nomes antigos (`--clr-*`) seguem como aliases e não devem ser removidos.
 
 Ao mexer em CSS: **confira os seletores contra o DOM real** (`querySelectorAll`)
 antes de dar por pronto — regra com seletor errado é válida e silenciosa. E fure
