@@ -11,6 +11,60 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+
+  <script>
+    /* ── Tema claro / escuro ────────────────────────────────────────────
+       Mesmo sistema do painel admin (seção 17 do docs/SISTEMA.md). Roda
+       aqui no <head>, antes da primeira pintura: em app.js, que carrega no
+       fim do <body>, a tela piscaria no tema errado ao abrir. O CSS lê o
+       atributo data-tema do <html>.                                     */
+    (function () {
+      var VALIDOS = ['auto', 'claro', 'escuro'];
+
+      function lido() {
+        try {
+          var t = localStorage.getItem('tema');
+          return VALIDOS.indexOf(t) >= 0 ? t : 'auto';
+        } catch (_) { return 'auto'; }
+      }
+
+      function pintar(tema) {
+        if (tema === 'auto') document.documentElement.removeAttribute('data-tema');
+        else document.documentElement.setAttribute('data-tema', tema);
+        // a barra de status do PWA acompanha a superfície do cabeçalho
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          var cor = getComputedStyle(document.documentElement).getPropertyValue('--superficie').trim();
+          if (cor) meta.setAttribute('content', cor);
+        }
+      }
+
+      function marcar(tema) {
+        document.querySelectorAll('[data-tema-opcao]').forEach(function (b) {
+          var ativo = b.getAttribute('data-tema-opcao') === tema;
+          b.classList.toggle('ativa', ativo);
+          b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+        });
+      }
+
+      window.definirTema = function (tema) {
+        if (VALIDOS.indexOf(tema) < 0) tema = 'auto';
+        try { localStorage.setItem('tema', tema); } catch (_) {}
+        pintar(tema);
+        marcar(tema);
+      };
+
+      pintar(lido());
+      document.addEventListener('DOMContentLoaded', function () {
+        marcar(lido());
+        // no automático, acompanhar o sistema se ele mudar com o app aberto
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        var aoMudar = function () { if (lido() === 'auto') pintar('auto'); };
+        if (mq.addEventListener) mq.addEventListener('change', aoMudar);
+        else if (mq.addListener) mq.addListener(aoMudar);
+      });
+    })();
+  </script>
 </head>
 <body>
 
@@ -19,7 +73,7 @@
     <div class="login-box">
       <div class="login-logo">
         <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
-          <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+          <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="8" fill="var(--texto)">ROMA</text>
           <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
           <text x="150" y="102" text-anchor="middle" font-family="'Inter', Helvetica, Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
         </svg>
@@ -52,7 +106,7 @@
   <div id="app" hidden>
     <header class="app-header">
       <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis" style="height:36px;width:auto">
-        <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+        <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" letter-spacing="8" fill="var(--texto)">ROMA</text>
         <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
         <text x="150" y="102" text-anchor="middle" font-family="'Inter', Helvetica, Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
       </svg>
@@ -317,6 +371,25 @@
         <div class="card">
           <p class="card-titulo">Meu perfil</p>
           <div id="perfil-info"></div>
+        </div>
+
+        <div class="card">
+          <p class="card-titulo">Aparência</p>
+          <div class="tema-opcoes" role="group" aria-label="Tema do aplicativo">
+            <button type="button" class="tema-opcao" data-tema-opcao="auto" aria-pressed="false" onclick="definirTema('auto')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <span>Automático</span>
+            </button>
+            <button type="button" class="tema-opcao" data-tema-opcao="claro" aria-pressed="false" onclick="definirTema('claro')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.8"/><line x1="12" y1="20.2" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.8" y2="5.8"/><line x1="18.2" y1="18.2" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="3.8" y2="12"/><line x1="20.2" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.8" y2="18.2"/><line x1="18.2" y1="5.8" x2="19.8" y2="4.2"/></svg>
+              <span>Claro</span>
+            </button>
+            <button type="button" class="tema-opcao" data-tema-opcao="escuro" aria-pressed="false" onclick="definirTema('escuro')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              <span>Escuro</span>
+            </button>
+          </div>
+          <p class="tema-dica">No modo automático o app acompanha o tema do seu celular.</p>
         </div>
       </section>
     </main>

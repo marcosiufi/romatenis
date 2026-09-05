@@ -38,12 +38,20 @@ no corpo, escala de superfícies (fundo → superfície → elevado) e espaçame
 base 4px. Tokens em `frontend/css/style.css` (app) e no `<style>` de
 `frontend/admin/index.html`. Detalhes nas seções 16 e 17 de `docs/SISTEMA.md`.
 
-O **admin tem tema claro e escuro** (seção 17): `localStorage.tema` guarda
-`auto` | `claro` | `escuro`, e o CSS lê `data-tema` no `<html>` — no automático o
-atributo é removido e `prefers-color-scheme` decide. O módulo é um `<script>`
-inline no `<head>`; movê-lo para `admin.js` faz a página piscar no tema errado.
-Ao acrescentar cor, use os tokens — cor fixa no `style` inline quebra um dos dois
-temas. Os nomes antigos (`--clr-*`) seguem como aliases e não devem ser removidos.
+**App e admin têm tema claro e escuro** (seções 17 e 18), com a mesma mecânica e
+a mesma paleta: `localStorage.tema` guarda `auto` | `claro` | `escuro`, e o CSS lê
+`data-tema` no `<html>` — no automático o atributo é removido e
+`prefers-color-scheme` decide. O módulo é um `<script>` inline no `<head>`;
+movê-lo para o JS do fim do `<body>` faz a página piscar no tema errado. O
+usuário troca no cartão Aparência (Perfil, no app) ou no rodapé da barra lateral
+(admin).
+
+Ao acrescentar cor, **use os tokens** — cor fixa no `style` inline quebra um dos
+dois temas, e foi o erro mais comum encontrado nas duas telas. Para tinta sobre
+fundo tingido use `color-mix`, não um `rgba` fixo. Se mudar um token de cor,
+mude nos **dois** arquivos (`frontend/css/style.css` e o `<style>` do admin).
+Os nomes antigos (`--clr-*`, `--cor-*`) seguem como aliases e não devem ser
+removidos. A landing tem tokens próprios e continua só no escuro.
 
 Ao mexer em CSS: **confira os seletores contra o DOM real** (`querySelectorAll`)
 antes de dar por pronto — regra com seletor errado é válida e silenciosa. E fure

@@ -851,3 +851,75 @@ Todas receberam estilo.
 > sobrevivem como **aliases** dos tokens novos, porque o HTML e o `admin.js`
 > têm estilos inline que ainda os usam. Não remova os aliases.
 
+## 18. Temas no app do associado — 05/09/2026
+
+O mesmo par de temas da seção 17, agora em `frontend/css/style.css` e
+`frontend/app/index.html`. Mesma mecânica (`localStorage.tema` com
+`auto` | `claro` | `escuro`, atributo `data-tema` no `<html>`, script inline no
+`<head>`) e **a mesma paleta** — app e admin compartilham os valores.
+
+### 18.1 Onde o usuário troca
+
+Um cartão **Aparência** na tela de Perfil, com três opções em botões
+segmentados. O admin usa um botão que cicla; aqui há espaço para mostrar as três
+de uma vez, o que é mais claro no celular.
+
+Extras que o app precisa e o admin não:
+
+- **`<meta name="theme-color">`**: a barra de status do PWA acompanha
+  `--superficie`. O script atualiza a meta a cada troca de tema.
+- **`matchMedia('(prefers-color-scheme: dark)')`**: no modo automático o app
+  reage se o sistema mudar de tema com o app aberto — em celular isso acontece
+  sozinho no fim do dia.
+
+### 18.2 Cores que só funcionavam no escuro
+
+O CSS e o `app.js` tinham valores fixos pensados só para fundo escuro. Sobre
+branco eles sumiriam ou ficariam ilegíveis. Todos viraram tokens:
+
+| antes | agora |
+|---|---|
+| `rgba(255,255,255,.05 … .10)` (fundos de badge, trilhas, hover) | `--superficie-sutil`, `--realce`, `--pressionado` |
+| `rgba(0,0,0,.28)` (caixa do código PIX) | `--fundo-codigo` |
+| `rgba(255,255,255,.07)` (campo em foco) | `--campo-fundo-foco` |
+| `#e8905a` (texto sobre tinta terracota) | `--terracota` |
+| `rgba(227,171,77,.18)` etc. (tintas semânticas) | `color-mix(in srgb, var(--aviso) 12%, transparent)` |
+| 8 cores fixas em `style` inline no `app.js` | `var(--aviso)`, `var(--terracota)`, `var(--sucesso)`… |
+
+O `fill="#F0EBE4"` do "ROMA" no logo SVG (login e cadastro) virou
+`fill="var(--texto)"` — em creme sobre fundo claro ele desaparecia.
+
+### 18.3 Botão x tinta
+
+`--terracota` era usada tanto como fundo de botão (com texto branco) quanto como
+cor de texto. Não dá para servir aos dois no escuro: o tom que contrasta com a
+superfície não contrasta com o branco por cima dele. Separado em
+`--terracota` (tinta e elementos gráficos) e `--btn-fundo` / `--btn-fundo-hover`
+/ `--btn-texto` (botão), como já era no admin.
+
+### 18.4 Contraste
+
+Medido com cálculo WCAG contra o fundo **achatado** — as tintas são
+translúcidas, então comparar com a cor declarada dá um número otimista. Onze
+componentes por tema. Seis reprovaram na primeira medição, todos por tinta
+semântica sobre a própria tinta, que tem contraste limitado por construção.
+
+Correções, aplicadas **também no admin** para as duas telas manterem a mesma
+paleta:
+
+| token | antes | depois |
+|---|---|---|
+| `--terracota` (claro) | `#a8511d` | `#94461a` |
+| `--terracota` (escuro) | `#d2743a` | `#e79a63` |
+| `--terracota-fraco` (escuro) | 16% | 12% |
+| `--texto-fraco` (claro) | `#5a7364` | `#4f6659` |
+| `--sucesso` / `--ok` (claro) | `#1f7a45` | `#166034` |
+| `--aviso` (claro) | `#96631a` | `#734a0b` |
+| `--perigo` (claro) | `#b3372a` | `#9c2b20` |
+| tintas semânticas | 16% | 12% |
+
+Menor razão de texto: **4.78:1** no app, **5.10:1** no admin.
+
+> A landing (`frontend/css/landing.css`) **não** foi tocada: tem tokens próprios
+> e segue só no escuro, que é a identidade do site.
+

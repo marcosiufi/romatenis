@@ -227,7 +227,7 @@ async function carregarRanking() {
           <div class="ranking-item">
             <span class="ranking-pos">${i + 1}</span>
             ${avatarHtml(j)}
-            <span style="flex:1">${esc(j.apelido || j.nome)}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:rgba(200,80,30,.25);color:#e08050;padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
+            <span style="flex:1">${esc(j.apelido || j.nome)}${j.status === "inativo" ? ' <span style="font-size:.65rem;background:var(--terracota-fraco);color:var(--terracota);padding:.1rem .35rem;border-radius:20px;vertical-align:middle">inativo</span>' : ""}</span>
             <span class="ranking-pts">${j.pontos_ranking_temporada_atual} pts</span>
           </div>`)
         .join("");
@@ -373,7 +373,7 @@ async function carregarPerfil() {
       const statusLabel = filaPos.status === "convocado" ? "🎉 Convocado!" : "⏳ Na lista de espera";
       const statusColor = filaPos.status === "convocado" ? "#4ab870" : "#e0a040";
       const expiracaoHtml = filaPos.status === "convocado" && filaPos.data_expiracao_convocacao
-        ? `<p style="font-size:.78rem;color:#e0a040;margin-bottom:.5rem">Sua vaga expira em: <strong>${new Date(filaPos.data_expiracao_convocacao).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></p>`
+        ? `<p style="font-size:.78rem;color:var(--aviso);margin-bottom:.5rem">Sua vaga expira em: <strong>${new Date(filaPos.data_expiracao_convocacao).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</strong></p>`
         : "";
       subHtml = `<div class="sub-card" style="border-left:3px solid ${statusColor}">
         <p style="font-weight:700;color:${statusColor};margin-bottom:.3rem">${statusLabel}</p>
@@ -396,7 +396,7 @@ async function carregarPerfil() {
 
     const contratoHtml = !p.contrato_assinado && p.contrato_link_assinatura
       ? `<div class="sub-card" style="border-left:3px solid #e0a040;margin-bottom:.75rem">
-           <p style="font-weight:700;color:#e0a040;margin-bottom:.3rem">📄 Contrato pendente</p>
+           <p style="font-weight:700;color:var(--aviso);margin-bottom:.3rem">📄 Contrato pendente</p>
            <p style="font-size:.8rem;opacity:.8;margin-bottom:.5rem">
              Assine o Termo de Adesão para liberar reservas de quadra.
            </p>
@@ -432,7 +432,7 @@ async function carregarPerfil() {
         <button class="btn btn-secundario" style="font-size:.8rem;padding:.35rem 1rem" onclick="abrirEdicaoPerfil()">Editar dados pessoais</button>
         <button class="btn btn-secundario" style="font-size:.8rem;padding:.35rem 1rem" onclick="abrirAlterarSenha()">Alterar senha</button>
       </div>
-      <div id="perfil-form-senha" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
+      <div id="perfil-form-senha" style="display:none;background:var(--superficie-sutil);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
         <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Alterar senha</p>
         <div class="campo"><label>Senha atual</label><input type="password" id="senha-atual" /></div>
         <div class="campo"><label>Nova senha</label><input type="password" id="senha-nova" /></div>
@@ -443,7 +443,7 @@ async function carregarPerfil() {
           <button class="btn btn-primario" style="flex:1;font-size:.82rem" onclick="confirmarAlterarSenha()">Salvar</button>
         </div>
       </div>
-      <div id="perfil-form-editar" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
+      <div id="perfil-form-editar" style="display:none;background:var(--superficie-sutil);border-radius:8px;padding:.9rem 1rem;margin-bottom:.5rem">
         <p style="font-size:.85rem;font-weight:600;margin-bottom:.65rem;color:var(--cor-terracota)">Editar dados</p>
         <div class="campo"><label>Nome completo</label><input type="text" id="edit-nome" value="${esc(p.nome)}" /></div>
         <div class="campo"><label>Apelido</label><input type="text" id="edit-apelido" value="${esc(p.apelido)}" placeholder="Opcional" /></div>
@@ -842,7 +842,7 @@ function _barraUso(label, uso) {
         <span class="uso-nums">${uso.usados} de ${uso.limite}</span>
       </div>
       <div class="uso-barra"><div class="uso-barra-fill" style="width:${pct}%;background:${cor}"></div></div>
-      <span class="uso-restante" style="${esgotado ? "color:#e07040" : ""}">
+      <span class="uso-restante" style="${esgotado ? "color:var(--aviso)" : ""}">
         ${esgotado ? "Cota esgotada nesta semana" : `${uso.restantes} ${uso.restantes === 1 ? "jogo restante" : "jogos restantes"}`}
       </span>
     </div>`;
@@ -1321,7 +1321,7 @@ function renderPartida(p, aguardandoPlacar) {
        </div>`
     : p.status === "agendado" && futura
     ? `<div style="text-align:right;margin-top:.4rem">
-         <button class="btn" style="font-size:.75rem;padding:.25rem .7rem;opacity:.7;border:1px solid rgba(255,255,255,.15);border-radius:6px;background:transparent;color:inherit;cursor:pointer"
+         <button class="btn" style="font-size:.75rem;padding:.25rem .7rem;opacity:.7;border:1px solid var(--borda-forte);border-radius:6px;background:transparent;color:inherit;cursor:pointer"
                  onclick="cancelarPartida(${p.id})">Cancelar partida</button>
        </div>`
     : "";
@@ -1526,7 +1526,7 @@ document.getElementById("btn-verificar-loc").addEventListener("click", async () 
       const hFim = String(parseInt(s.hora_inicio) + numHoras).padStart(2, "0") + ":00";
       return `<button onclick="locSelecionarSlot('${data}','${s.hora_inicio}',${numHoras})"
         style="display:block;width:100%;text-align:left;padding:.65rem .85rem;margin-bottom:.4rem;
-          border-radius:8px;border:1px solid rgba(40,160,80,.4);background:rgba(40,160,80,.1);
+          border-radius:8px;border:1px solid color-mix(in srgb, var(--sucesso) 40%, transparent);background:color-mix(in srgb, var(--sucesso) 12%, transparent);
           font-size:.9rem;font-weight:500;cursor:pointer;color:inherit">
         ${s.hora_inicio} às ${hFim}
       </button>`;

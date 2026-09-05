@@ -6,34 +6,135 @@
 /* Garante que o atributo hidden sempre funcione, independente de regras de display */
 [hidden] { display: none !important; }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Tema claro e escuro — mesmo sistema do painel admin (seção 17 do
+   docs/SISTEMA.md). Três estados guardados em localStorage.tema:
+
+     'auto' (padrão) → segue a configuração do sistema; o atributo
+                       data-tema é REMOVIDO e prefers-color-scheme decide
+     'claro'         → claro fixado pelo usuário
+     'escuro'        → escuro fixado pelo usuário
+
+   Os tokens escuros aparecem duas vezes de propósito: sob a media query
+   (modo automático) e sob [data-tema="escuro"] (escolha explícita). Sem o
+   bloco do atributo, fixar "claro" num sistema escuro não venceria a media
+   query; sem o :not(), fixar "claro" seria ignorado.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 :root {
-  /* ── Superfícies ────────────────────────────────────────────────────────
-     Escala do mais profundo ao mais elevado. O fundo é mais escuro que a
-     versão anterior para os cards ganharem separação real.                */
-  --fundo:            #0f1f15;
-  --superficie:       #1b3324;
-  --superficie-alta:  #23422e;
-  --superficie-sutil: rgba(255,255,255,.05);
+  color-scheme: light;
 
-  /* ── Marca ─────────────────────────────────────────────────────────── */
-  --terracota:        #c0622a;
-  --terracota-claro:  #d97742;
-  --terracota-fraco:  rgba(192,98,42,.16);
+  /* ── Superfícies ────────────────────────────────────────────────────── */
+  --fundo:            #f4f1ea;
+  --superficie:       #ffffff;
+  --superficie-alta:  #faf8f3;
+  --superficie-sutil: rgba(22,40,29,.05);
+  --realce:           rgba(22,40,29,.09);
+  --pressionado:      rgba(22,40,29,.10);
+  --fundo-codigo:     rgba(22,40,29,.06);
+  --campo-fundo:      rgba(22,40,29,.04);
+  --campo-fundo-foco: #ffffff;
 
-  /* ── Texto ──────────────────────────────────────────────────────────
-     O tom secundário é verde-acinzentado, não azulado: harmoniza com o
-     fundo em vez de brigar com ele.                                      */
-  --texto:            #f0ebe4;
-  --texto-suave:      #a9c0b0;
-  --texto-fraco:      #7d9686;
+  --borda:            rgba(22,40,29,.14);
+  --borda-forte:      rgba(22,40,29,.26);
+
+  /* ── Texto ──────────────────────────────────────────────────────────── */
+  --texto:            #16281d;
+  --texto-suave:      #4a6353;
+  --texto-fraco:      #4f6659;
+
+  /* ── Marca ───────────────────────────────────────────────────────────
+     --terracota é a cor de TEXTO e de elementos gráficos: precisa
+     contrastar com a superfície. O botão tem tokens próprios, porque o
+     tom que funciona como tinta não funciona como fundo de botão.        */
+  --terracota:        #94461a;
+  --terracota-fraco:  rgba(168,81,29,.10);
+  --btn-fundo:        #a8511d;
+  --btn-fundo-hover:  #8f4416;
+  --btn-texto:        #ffffff;
 
   /* ── Semânticas ─────────────────────────────────────────────────────── */
-  --sucesso:          #5cc182;
-  --aviso:            #e3ab4d;
-  --perigo:           #e8785f;
+  --sucesso:          #166034;
+  --aviso:            #734a0b;
+  --perigo:           #9c2b20;
 
-  --borda:            rgba(255,255,255,.10);
-  --borda-forte:      rgba(255,255,255,.18);
+  /* ── Elevação ───────────────────────────────────────────────────────── */
+  --sombra-1: 0 1px 2px rgba(22,40,29,.07), 0 1px 3px rgba(22,40,29,.05);
+  --sombra-2: 0 8px 24px rgba(22,40,29,.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    color-scheme: dark;
+    --fundo:            #14241b;
+    --superficie:       #1d3427;
+    --superficie-alta:  #264130;
+    --superficie-sutil: rgba(255,255,255,.05);
+    --realce:           rgba(255,255,255,.10);
+    --pressionado:      rgba(255,255,255,.09);
+    --fundo-codigo:     rgba(0,0,0,.28);
+    --campo-fundo:      rgba(255,255,255,.05);
+    --campo-fundo-foco: rgba(255,255,255,.08);
+
+    --borda:            rgba(255,255,255,.10);
+    --borda-forte:      rgba(255,255,255,.20);
+
+    --texto:            #f0ebe4;
+    --texto-suave:      #b3c9ba;
+    --texto-fraco:      #9db5a5;
+
+    --terracota:        #e79a63;
+    --terracota-fraco:  rgba(231,154,99,.12);
+    --btn-fundo:        #c0622a;
+    --btn-fundo-hover:  #d2743a;
+    --btn-texto:        #ffffff;
+
+    --sucesso:          #5cc182;
+    --aviso:            #e3ab4d;
+    --perigo:           #ea8068;
+
+    --sombra-1: 0 1px 2px rgba(0,0,0,.25);
+    --sombra-2: 0 4px 16px rgba(0,0,0,.32);
+  }
+}
+
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+    --fundo:            #14241b;
+    --superficie:       #1d3427;
+    --superficie-alta:  #264130;
+    --superficie-sutil: rgba(255,255,255,.05);
+    --realce:           rgba(255,255,255,.10);
+    --pressionado:      rgba(255,255,255,.09);
+    --fundo-codigo:     rgba(0,0,0,.28);
+    --campo-fundo:      rgba(255,255,255,.05);
+    --campo-fundo-foco: rgba(255,255,255,.08);
+
+    --borda:            rgba(255,255,255,.10);
+    --borda-forte:      rgba(255,255,255,.20);
+
+    --texto:            #f0ebe4;
+    --texto-suave:      #b3c9ba;
+    --texto-fraco:      #9db5a5;
+
+    --terracota:        #e79a63;
+    --terracota-fraco:  rgba(231,154,99,.12);
+    --btn-fundo:        #c0622a;
+    --btn-fundo-hover:  #d2743a;
+    --btn-texto:        #ffffff;
+
+    --sucesso:          #5cc182;
+    --aviso:            #e3ab4d;
+    --perigo:           #ea8068;
+
+    --sombra-1: 0 1px 2px rgba(0,0,0,.25);
+    --sombra-2: 0 4px 16px rgba(0,0,0,.32);
+}
+
+/* ── Forma, espaço e tipografia (iguais nos dois temas) ────────────────── */
+:root {
+  --terracota-claro: var(--btn-fundo-hover);   /* alias legado */
+  --sombra: var(--sombra-2);                   /* alias legado */
 
   /* ── Tipografia ─────────────────────────────────────────────────────── */
   --fonte-titulo: "Cinzel", Georgia, serif;
@@ -47,11 +148,6 @@
   --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-full: 999px;
   --raio: var(--r-md);            /* alias legado */
 
-  /* ── Elevação ───────────────────────────────────────────────────────── */
-  --sombra-1: 0 1px 2px rgba(0,0,0,.25);
-  --sombra-2: 0 4px 16px rgba(0,0,0,.28);
-  --sombra:   var(--sombra-2);    /* alias legado */
-
   /* Altura da barra de navegação — usada no padding do main */
   --nav-h: 60px;
   /* Folga obrigatória no fim do conteúdo para a barra fixa não cobrir o
@@ -62,11 +158,11 @@
 
   /* Aliases legados (mantidos para não quebrar estilos inline existentes) */
   --cor-terracota: var(--terracota);
-  --cor-terracota-escuro: #9b4d1e;
+  --cor-terracota-escuro: var(--btn-fundo-hover);
   --cor-verde: var(--fundo);
   --cor-verde-claro: var(--superficie);
   --cor-branco: var(--texto);
-  --cor-texto: #1c1c1c;
+  --cor-texto: var(--texto);
   --cor-texto-suave: var(--texto-suave);
   --cor-borda: var(--borda);
   --cor-erro: var(--perigo);
@@ -133,7 +229,7 @@ body {
 .campo textarea,
 select {
   width: 100%;
-  background: var(--superficie-sutil);
+  background: var(--campo-fundo);
   border: 1px solid var(--borda);
   border-radius: var(--r-sm);
   padding: .7rem .85rem;
@@ -150,7 +246,7 @@ select {
 .campo textarea:focus,
 select:focus {
   border-color: var(--terracota);
-  background: rgba(255,255,255,.07);
+  background: var(--campo-fundo-foco);
   box-shadow: 0 0 0 3px var(--terracota-fraco);
 }
 
@@ -249,7 +345,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   width: 32px;
   height: 3px;
   border-radius: 0 0 3px 3px;
-  background: var(--terracota);
+  background: var(--btn-fundo);
   transition: transform .2s ease;
 }
 .nav-bottom a.ativo::before { transform: translateX(-50%) scaleX(1); }
@@ -311,11 +407,11 @@ main {
 .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 
 .btn-primario {
-  background-color: var(--terracota);
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(192,98,42,.28);
+  background-color: var(--btn-fundo);
+  color: var(--btn-texto);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--btn-fundo) 30%, transparent);
 }
-.btn-primario:hover:not(:disabled) { background-color: var(--terracota-claro); }
+.btn-primario:hover:not(:disabled) { background-color: var(--btn-fundo-hover); }
 
 .btn-secundario {
   background: transparent;
@@ -358,8 +454,8 @@ main {
   border-radius: var(--r-full);
   font-size: .72rem;
   font-weight: 700;
-  background-color: var(--terracota);
-  color: #fff;
+  background-color: var(--btn-fundo);
+  color: var(--btn-texto);
 }
 
 .ranking-pts {
@@ -374,7 +470,7 @@ main {
   width: 38px;
   height: 38px;
   border-radius: var(--r-full);
-  background: var(--terracota);
+  background: var(--btn-fundo);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -461,7 +557,7 @@ main {
 
 .sub-progress-wrap {
   height: 6px;
-  background: rgba(255,255,255,.1);
+  background: var(--realce);
   border-radius: var(--r-full);
   overflow: hidden;
   margin-bottom: var(--e2);
@@ -492,7 +588,7 @@ main {
 .pix-row { display: flex; gap: var(--e2); align-items: stretch; }
 .pix-code {
   flex: 1;
-  background: rgba(0,0,0,.28);
+  background: var(--fundo-codigo);
   border: 1px solid var(--borda);
   border-radius: var(--r-sm);
   color: var(--texto);
@@ -557,7 +653,7 @@ main {
 .slot-item:last-child { border-bottom: none; }
 .slot-livre { cursor: pointer; transition: background .15s; }
 .slot-livre:hover { background: var(--superficie-sutil); }
-.slot-livre:active { background: rgba(255,255,255,.08); }
+.slot-livre:active { background: var(--pressionado); }
 .slot-hora { font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .slot-label {
@@ -573,10 +669,10 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.label-ranking      { background: var(--terracota-fraco);  color: #e8905a; }
-.label-ultima-hora  { background: rgba(227,171,77,.18);    color: var(--aviso); }
-.label-ocupado      { background: rgba(255,255,255,.07);   color: var(--texto-suave); }
-.label-indisponivel { background: rgba(255,255,255,.05);   color: var(--texto-fraco); }
+.label-ranking      { background: var(--terracota-fraco);  color: var(--terracota); }
+.label-ultima-hora  { background: color-mix(in srgb, var(--aviso) 12%, transparent); color: var(--aviso); }
+.label-ocupado      { background: var(--realce);           color: var(--texto-suave); }
+.label-indisponivel { background: var(--superficie-sutil); color: var(--texto-fraco); }
 
 .slot-motivo { font-size: .72rem; color: var(--texto-fraco); grid-column: 2 / -1; }
 .slot-indisponivel { opacity: .62; cursor: default; }
@@ -625,11 +721,11 @@ main {
   font-weight: 600;
   white-space: nowrap;
 }
-.status-agendado   { background: var(--terracota-fraco);   color: #e8905a; }
-.status-aguardando { background: rgba(227,171,77,.18);     color: var(--aviso); }
-.status-realizado  { background: rgba(92,193,130,.18);     color: var(--sucesso); }
-.status-wo         { background: rgba(232,120,95,.18);     color: var(--perigo); }
-.status-cancelado  { background: rgba(255,255,255,.06);    color: var(--texto-fraco); }
+.status-agendado   { background: var(--terracota-fraco);   color: var(--terracota); }
+.status-aguardando { background: color-mix(in srgb, var(--aviso) 12%, transparent);   color: var(--aviso); }
+.status-realizado  { background: color-mix(in srgb, var(--sucesso) 12%, transparent); color: var(--sucesso); }
+.status-wo         { background: color-mix(in srgb, var(--perigo) 12%, transparent);  color: var(--perigo); }
+.status-cancelado  { background: var(--superficie-sutil);  color: var(--texto-fraco); }
 
 .partida-jogadores { font-size: .9rem; text-align: center; margin: var(--e2) 0; }
 .partida-placar {
@@ -667,7 +763,7 @@ main {
 .uso-nums { font-size: .82rem; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
 .uso-barra {
   height: 8px;
-  background: rgba(255,255,255,.09);
+  background: var(--realce);
   border-radius: var(--r-full);
   overflow: hidden;
 }
@@ -713,6 +809,44 @@ main {
 }
 
 /* ── Telas maiores ────────────────────────────────────────────────────── */
+/* ── Seletor de tema (tela de perfil) ─────────────────────────────────── */
+.tema-opcoes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--e2);
+}
+.tema-opcao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
+  min-height: 76px;
+  padding: var(--e3) var(--e2);
+  background: var(--campo-fundo);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-md);
+  color: var(--texto-suave);
+  font-family: var(--fonte-corpo);
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.tema-opcao svg { width: 20px; height: 20px; }
+.tema-opcao:active { background: var(--pressionado); }
+.tema-opcao.ativa {
+  background: var(--terracota-fraco);
+  border-color: var(--terracota);
+  color: var(--terracota);
+}
+.tema-dica {
+  font-size: .74rem;
+  color: var(--texto-fraco);
+  margin-top: var(--e3);
+  line-height: 1.45;
+}
+
 @media (min-width: 720px) {
   main { padding: var(--e6) var(--e6) var(--folga-nav); }
   .card { padding: var(--e6); }
