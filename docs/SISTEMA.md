@@ -995,21 +995,58 @@ A senha do leitor é cifrada com Fernet a partir do `SECRET_KEY`
 separa o banco do segredo — as duas coisas que vazam por caminhos diferentes. O
 painel nunca recebe a senha de volta; campo em branco no PATCH mantém a atual.
 
-### 19.5 Estado da integração
+### 19.5 A API do equipamento
 
-**Pronto e verificado**: modelo, migration, serviço, API do agente, API do
-painel, tela do admin, página de selfie, agente com laço de reconciliação e
-7 testes passando contra leitores simulados.
+Endpoints conferidos contra a **coleção Postman oficial da Intelbras**
+("Controle de Acesso - Bio-T") e o **Portal de Integração da Linha de Faciais**,
+que confirma o SS 3531 MF como suportado. Autenticação Digest; resposta em
+`chave=valor`, JSON ou `OK`. Tudo isolado em `agente-acesso/driver.py`.
 
-**Falta**: os endpoints CGI reais. A linha Intelbras é derivada da plataforma
-Dahua e usa CGI sobre HTTP Digest; os caminhos em `agente-acesso/driver.py`
-(`_ROTAS`) seguem essa convenção mas **não foram confirmados** — a documentação
-é liberada pela Intelbras sob solicitação, pelo chatbot (tutorial em
-`Acesso/Intelbras/`).
+A coleção tem duas gerações de API. O driver usa a **V2** (`AccessUser.cgi`,
+`AccessFace.cgi`), que identifica pelo `UserID`; a V1 usa o `recno` interno, que
+muda quando o registro é reescrito — amarrar nossa credencial a ele seria frágil.
 
-Quando ela chegar, ajustar `_ROTAS` e os formatos de payload em `driver.py` é a
-única mudança necessária: nada fora desse arquivo depende do dialeto do
-equipamento. O `DriverSimulado` permite testar tudo antes disso.
+**A documentação mudou o desenho para melhor.** O usuário do leitor tem
+`ValidFrom`/`ValidTo`, então a janela do jogo virou a **validade do usuário**: o
+próprio equipamento passou a impor o horário. Antes o agente ligava e desligava
+a pessoa no relógio, o que deixava o acesso aberto se o agente caísse no meio de
+um jogo. Agora o leitor fecha sozinho.
+
+O limite de um intervalo por usuário continua valendo, e um associado tem vários
+jogos na semana. O agente resolve escolhendo qual janela vale — a em curso, ou a
+próxima — e avançando conforme cada uma termina. Sem janela nenhuma, a validade
+vai para um intervalo já vencido: a pessoa continua cadastrada (a foto não
+precisa subir de novo) mas não passa.
+
+Duas correções que a coleção trouxe e não teriam sido descobertas sem ela:
+`removeMulti` e `list` são **GET com os ids na query**, não POST com corpo; e o
+`StartTime` da busca de eventos é **epoch em segundos**, não data formatada.
+
+Bônus: o agente agora aponta o **NTP** dos leitores sozinho
+(`configManager.cgi?action=setConfig&NTP.Address=…`), uma vez por execução. O
+horário das passagens vem do equipamento, e isso deixou de depender de alguém
+lembrar de configurar na tela de cada leitor.
+
+### 19.5.1 Caminho não seguido: modo online
+
+O equipamento sabe **empurrar** eventos para um servidor
+(`Intelbras_ModeCfg.DeviceMode=2` + `PictureHttpUpload`), o que daria passagem em
+tempo real em vez dos 20 s do ciclo. Não implementado: exigiria o agente subir um
+servidor HTTP, e a consulta atual atende. Registrado como caminho caso o tempo de
+reação passe a importar.
+
+### 19.5.2 Estado
+
+**Pronto e verificado**: modelo, migration, serviço, API do agente e do painel,
+tela do admin, página de selfie, e o agente com driver real — 12 testes passando,
+cobrindo janela em curso, avanço para a janela seguinte, bloqueio sem jogo, foto
+só quando muda, limpeza de sobras sem apagar cadastro manual, leitor fora do ar,
+NTP uma vez por leitor, e a leitura das respostas nos dois formatos que o portal
+documenta (JSON e `chave=valor`).
+
+**Falta**: rodar contra o hardware. Os testes usam `DriverSimulado`; o formato
+das respostas segue a documentação, mas só o equipamento confirma. Rode
+`python agente.py --token … --uma-vez` com os leitores ligados e acompanhe o log.
 
 ### 19.6 Antes de ligar no portão
 

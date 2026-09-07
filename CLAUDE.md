@@ -75,10 +75,11 @@ com eles é o agente em `agente-acesso/`, que roda num mini-PC na quadra e busca
 estado desejado no servidor. Nunca escreva código no backend que fale direto com
 um leitor — não há rota. Detalhes na seção 19 de `docs/SISTEMA.md`.
 
-Os endpoints CGI em `agente-acesso/driver.py` (`_ROTAS`) **ainda não foram
-confirmados** contra a documentação oficial da Intelbras. Quando ela chegar, é o
-único arquivo a mudar. `python agente-acesso/teste_agente.py` valida a lógica
-contra leitores simulados, sem hardware.
+Os endpoints CGI estão conferidos contra a coleção Postman oficial da Intelbras
+e o Portal de Integração, e ficam todos em `agente-acesso/driver.py`. A janela do
+jogo é a **validade do usuário** no leitor (`ValidFrom`/`ValidTo`): quem impõe o
+horário é o equipamento, não o agente. `python agente-acesso/teste_agente.py`
+valida tudo contra leitores simulados, sem hardware.
 
 ## Convenções
 

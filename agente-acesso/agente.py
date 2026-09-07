@@ -19,11 +19,12 @@ paga com robustez: se o agente ficar horas offline, se alguém apagar um usuári
 na tela do leitor, ou se um leitor for trocado, o ciclo seguinte conserta
 sozinho. Não existe estado que só o agente saiba.
 
-**A janela de horário é aplicada ligando e desligando a pessoa**, não pelo
-período de validade do equipamento. O leitor guarda um intervalo só por usuário,
-e um associado pode ter três jogos na semana. Ligar/desligar no relógio cobre os
-dois casos com uma regra só — e como o agente guarda a última lista sincronizada,
-uma queda de internet no meio do jogo não tranca ninguém do lado de fora.
+**Quem impõe o horário é o leitor, não o agente.** Cada usuário tem uma validade
+(`ValidFrom`/`ValidTo`) e o equipamento a respeita sozinho. O agente só mantém
+essa validade apontando para a janela que importa — a que está acontecendo ou a
+próxima. Assim, se o agente cair no meio do jogo, o acesso ainda fecha na hora
+certa; e como o associado pode ter vários jogos na semana, o agente vai
+avançando a validade de uma janela para a seguinte.
 """
 from __future__ import annotations
 
@@ -38,7 +39,13 @@ from pathlib import Path
 
 import httpx
 
-from driver import DriverIntelbras, DriverSimulado, ErroLeitor
+from driver import (
+    VALIDADE_BLOQUEADO,
+    DriverIntelbras,
+    DriverSimulado,
+    ErroLeitor,
+    formatar_data,
+)
 
 logger = logging.getLogger("agente")
 
@@ -135,11 +142,30 @@ class Agente:
     # ── Reconciliação ────────────────────────────────────────────────────────
 
     @staticmethod
-    def _deve_estar_liberado(credencial: dict, agora: datetime) -> bool:
+    def _janela_relevante(credencial: dict, agora: datetime) -> tuple[str, str]:
+        """Validade que a pessoa deve ter no leitor, em hora local.
+
+        A janela em curso, se houver; senão a próxima que vier. O equipamento
+        guarda um intervalo só por usuário, então o agente escolhe qual dos
+        jogos da semana está valendo e vai avançando conforme eles terminam.
+        Sem janela nenhuma, devolve um intervalo já vencido — a pessoa segue
+        cadastrada (a foto não precisa subir de novo) mas não passa.
+        """
+        emcurso, futuras = None, []
         for j in credencial["janelas"]:
-            if datetime.fromisoformat(j["inicio"]) <= agora <= datetime.fromisoformat(j["fim"]):
-                return True
-        return False
+            inicio = datetime.fromisoformat(j["inicio"])
+            fim = datetime.fromisoformat(j["fim"])
+            if inicio <= agora <= fim:
+                # Entre janelas sobrepostas vale a que termina depois.
+                if emcurso is None or fim > emcurso[1]:
+                    emcurso = (inicio, fim)
+            elif inicio > agora:
+                futuras.append((inicio, fim))
+
+        escolhida = emcurso or (min(futuras) if futuras else None)
+        if escolhida is None:
+            return VALIDADE_BLOQUEADO
+        return formatar_data(escolhida[0]), formatar_data(escolhida[1])
 
     def reconciliar(self, disp: dict, credenciais: list[dict], agora: datetime) -> tuple[list[dict], str | None]:
         """Deixa um leitor igual ao estado desejado.
@@ -149,9 +175,11 @@ class Agente:
         impedir o resto da quadra de entrar.
         """
         drv = self.driver_de(disp)
+        ids = [c["id_dispositivo"] for c in credenciais]
         try:
             drv.testar()
-            no_leitor = drv.listar_usuarios()
+            self._ajustar_relogio(disp, drv)
+            no_leitor = drv.listar_usuarios(ids) if ids else {}
         except ErroLeitor as exc:
             return [], str(exc)
         except Exception as exc:  # noqa: BLE001 — leitor fora do ar não derruba o agente
@@ -159,19 +187,19 @@ class Agente:
 
         fotos_enviadas = self.local.setdefault("fotos", {}).setdefault(str(disp["id"]), {})
         resultados: list[dict] = []
-        esperados: set[str] = set()
 
         for cred in credenciais:
             uid = cred["id_dispositivo"]
-            esperados.add(uid)
-            liberado = self._deve_estar_liberado(cred, agora)
+            valido_de, valido_ate = self._janela_relevante(cred, agora)
             try:
                 atual = no_leitor.get(uid)
                 if atual is None:
-                    drv.gravar_usuario(uid, cred["nome"], liberado)
-                    fotos_enviadas.pop(uid, None)   # usuário novo, foto tem de ir
-                elif atual.get("habilitado") != liberado:
-                    drv.definir_habilitado(uid, liberado)
+                    drv.gravar_usuario(uid, cred["nome"], valido_de, valido_ate)
+                    # Usuário novo: a foto tem de subir, mesmo que já estivesse
+                    # no cache de um cadastro anterior que foi apagado.
+                    fotos_enviadas.pop(uid, None)
+                elif (atual.get("valido_de"), atual.get("valido_ate")) != (valido_de, valido_ate):
+                    drv.atualizar_validade(uid, cred["nome"], valido_de, valido_ate)
 
                 # A foto só vai quando muda: é o payload pesado do ciclo.
                 if fotos_enviadas.get(uid) != cred["foto_hash"]:
@@ -186,8 +214,21 @@ class Agente:
                     "erro": f"{disp['nome']}: {exc}",
                 })
 
-        # Sobras: quem está no leitor e não deveria mais. Só mexe no que é nosso
-        # (prefixo RT) — um usuário cadastrado à mão pelo dono não é apagado.
+        self._limpar_sobras(disp, drv, set(ids), fotos_enviadas)
+        return resultados, None
+
+    def _limpar_sobras(self, disp: dict, drv, esperados: set[str], fotos_enviadas: dict) -> None:
+        """Apaga do leitor quem o servidor não conhece mais.
+
+        Só mexe no que é nosso (prefixo RT): um usuário cadastrado à mão na tela
+        do equipamento — o zelador, um técnico — não pode ser apagado por nós.
+        """
+        try:
+            no_leitor = drv.listar_todos_ids()
+        except Exception as exc:  # noqa: BLE001 — limpeza é acessória
+            logger.warning("não listei os usuários de %s: %s", disp["nome"], exc)
+            return
+
         for uid in no_leitor:
             if uid.startswith("RT") and uid not in esperados:
                 try:
@@ -197,7 +238,22 @@ class Agente:
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("não removi %s de %s: %s", uid, disp["nome"], exc)
 
-        return resultados, None
+    def _ajustar_relogio(self, disp: dict, drv) -> None:
+        """Aponta o NTP do leitor, uma vez por execução do agente.
+
+        O horário das passagens vem do equipamento: relógio errado embaralha
+        quem entrou e quem saiu. Fazer aqui evita depender de alguém lembrar de
+        configurar na tela de cada leitor.
+        """
+        if not hasattr(self, "_ntp_ajustado"):
+            self._ntp_ajustado = set()
+        if disp["id"] in self._ntp_ajustado:
+            return
+        try:
+            drv.configurar_ntp("a.ntp.br")
+            self._ntp_ajustado.add(disp["id"])
+        except Exception as exc:  # noqa: BLE001 — não impede o ciclo
+            logger.warning("NTP do leitor %s: %s", disp["nome"], exc)
 
     def coletar_eventos(self, disp: dict) -> list[dict]:
         """Passagens registradas desde a última coleta deste leitor."""

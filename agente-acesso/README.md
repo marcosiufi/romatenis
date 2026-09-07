@@ -31,9 +31,12 @@ paga com robustez: se o agente ficar horas offline, se alguém apagar um usuári
 na tela do leitor, ou se um leitor for trocado, o ciclo seguinte conserta
 sozinho.
 
-**A janela de horário é aplicada ligando e desligando a pessoa no leitor**, não
-pelo período de validade do equipamento. O leitor guarda um intervalo só por
-usuário, e um associado pode ter três jogos na mesma semana.
+**Quem impõe o horário é o leitor, não o agente.** Cada usuário tem uma validade
+(`ValidFrom`/`ValidTo`) e o equipamento a respeita sozinho — se o agente cair no
+meio de um jogo, o acesso ainda fecha na hora certa. O leitor guarda um intervalo
+só por usuário e um associado pode ter três jogos na semana, então o agente
+mantém essa validade apontando para a janela que vale (a em curso, ou a próxima)
+e avança conforme cada uma termina.
 
 ## Hardware
 
@@ -93,9 +96,10 @@ O painel mostra o agente como online quando ele reporta; cada leitor mostra o
 
 ## Antes de ligar no portão
 
-- **Relógio dos leitores**: aponte o NTP dos dois para o mesmo servidor. O
-  horário das passagens vem do equipamento; relógio errado embaralha o registro
-  de quem entrou e quem saiu.
+- **Relógio dos leitores**: o agente aponta o NTP sozinho a cada execução
+  (`a.ntp.br`). Confira no log do primeiro ciclo que não houve aviso de falha —
+  o horário das passagens vem do equipamento, e relógio errado embaralha o
+  registro de quem entrou e quem saiu.
 - **Anti-fake ligado** nos dois. Sem isso uma foto no celular abre o portão.
 - **IP fixo** nos dois leitores (ou reserva por MAC no roteador). Se o IP mudar,
   o agente perde o equipamento até alguém corrigir no painel.
@@ -110,9 +114,11 @@ python teste_agente.py
 ```
 
 Sobe os leitores em modo simulado (`DriverSimulado`) e verifica a parte difícil:
-janela de horário, envio de foto só quando muda, limpeza de sobras, leitor fora
-do ar, e a classificação de entrada/saída/negado. Não precisa de servidor nem de
-hardware.
+janela em curso, avanço para a janela seguinte, bloqueio sem jogo, foto só quando
+muda, limpeza de sobras sem apagar cadastro manual, leitor fora do ar, NTP uma
+vez por leitor, classificação de entrada/saída/negado, e a leitura das respostas
+do equipamento nos dois formatos documentados (JSON e `chave=valor`). Não precisa
+de servidor nem de hardware.
 
 Para rodar o agente inteiro sem hardware, contra o servidor de verdade:
 
@@ -120,14 +126,35 @@ Para rodar o agente inteiro sem hardware, contra o servidor de verdade:
 python agente.py --token COLE_O_TOKEN --simulado --uma-vez
 ```
 
-## ⚠️ Endpoints ainda não confirmados
+## API do equipamento
 
-A linha de controle de acesso da Intelbras é derivada da plataforma Dahua e usa
-CGI sobre HTTP com autenticação Digest. Os caminhos em `driver.py` (`_ROTAS`)
-seguem essa convenção, **mas não foram verificados contra a documentação
-oficial** — ela é liberada pela Intelbras sob solicitação, pelo chatbot (ver o
-tutorial em `Acesso/Intelbras/`).
+Endpoints conferidos contra a **coleção Postman oficial da Intelbras**
+("Controle de Acesso - Bio-T") e o **Portal de Integração da Linha de Faciais**,
+que confirma o SS 3531 MF como suportado.
 
-Quando a documentação chegar, ajustar `_ROTAS` e os formatos de payload em
-`driver.py` é a única mudança necessária: nada fora desse arquivo depende do
-dialeto do equipamento. Os testes e todo o resto do sistema continuam valendo.
+- Autenticação **Digest** (RFC 2617)
+- Resposta: `chave=valor` multilinha, JSON, ou a palavra `OK`
+- A coleção convive com duas gerações de API. Onde há escolha, o driver usa a
+  **V2** (`AccessUser.cgi`, `AccessFace.cgi`), que usa `UserID` como
+  identificador em vez do `recno` interno — o `recno` muda quando o registro é
+  reescrito, e amarrar nossa credencial a ele seria frágil.
+
+| o que | chamada |
+|---|---|
+| testar | `GET /cgi-bin/magicBox.cgi?action=getSoftwareVersion` |
+| criar usuário | `POST /cgi-bin/AccessUser.cgi?action=insertMulti` |
+| mudar validade | `POST /cgi-bin/AccessUser.cgi?action=updateMulti` |
+| consultar | `GET /cgi-bin/AccessUser.cgi?action=list&UserIDList[0]=…` |
+| remover | `GET /cgi-bin/AccessUser.cgi?action=removeMulti&UserIDList[0]=…` |
+| enviar face | `POST /cgi-bin/AccessFace.cgi?action=insertMulti` |
+| passagens | `GET /cgi-bin/recordFinder.cgi?action=find&name=AccessControlCardRec&StartTime=<epoch>` |
+| abrir porta | `GET /cgi-bin/accessControl.cgi?action=openDoor&channel=1&Type=Remote` |
+| NTP | `GET /cgi-bin/configManager.cgi?action=setConfig&NTP.Address=…&NTP.Enable=true` |
+
+### Melhoria possível: modo online
+
+O equipamento sabe **empurrar** eventos para um servidor, em vez de ser
+consultado (`Intelbras_ModeCfg.DeviceMode=2` + `PictureHttpUpload`). Daria
+passagem em tempo real no painel, no lugar dos 20 s de hoje. Não foi
+implementado: exigiria o agente subir um servidor HTTP e a consulta atual já
+atende. Fica registrado como caminho, se um dia o tempo de reação importar.
