@@ -923,3 +923,100 @@ Menor razão de texto: **4.78:1** no app, **5.10:1** no admin.
 > A landing (`frontend/css/landing.css`) **não** foi tocada: tem tokens próprios
 > e segue só no escuro, que é a identidade do site.
 
+## 19. Controle de acesso à quadra — 07/09/2026
+
+Liberação automática do portão lateral por reconhecimento facial, a partir das
+reservas. Dois leitores Intelbras **SS 3531 MF LITE** (entrada e saída) e uma
+trava magnética com mola.
+
+### 19.1 A decisão que define tudo: o agente local
+
+Os leitores ficam na rede da quadra, com IP `192.168.x.x`. A VPS está na nuvem e
+**não tem rota** até esse IP. Três saídas eram possíveis:
+
+| caminho | avaliação |
+|---|---|
+| Expor o leitor na internet | Descartado. Um controlador de acesso com porta aberta é um convite: quem entrar abre o portão. |
+| VPN da quadra até a VPS | Funciona, mas o servidor passa a depender da internet da quadra estar de pé no instante exato de cada liberação. |
+| **Agente local** | Escolhido. O leitor nunca sai da rede local, e se a internet cair quem já foi sincronizado continua entrando. |
+
+O agente (`agente-acesso/`) roda num mini-PC na quadra. A cada 20 s ele busca o
+estado desejado, reconcilia os leitores, recolhe as passagens e reporta.
+
+**O servidor manda o estado inteiro, não um diff.** Custa alguns KB por ciclo e
+paga com robustez: agente offline por horas, usuário apagado na tela do leitor,
+equipamento trocado — o ciclo seguinte conserta sozinho.
+
+**A janela de horário é aplicada ligando e desligando a pessoa no leitor**, não
+pelo período de validade do equipamento. O leitor guarda um intervalo só por
+usuário e um associado pode ter três jogos na semana.
+
+### 19.2 Modelo
+
+`app/models/acesso.py`, migration `0031`:
+
+| tabela | papel |
+|---|---|
+| `dispositivos_acesso` | os leitores. Host, usuário e senha vêm do painel; a senha fica cifrada. |
+| `credenciais_acesso` | identidade única de quem passa pelo portão. |
+| `janelas_acesso` | intervalo liberado, derivado da reserva mais as folgas. |
+| `eventos_acesso` | passagens registradas, com chave externa para não duplicar. |
+| `comandos_acesso` | ações pontuais (abrir o portão pelo painel). |
+
+Uma credencial aponta para **exatamente uma** origem — associado, convidado ou
+cliente de locação — garantido por `CHECK` no banco. O `id_dispositivo` é
+`RT000123`: legível na tela do equipamento quando algo dá errado.
+
+O `foto_hash` é sha256 do **conteúdo**, não da URL. O upload sobrescreve o
+arquivo mantendo o nome, então comparar URL não detectaria a troca da selfie — e
+a foto é o payload pesado do ciclo, que só pode subir quando muda de verdade.
+
+### 19.3 Selfie
+
+Sem foto não há reconhecimento facial, então cada origem tem seu caminho:
+
+- **associado** — usa a foto do perfil, que já tem tela de upload. O app avisa
+  quem ainda não tem foto (`_empresa.acesso_ativo && !p.foto_url`);
+- **convidado e cliente de locação** — não têm login. A credencial ganha um
+  `token_selfie`, que vira o link `/selfie/{token}`; o admin copia e envia. A
+  página abre a câmera frontal no celular (`capture="user"`).
+
+### 19.4 Configuração no painel
+
+Aba **Acesso**: liga/desliga o controle, minutos antes e depois, exigência de
+selfie, token do agente, CRUD dos leitores, lista de quem está pendente, log de
+passagens e botão de abrir o portão.
+
+Ligar o controle com reservas já marcadas dispara `_acesso_recriar_janelas_futuras`:
+sem isso essas reservas ficariam sem janela e ninguém entraria.
+
+A senha do leitor é cifrada com Fernet a partir do `SECRET_KEY`
+(`app/core/cripto.py`). Não protege contra quem tem o servidor inteiro, mas
+separa o banco do segredo — as duas coisas que vazam por caminhos diferentes. O
+painel nunca recebe a senha de volta; campo em branco no PATCH mantém a atual.
+
+### 19.5 Estado da integração
+
+**Pronto e verificado**: modelo, migration, serviço, API do agente, API do
+painel, tela do admin, página de selfie, agente com laço de reconciliação e
+7 testes passando contra leitores simulados.
+
+**Falta**: os endpoints CGI reais. A linha Intelbras é derivada da plataforma
+Dahua e usa CGI sobre HTTP Digest; os caminhos em `agente-acesso/driver.py`
+(`_ROTAS`) seguem essa convenção mas **não foram confirmados** — a documentação
+é liberada pela Intelbras sob solicitação, pelo chatbot (tutorial em
+`Acesso/Intelbras/`).
+
+Quando ela chegar, ajustar `_ROTAS` e os formatos de payload em `driver.py` é a
+única mudança necessária: nada fora desse arquivo depende do dialeto do
+equipamento. O `DriverSimulado` permite testar tudo antes disso.
+
+### 19.6 Antes de ligar no portão
+
+- **NTP nos dois leitores**, apontando para o mesmo servidor. O horário das
+  passagens vem do equipamento; relógio errado embaralha entrada e saída.
+- **Anti-fake ligado**. Sem isso, uma foto no celular abre o portão.
+- **IP fixo** nos dois (ou reserva por MAC). IP mudou, agente perde o leitor.
+- **Confirmar que a mola fecha o portão** — a liberação de uma pessoa não pode
+  virar porta aberta.
+

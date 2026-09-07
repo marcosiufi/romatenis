@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foto de acesso — Roma Tênis</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/landing.css" />
+  <style>
+    .selfie-wrap { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:2rem 1.25rem; }
+    .selfie-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:calc(var(--r)*2); padding:2.5rem 2rem;
+      width:100%; max-width:420px; box-shadow:0 12px 40px rgba(0,0,0,.4);
+    }
+    .s-logo { text-align:center; margin-bottom:1.25rem; }
+    .s-logo svg { width:140px; height:auto; display:block; margin:0 auto; }
+    .s-titulo { font-family:'Cinzel',Georgia,serif; font-size:1.15rem; text-align:center; margin-bottom:.5rem; }
+    .s-sub { font-size:.85rem; opacity:.75; text-align:center; line-height:1.5; margin-bottom:1.5rem; }
+    .s-previa {
+      width:180px; height:180px; border-radius:50%; object-fit:cover;
+      display:block; margin:0 auto 1.25rem; border:2px solid var(--border);
+    }
+    .s-previa[hidden] { display:none; }
+    .s-botao {
+      display:block; width:100%; text-align:center; cursor:pointer;
+      background:var(--accent); color:#fff; border:none;
+      border-radius:.6rem; padding:.85rem; font-family:inherit;
+      font-size:.92rem; font-weight:700; letter-spacing:.02em;
+      margin-bottom:.6rem;
+    }
+    .s-botao.sec { background:transparent; color:inherit; border:1px solid var(--border); }
+    .s-botao:disabled { opacity:.5; cursor:default; }
+    #s-arquivo { display:none; }
+    .s-msg { font-size:.85rem; border-radius:.5rem; padding:.7rem .9rem; margin-bottom:1rem; line-height:1.45; }
+    .s-msg.erro { color:#f08080; background:rgba(220,80,80,.12); }
+    .s-msg.ok   { color:#6fcf97; background:rgba(111,207,151,.12); }
+    .s-dicas { font-size:.78rem; opacity:.65; line-height:1.6; margin-top:1.25rem; }
+    .s-dicas li { margin-bottom:.2rem; }
+  </style>
+</head>
+<body>
+  <div class="selfie-wrap">
+    <div class="selfie-card">
+      <div class="s-logo">
+        <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
+          <text x="150" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-size="62" font-weight="700" letter-spacing="8" fill="#F0EBE4">ROMA</text>
+          <line x1="106" y1="82" x2="194" y2="82" stroke="#C1502E" stroke-width="1.5"/>
+          <text x="150" y="102" text-anchor="middle" font-family="'Inter', Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="7" fill="#C1502E">TÊNIS</text>
+        </svg>
+      </div>
+
+      <p class="s-titulo" id="s-titulo">Foto de acesso</p>
+      <p class="s-sub" id="s-sub">Carregando…</p>
+
+      <div id="s-msg" class="s-msg" style="display:none"></div>
+      <img id="s-previa" class="s-previa" alt="Prévia da sua foto" hidden />
+
+      <div id="s-form" style="display:none">
+        <!-- capture=user abre a câmera frontal direto no celular -->
+        <input type="file" id="s-arquivo" accept="image/jpeg,image/png,image/webp" capture="user" />
+        <button type="button" class="s-botao" onclick="document.getElementById('s-arquivo').click()">
+          Tirar ou escolher foto
+        </button>
+        <button type="button" class="s-botao sec" id="s-enviar" onclick="enviar()" disabled>Enviar</button>
+
+        <ul class="s-dicas">
+          <li>Rosto de frente, olhos abertos, sem óculos escuros nem boné.</li>
+          <li>Boa luz, sem sombra forte no rosto e sem contraluz.</li>
+          <li>Só você na foto.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = location.pathname.split('/').filter(Boolean).pop()
+    let arquivo = null
+
+    function msg(texto, tipo) {
+      const el = document.getElementById('s-msg')
+      el.textContent = texto
+      el.className = 's-msg ' + tipo
+      el.style.display = 'block'
+    }
+
+    // O corpo nem sempre é JSON: um proxy fora do ar devolve HTML, e aí o
+    // .json() estoura com "Unexpected token '<'" — mensagem que não diz nada a
+    // quem só quer mandar a foto.
+    async function lerResposta(r, msgPadrao) {
+      let d = {}
+      try { d = await r.json() } catch (_) {
+        if (!r.ok) throw new Error('Serviço indisponível no momento. Tente de novo em instantes.')
+        throw new Error(msgPadrao)
+      }
+      if (!r.ok) throw new Error(d.detail || msgPadrao)
+      return d
+    }
+
+    async function carregar() {
+      try {
+        const r = await fetch(`/api/v1/acesso/selfie/${encodeURIComponent(token)}`)
+        const d = await lerResposta(r, 'Link inválido ou expirado.')
+        document.getElementById('s-titulo').textContent = `Olá, ${d.nome.split(' ')[0]}`
+        document.getElementById('s-sub').textContent = d.ja_enviou
+          ? 'Você já enviou uma foto. Se quiser trocar, envie outra abaixo.'
+          : 'Envie uma foto do seu rosto para liberar sua entrada na quadra pelo reconhecimento facial.'
+        document.getElementById('s-form').style.display = 'block'
+      } catch (err) {
+        document.getElementById('s-sub').textContent = ''
+        msg(err.message, 'erro')
+      }
+    }
+
+    document.getElementById('s-arquivo').addEventListener('change', (e) => {
+      arquivo = e.target.files[0] || null
+      const previa = document.getElementById('s-previa')
+      if (!arquivo) { previa.hidden = true; return }
+      if (arquivo.size > 5 * 1024 * 1024) {
+        arquivo = null
+        return msg('Arquivo muito grande. O limite é 5 MB.', 'erro')
+      }
+      previa.src = URL.createObjectURL(arquivo)
+      previa.hidden = false
+      document.getElementById('s-enviar').disabled = false
+      document.getElementById('s-msg').style.display = 'none'
+    })
+
+    async function enviar() {
+      if (!arquivo) return
+      const botao = document.getElementById('s-enviar')
+      botao.disabled = true
+      botao.textContent = 'Enviando…'
+      try {
+        const dados = new FormData()
+        dados.append('foto', arquivo)
+        const r = await fetch(`/api/v1/acesso/selfie/${encodeURIComponent(token)}`, {
+          method: 'POST', body: dados,
+        })
+        await lerResposta(r, 'Não consegui enviar a foto.')
+        msg('Foto recebida. Sua entrada será liberada no horário do jogo.', 'ok')
+        document.getElementById('s-form').style.display = 'none'
+      } catch (err) {
+        msg(err.message, 'erro')
+        botao.disabled = false
+        botao.textContent = 'Enviar'
+      }
+    }
+
+    carregar()
+  </script>
+</body>
+</html>

@@ -154,6 +154,7 @@ function switchTab(tab) {
   document.getElementById(`sec-${tab}`).classList.add('active')
   switch (tab) {
     case 'dashboard':    loadDashboard(); break
+    case 'acesso':       loadAcesso(); break
     case 'jogadores':    loadPlayers(); break
     case 'partidas':     loadMatches(); break
     case 'temporada':    loadSeasons(); break
@@ -1929,6 +1930,257 @@ function initSidebar() {
       if (btn) btn.textContent = '▶'
     }
   } catch (_) {}
+}
+
+
+
+// ── Acesso à quadra ──────────────────────────────────────────────────────────
+//
+// O servidor não fala com os leitores: quem faz isso é o agente instalado na
+// quadra. Esta tela configura o estado desejado e mostra a saúde da ponte.
+
+function fecharModal(id) {
+  document.getElementById(id).classList.remove('open')
+}
+
+async function loadAcesso() {
+  await Promise.all([
+    loadAcessoConfig(),
+    loadAcessoDispositivos(),
+    loadAcessoCredenciais(),
+    loadAcessoEventos(),
+  ])
+}
+
+async function loadAcessoConfig() {
+  try {
+    const c = await api('/admin/acesso/configuracoes')
+    document.getElementById('acesso-ativo').checked = c.acesso_ativo
+    document.getElementById('acesso-exige-selfie').checked = c.acesso_exige_selfie
+    document.getElementById('acesso-antes').value = c.acesso_minutos_antes
+    document.getElementById('acesso-depois').value = c.acesso_minutos_depois
+    document.getElementById('acesso-token').value = c.agente_token || ''
+
+    // Agente "online" = reportou há menos de 2 min. O ciclo dele é de 20 s,
+    // então essa folga cobre um ciclo perdido sem alarme falso.
+    const badge = document.getElementById('acesso-agente-status')
+    if (!c.agente_visto_em) {
+      badge.className = 'badge bnc'
+      badge.textContent = 'agente: nunca conectou'
+    } else {
+      const atrasoMin = (Date.now() - new Date(c.agente_visto_em)) / 60000
+      const online = atrasoMin < 2
+      badge.className = online ? 'badge ba' : 'badge bc'
+      badge.textContent = online ? 'agente: online' : `agente: sem contato (${fmtDH(c.agente_visto_em)})`
+    }
+  } catch (err) {
+    showErr('acesso-cfg-erro', err.message)
+  }
+}
+
+async function salvarAcessoConfig() {
+  try {
+    const r = await api('/admin/acesso/configuracoes', {
+      method: 'PUT',
+      body: JSON.stringify({
+        acesso_ativo: document.getElementById('acesso-ativo').checked,
+        acesso_exige_selfie: document.getElementById('acesso-exige-selfie').checked,
+        acesso_minutos_antes: Number(document.getElementById('acesso-antes').value),
+        acesso_minutos_depois: Number(document.getElementById('acesso-depois').value),
+      }),
+    })
+    document.getElementById('acesso-cfg-erro').style.display = 'none'
+    toast(r.janelas_criadas
+      ? `Regras salvas. ${r.janelas_criadas} liberação(ões) criada(s) para reservas já marcadas.`
+      : 'Regras salvas.')
+    loadAcessoCredenciais()
+  } catch (err) {
+    showErr('acesso-cfg-erro', err.message)
+  }
+}
+
+async function gerarTokenAgente() {
+  if (!confirm('Gerar um token novo derruba o agente atual até você atualizar a configuração dele na quadra. Continuar?')) return
+  try {
+    const r = await api('/admin/acesso/token', { method: 'POST' })
+    document.getElementById('acesso-token').value = r.agente_token
+    toast('Token gerado. Atualize a configuração do agente na quadra.')
+  } catch (err) {
+    toast(err.message, true)
+  }
+}
+
+function copiarTokenAgente() {
+  const campo = document.getElementById('acesso-token')
+  if (!campo.value) return toast('Nenhum token gerado ainda.', true)
+  navigator.clipboard.writeText(campo.value)
+    .then(() => toast('Token copiado.'))
+    .catch(() => toast('Não consegui copiar; selecione e copie à mão.', true))
+}
+
+async function loadAcessoDispositivos() {
+  const corpo = document.getElementById('acesso-dispositivos')
+  try {
+    const linhas = await api('/admin/acesso/dispositivos')
+    if (!linhas.length) {
+      corpo.innerHTML = '<tr><td colspan="6" class="empty">Nenhum leitor cadastrado.</td></tr>'
+      return
+    }
+    corpo.innerHTML = linhas.map(d => {
+      let estado = '<span class="badge bnc">sem contato</span>'
+      if (d.ultimo_erro) estado = '<span class="badge b-wo">erro</span>'
+      else if (d.ultimo_contato_em) estado = '<span class="badge ba">ok</span>'
+      if (!d.ativo) estado = '<span class="badge bd">inativo</span>'
+      return `<tr>
+        <td>${escHtml(d.nome)}</td>
+        <td>${d.papel === 'entrada' ? 'Entrada' : 'Saída'}</td>
+        <td>${escHtml(d.host)}:${d.porta}</td>
+        <td>${estado}${d.ultimo_erro ? `<div class="cfg-hint">${escHtml(d.ultimo_erro)}</div>` : ''}</td>
+        <td>${d.ultimo_contato_em ? fmtDH(d.ultimo_contato_em) : '—'}</td>
+        <td>
+          <button class="btn-xs sec" onclick='abrirModalDispositivo(${JSON.stringify(d)})'>Editar</button>
+          <button class="btn-xs warn" onclick="abrirPortao(${d.id})">Abrir</button>
+          <button class="btn-xs danger" onclick="excluirDispositivo(${d.id})">Excluir</button>
+        </td>
+      </tr>`
+    }).join('')
+  } catch (err) {
+    corpo.innerHTML = `<tr><td colspan="6" class="empty">${escHtml(err.message)}</td></tr>`
+  }
+}
+
+function abrirModalDispositivo(d = null) {
+  document.getElementById('modal-dispositivo-titulo').textContent = d ? 'Editar leitor' : 'Novo leitor'
+  document.getElementById('disp-id').value      = d ? d.id : ''
+  document.getElementById('disp-nome').value    = d ? d.nome : ''
+  document.getElementById('disp-papel').value   = d ? d.papel : 'entrada'
+  document.getElementById('disp-host').value    = d ? d.host : ''
+  document.getElementById('disp-porta').value   = d ? d.porta : 80
+  document.getElementById('disp-usuario').value = d ? d.usuario : 'admin'
+  document.getElementById('disp-modelo').value  = d ? d.modelo : 'SS 3531 MF LITE'
+  document.getElementById('disp-ativo').checked = d ? d.ativo : true
+  // Sempre vazio: o painel nunca recebe a senha de volta. Em branco, mantém.
+  document.getElementById('disp-senha').value = ''
+  document.getElementById('disp-erro').style.display = 'none'
+  document.getElementById('modal-dispositivo').classList.add('open')
+}
+
+async function salvarDispositivo() {
+  const id = document.getElementById('disp-id').value
+  const corpo = {
+    nome:    document.getElementById('disp-nome').value.trim(),
+    papel:   document.getElementById('disp-papel').value,
+    modelo:  document.getElementById('disp-modelo').value.trim(),
+    host:    document.getElementById('disp-host').value.trim(),
+    porta:   Number(document.getElementById('disp-porta').value),
+    usuario: document.getElementById('disp-usuario').value.trim(),
+    senha:   document.getElementById('disp-senha').value,
+    ativo:   document.getElementById('disp-ativo').checked,
+  }
+  if (!corpo.nome || !corpo.host) {
+    return showErr('disp-erro', 'Nome e endereço IP são obrigatórios.')
+  }
+  if (!id && !corpo.senha) {
+    return showErr('disp-erro', 'Informe a senha do leitor.')
+  }
+  try {
+    await api(id ? `/admin/acesso/dispositivos/${id}` : '/admin/acesso/dispositivos', {
+      method: id ? 'PATCH' : 'POST',
+      body: JSON.stringify(corpo),
+    })
+    fecharModal('modal-dispositivo')
+    toast('Leitor salvo.')
+    loadAcessoDispositivos()
+  } catch (err) {
+    showErr('disp-erro', err.message)
+  }
+}
+
+async function excluirDispositivo(id) {
+  if (!confirm('Excluir este leitor? O agente deixa de sincronizá-lo.')) return
+  try {
+    await api(`/admin/acesso/dispositivos/${id}`, { method: 'DELETE' })
+    toast('Leitor excluído.')
+    loadAcessoDispositivos()
+  } catch (err) {
+    toast(err.message, true)
+  }
+}
+
+async function abrirPortao(id) {
+  if (!confirm('Abrir o portão agora?')) return
+  try {
+    await api(`/admin/acesso/dispositivos/${id}/abrir`, { method: 'POST' })
+    // A abertura entra numa fila: o servidor não alcança o leitor, quem
+    // executa é o agente no próximo ciclo.
+    toast('Comando enviado. O portão abre em alguns segundos.')
+  } catch (err) {
+    toast(err.message, true)
+  }
+}
+
+async function loadAcessoCredenciais() {
+  const corpo = document.getElementById('acesso-credenciais')
+  const soPendentes = document.getElementById('acesso-so-pendentes').checked
+  const rotulo = {
+    pendente_foto:  '<span class="badge bc">falta selfie</span>',
+    pendente_envio: '<span class="badge bb">aguardando o agente</span>',
+    sincronizada:   '<span class="badge ba">liberada</span>',
+    erro:           '<span class="badge b-wo">erro</span>',
+    removida:       '<span class="badge bd">removida</span>',
+  }
+  try {
+    const linhas = await api(`/admin/acesso/credenciais?apenas_pendentes=${soPendentes}`)
+    if (!linhas.length) {
+      corpo.innerHTML = `<tr><td colspan="6" class="empty">${soPendentes ? 'Ninguém pendente.' : 'Ninguém cadastrado no portão ainda.'}</td></tr>`
+      return
+    }
+    corpo.innerHTML = linhas.map(c => `<tr>
+      <td>${escHtml(c.nome)}</td>
+      <td>${escHtml(c.origem)}</td>
+      <td>${escHtml(c.id_dispositivo)}</td>
+      <td>${rotulo[c.status] || escHtml(c.status)}${c.erro ? `<div class="cfg-hint">${escHtml(c.erro)}</div>` : ''}</td>
+      <td>${c.proxima_janela ? fmtDH(c.proxima_janela) : '—'}</td>
+      <td>${c.link_selfie
+            ? `<button class="btn-xs sec" onclick="copiarLinkSelfie('${escHtml(c.link_selfie)}')">Copiar link</button>`
+            : (c.tem_foto ? 'do perfil' : '—')}</td>
+    </tr>`).join('')
+  } catch (err) {
+    corpo.innerHTML = `<tr><td colspan="6" class="empty">${escHtml(err.message)}</td></tr>`
+  }
+}
+
+function copiarLinkSelfie(caminho) {
+  const url = location.origin + caminho
+  navigator.clipboard.writeText(url)
+    .then(() => toast('Link copiado. Envie para a pessoa enviar a selfie.'))
+    .catch(() => prompt('Copie o link:', url))
+}
+
+async function loadAcessoEventos() {
+  const corpo = document.getElementById('acesso-eventos')
+  const rotulo = {
+    entrada:         '<span class="badge ba">entrada</span>',
+    saida:           '<span class="badge bb">saída</span>',
+    negado:          '<span class="badge b-wo">negado</span>',
+    abertura_remota: '<span class="badge bc">abertura pelo painel</span>',
+  }
+  try {
+    const linhas = await api('/admin/acesso/eventos?limite=100')
+    if (!linhas.length) {
+      corpo.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma passagem registrada.</td></tr>'
+      return
+    }
+    corpo.innerHTML = linhas.map(e => `<tr>
+      <td>${fmtDH(e.momento)}</td>
+      <td>${escHtml(e.pessoa)}</td>
+      <td>${escHtml(e.leitor || '—')}</td>
+      <td>${rotulo[e.tipo] || escHtml(e.tipo)}</td>
+      <td>${escHtml(e.motivo || '')}</td>
+    </tr>`).join('')
+  } catch (err) {
+    corpo.innerHTML = `<tr><td colspan="5" class="empty">${escHtml(err.message)}</td></tr>`
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

@@ -410,8 +410,20 @@ async function carregarPerfil() {
          </div>`
       : "";
 
+    // Sem foto não há reconhecimento facial: quem chega no portão sem selfie
+    // fica do lado de fora. Avisa aqui, que é onde ele troca a foto.
+    const precisaSelfie = _empresa?.acesso_ativo && _empresa?.acesso_exige_selfie && !p.foto_url;
+    const selfieHtml = precisaSelfie
+      ? `<div class="aviso-fechado" style="margin-bottom:.75rem">
+           <strong>Falta sua foto.</strong> A entrada na quadra é por reconhecimento
+           facial — sem uma foto do seu rosto você não consegue entrar no horário do jogo.
+           Toque em "Alterar foto" abaixo.
+         </div>`
+      : "";
+
     el.innerHTML = `
       ${contratoHtml}
+      ${selfieHtml}
       <div class="perfil-avatar-wrap">
         ${avatarHtml(p, " avatar-lg")}
         <label class="btn-foto" for="inp-foto-upload">Alterar foto</label>

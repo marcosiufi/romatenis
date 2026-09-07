@@ -145,5 +145,16 @@ async def redefinir_senha_page():
     return FileResponse("frontend/redefinir-senha.html")
 
 
+@app.get("/selfie/{token}", include_in_schema=False)
+async def selfie_page(token: str):
+    """Página onde quem não tem login envia a foto do rosto.
+
+    O token não é validado aqui: a página o valida por API antes de mostrar a
+    câmera. Servir o HTML para qualquer token evita distinguir link inválido de
+    link válido pelo código HTTP.
+    """
+    return FileResponse("frontend/selfie.html")
+
+
 app.mount("/uploads", StaticFiles(directory=_UPLOADS_DIR), name="uploads")
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

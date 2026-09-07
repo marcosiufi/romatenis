@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, Integer, Numeric, String, Text, select
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -75,6 +77,31 @@ class Configuracao(Base):
     # tempo de antecedência abate o jogo do saldo semanal (conta como WO).
     cancelamento_antecedencia_horas: Mapped[int] = mapped_column(
         Integer, nullable=False, default=3, server_default="3"
+    )
+
+    # ── Controle de acesso à quadra (leitores faciais Intelbras) ─────────────
+    # Desligado, o agente da quadra não recebe nenhuma janela e ninguém é
+    # liberado pelo portão — serve para operar sem o portão enquanto a
+    # instalação não está pronta.
+    acesso_ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Folgas em torno da reserva. "Antes" é quanto tempo o jogador pode entrar
+    # adiantado; "depois" é quanto tempo ele ainda consegue sair pelo leitor de
+    # saída depois do fim do jogo.
+    acesso_minutos_antes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    acesso_minutos_depois: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+
+    # Token que o agente da quadra usa para se autenticar. Cifrado no banco.
+    acesso_agente_token: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # Sem selfie não há reconhecimento facial. Ligado, o app cobra a foto de
+    # quem tem jogo marcado e o painel mostra quem está pendente.
+    acesso_exige_selfie: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Preenchido pelo agente a cada ciclo — o painel usa para dizer se a ponte
+    # com a quadra está viva.
+    acesso_agente_visto_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # Dados da empresa

@@ -14,6 +14,18 @@ from app.models.contrato import ContratoClausula
 from app.models.horario_dia_semana import HorarioDiaSemana
 from app.models.convidado import Convidado
 from app.models.cupom import Cupom
+from app.models.acesso import (
+    ComandoAcesso,
+    CredencialAcesso,
+    DispositivoAcesso,
+    EventoAcesso,
+    JanelaAcesso,
+    PapelDispositivo,
+    StatusComando,
+    StatusCredencial,
+    StatusJanela,
+    TipoEventoAcesso,
+)
 
 __all__ = [
     "Player",
@@ -35,4 +47,14 @@ __all__ = [
     "HorarioDiaSemana",
     "Convidado",
     "Cupom",
+    "DispositivoAcesso",
+    "CredencialAcesso",
+    "JanelaAcesso",
+    "EventoAcesso",
+    "ComandoAcesso",
+    "PapelDispositivo",
+    "StatusCredencial",
+    "StatusJanela",
+    "TipoEventoAcesso",
+    "StatusComando",
 ]

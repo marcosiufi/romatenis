@@ -18,6 +18,10 @@ class Convidado(Base):
     whatsapp: Mapped[str] = mapped_column(String(20), nullable=False)
     data_nascimento: Mapped[date] = mapped_column(Date, nullable=False)
     apelido: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Selfie para o reconhecimento facial do portão. Opcional no modelo
+    # porque o convidado é cadastrado na reserva e manda a foto depois,
+    # pelo link que recebe.
+    foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False,

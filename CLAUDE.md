@@ -68,6 +68,18 @@ Duas armadilhas de espaçamento já custaram caro (seção 16.5 de `docs/SISTEMA
 
 Ponto de retorno do design anterior: tag `pre-redesign-2026-08-30`.
 
+## Controle de acesso (portão da quadra)
+
+Leitores faciais Intelbras na rede local; a VPS **não** os alcança. Quem conversa
+com eles é o agente em `agente-acesso/`, que roda num mini-PC na quadra e busca o
+estado desejado no servidor. Nunca escreva código no backend que fale direto com
+um leitor — não há rota. Detalhes na seção 19 de `docs/SISTEMA.md`.
+
+Os endpoints CGI em `agente-acesso/driver.py` (`_ROTAS`) **ainda não foram
+confirmados** contra a documentação oficial da Intelbras. Quando ela chegar, é o
+único arquivo a mudar. `python agente-acesso/teste_agente.py` valida a lógica
+contra leitores simulados, sem hardware.
+
 ## Convenções
 
 - **Português** em código, comentários, commits e UI

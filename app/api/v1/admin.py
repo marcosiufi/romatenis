@@ -941,3 +941,322 @@ async def put_horarios_semana(
     await db.commit()
     return {"ok": True}
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Controle de acesso à quadra (leitores faciais Intelbras)
+#
+# O servidor não fala com os leitores: quem faz isso é o agente instalado na
+# quadra. Estes endpoints só configuram o estado desejado e mostram a saúde da
+# ponte. Ver o docstring de `app.models.acesso`.
+# ══════════════════════════════════════════════════════════════════════════════
+
+class AcessoConfigIn(BaseModel):
+    acesso_ativo: bool
+    acesso_exige_selfie: bool
+    # Folgas em torno da reserva. O teto de 180 min evita que um erro de
+    # digitação libere o portão o dia inteiro.
+    acesso_minutos_antes: int = Field(ge=0, le=180)
+    acesso_minutos_depois: int = Field(ge=0, le=180)
+
+
+class DispositivoIn(BaseModel):
+    nome: str = Field(min_length=1, max_length=100)
+    papel: str                       # entrada | saida
+    modelo: str = Field(default="SS 3531 MF LITE", max_length=60)
+    host: str = Field(min_length=1, max_length=120)
+    porta: int = Field(default=80, ge=1, le=65535)
+    usuario: str = Field(default="admin", max_length=80)
+    # Vazio no PATCH significa "manter a senha atual" — o painel nunca recebe a
+    # senha de volta, então não teria como reenviá-la.
+    senha: str = ""
+    ativo: bool = True
+
+
+@router.get("/acesso/configuracoes")
+async def acesso_get_config(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.core.cripto import decifrar
+
+    cfg = await Configuracao.get(db)
+    return {
+        "acesso_ativo":          cfg.acesso_ativo,
+        "acesso_exige_selfie":   cfg.acesso_exige_selfie,
+        "acesso_minutos_antes":  cfg.acesso_minutos_antes,
+        "acesso_minutos_depois": cfg.acesso_minutos_depois,
+        # O token aparece porque o admin precisa copiá-lo para o arquivo de
+        # configuração do agente instalado na quadra.
+        "agente_token":          decifrar(cfg.acesso_agente_token),
+        "agente_visto_em":       cfg.acesso_agente_visto_em.isoformat()
+                                 if cfg.acesso_agente_visto_em else None,
+    }
+
+
+@router.put("/acesso/configuracoes")
+async def acesso_put_config(
+    body: AcessoConfigIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    cfg = await Configuracao.get(db)
+    ligou_agora = body.acesso_ativo and not cfg.acesso_ativo
+
+    cfg.acesso_ativo          = body.acesso_ativo
+    cfg.acesso_exige_selfie   = body.acesso_exige_selfie
+    cfg.acesso_minutos_antes  = body.acesso_minutos_antes
+    cfg.acesso_minutos_depois = body.acesso_minutos_depois
+    await db.commit()
+
+    # Ligar o controle de acesso com reservas já marcadas deixaria essas
+    # reservas sem janela: elas foram criadas quando o recurso estava desligado,
+    # e ninguém conseguiria entrar na quadra.
+    criadas = 0
+    if ligou_agora:
+        criadas = await _acesso_recriar_janelas_futuras(db)
+    return {"ok": True, "janelas_criadas": criadas}
+
+
+async def _acesso_recriar_janelas_futuras(db) -> int:
+    """Gera janelas para toda reserva ativa que ainda não aconteceu."""
+    from app.services.acesso_service import AcessoService
+
+    agora = datetime.now(timezone.utc)
+    ids = (
+        await db.execute(
+            select(Booking.id).where(
+                Booking.data_hora_fim >= agora,
+                Booking.status.in_([StatusReserva.CONFIRMADA, StatusReserva.AGUARDANDO_PAGAMENTO]),
+            )
+        )
+    ).scalars().all()
+
+    servico = AcessoService(db)
+    total = 0
+    for booking_id in ids:
+        total += await servico.sincronizar_booking(booking_id)
+    return total
+
+
+@router.post("/acesso/token")
+async def acesso_gerar_token(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Gera um token novo para o agente. O anterior para de funcionar na hora."""
+    import secrets as _secrets
+
+    from app.core.cripto import cifrar
+
+    cfg = await Configuracao.get(db)
+    token = _secrets.token_urlsafe(40)
+    cfg.acesso_agente_token = cifrar(token)
+    await db.commit()
+    return {"agente_token": token}
+
+
+@router.get("/acesso/dispositivos")
+async def acesso_listar_dispositivos(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.core.cripto import mascarar
+    from app.models.acesso import DispositivoAcesso
+
+    linhas = (
+        await db.execute(select(DispositivoAcesso).order_by(DispositivoAcesso.id))
+    ).scalars().all()
+    return [
+        {
+            "id": d.id,
+            "nome": d.nome,
+            "papel": d.papel.value,
+            "modelo": d.modelo,
+            "host": d.host,
+            "porta": d.porta,
+            "usuario": d.usuario,
+            # Nunca devolve a senha, só se existe.
+            "senha": mascarar(d.senha_cifrada),
+            "ativo": d.ativo,
+            "ultimo_contato_em": d.ultimo_contato_em.isoformat() if d.ultimo_contato_em else None,
+            "ultimo_erro": d.ultimo_erro,
+        }
+        for d in linhas
+    ]
+
+
+@router.post("/acesso/dispositivos", status_code=201)
+async def acesso_criar_dispositivo(
+    body: DispositivoIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.core.cripto import cifrar
+    from app.models.acesso import DispositivoAcesso, PapelDispositivo
+
+    try:
+        papel = PapelDispositivo(body.papel)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Papel deve ser entrada ou saida.")
+
+    disp = DispositivoAcesso(
+        nome=body.nome.strip(),
+        papel=papel,
+        modelo=body.modelo.strip(),
+        host=body.host.strip(),
+        porta=body.porta,
+        usuario=body.usuario.strip(),
+        senha_cifrada=cifrar(body.senha),
+        ativo=body.ativo,
+    )
+    db.add(disp)
+    await db.commit()
+    await db.refresh(disp)
+    return {"id": disp.id}
+
+
+@router.patch("/acesso/dispositivos/{dispositivo_id}")
+async def acesso_atualizar_dispositivo(
+    dispositivo_id: int,
+    body: DispositivoIn,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.core.cripto import cifrar
+    from app.models.acesso import DispositivoAcesso, PapelDispositivo
+
+    disp = await db.get(DispositivoAcesso, dispositivo_id)
+    if disp is None:
+        raise HTTPException(status_code=404, detail="Leitor não encontrado.")
+    try:
+        disp.papel = PapelDispositivo(body.papel)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Papel deve ser entrada ou saida.")
+
+    disp.nome    = body.nome.strip()
+    disp.modelo  = body.modelo.strip()
+    disp.host    = body.host.strip()
+    disp.porta   = body.porta
+    disp.usuario = body.usuario.strip()
+    disp.ativo   = body.ativo
+    # Campo em branco preserva a senha: o painel não recebe a senha de volta e
+    # não teria como reenviá-la a cada edição.
+    if body.senha:
+        disp.senha_cifrada = cifrar(body.senha)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/acesso/dispositivos/{dispositivo_id}", status_code=204)
+async def acesso_excluir_dispositivo(
+    dispositivo_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    from app.models.acesso import DispositivoAcesso
+
+    disp = await db.get(DispositivoAcesso, dispositivo_id)
+    if disp is None:
+        raise HTTPException(status_code=404, detail="Leitor não encontrado.")
+    await db.delete(disp)
+    await db.commit()
+
+
+@router.post("/acesso/dispositivos/{dispositivo_id}/abrir")
+async def acesso_abrir_portao(
+    dispositivo_id: int,
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    """Abre o portão remotamente.
+
+    Vira um comando na fila: o servidor não alcança o leitor, então a abertura
+    acontece quando o agente buscar — em segundos, não instantaneamente.
+    """
+    from app.models.acesso import DispositivoAcesso
+    from app.services.acesso_service import AcessoService
+
+    disp = await db.get(DispositivoAcesso, dispositivo_id)
+    if disp is None:
+        raise HTTPException(status_code=404, detail="Leitor não encontrado.")
+    cmd = await AcessoService(db).enfileirar_comando(
+        "abrir_porta", {"dispositivo_id": dispositivo_id}
+    )
+    return {"ok": True, "comando_id": cmd.id}
+
+
+@router.get("/acesso/credenciais")
+async def acesso_listar_credenciais(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+    apenas_pendentes: bool = False,
+):
+    """Quem está cadastrado no portão e em que estado.
+
+    `apenas_pendentes` filtra quem ainda não chegou aos leitores — é a lista que
+    o admin usa para cobrar a selfie antes do jogo.
+    """
+    from sqlalchemy.orm import selectinload
+
+    from app.models.acesso import CredencialAcesso, StatusCredencial, StatusJanela
+
+    consulta = select(CredencialAcesso).options(selectinload(CredencialAcesso.janelas))
+    if apenas_pendentes:
+        consulta = consulta.where(
+            CredencialAcesso.status.in_([StatusCredencial.PENDENTE_FOTO, StatusCredencial.ERRO])
+        )
+
+    agora = datetime.now(timezone.utc)
+    saida = []
+    for c in (await db.execute(consulta.order_by(CredencialAcesso.id.desc()).limit(500))).scalars():
+        futuras = [j for j in c.janelas if j.status == StatusJanela.ATIVA and j.fim >= agora]
+        proxima = min((j.inicio for j in futuras), default=None)
+        saida.append({
+            "id": c.id,
+            "nome": c.nome,
+            "id_dispositivo": c.id_dispositivo,
+            "origem": "associado" if c.player_id else "convidado" if c.convidado_id else "locação",
+            "status": c.status.value,
+            "erro": c.erro,
+            "tem_foto": bool(c.foto_hash),
+            # Só existe para quem não tem login; o admin envia o link à pessoa.
+            "link_selfie": f"/selfie/{c.token_selfie}" if c.token_selfie else None,
+            "janelas_futuras": len(futuras),
+            "proxima_janela": proxima.isoformat() if proxima else None,
+            "sincronizada_em": c.sincronizada_em.isoformat() if c.sincronizada_em else None,
+        })
+    return saida
+
+
+@router.get("/acesso/eventos")
+async def acesso_listar_eventos(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+    limite: int = 100,
+):
+    from sqlalchemy.orm import selectinload
+
+    from app.models.acesso import EventoAcesso
+
+    linhas = (
+        await db.execute(
+            select(EventoAcesso)
+            .options(
+                selectinload(EventoAcesso.credencial),
+                selectinload(EventoAcesso.dispositivo),
+            )
+            .order_by(EventoAcesso.momento.desc())
+            .limit(min(limite, 500))
+        )
+    ).scalars().all()
+    return [
+        {
+            "id": e.id,
+            "momento": e.momento.isoformat(),
+            "tipo": e.tipo.value,
+            "leitor": e.dispositivo.nome if e.dispositivo else None,
+            "pessoa": e.credencial.nome if e.credencial else (e.nome_lido or "Não identificado"),
+            "motivo": e.motivo,
+        }
+        for e in linhas
+    ]

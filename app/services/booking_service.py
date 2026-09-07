@@ -26,6 +26,7 @@ Jogo avulso:
   convidado e o slot só é confirmado após o pagamento. Não pontua para ninguém,
   mas consome a cota semanal do tipo (simples/duplas) de cada membro envolvido.
 """
+import logging
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -48,6 +49,8 @@ from app.models.subscription import StatusAssinatura, Subscription
 from app.schemas.booking import ConvidadoIn, JogadorSlot, SlotDisponivel
 from app.services import cupom_service
 from app.services.whatsapp_service import WhatsAppService
+
+logger = logging.getLogger(__name__)
 
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
 
@@ -331,6 +334,7 @@ class BookingService:
         await self.db.refresh(booking)
         await self.db.refresh(match)
         await self._notificar_reserva(match, lado_a, lado_b)
+        await self._sincronizar_acesso(booking.id)
         return booking, match
 
     async def criar_locacao_avulsa(
@@ -530,7 +534,21 @@ class BookingService:
 
         await self.db.commit()
         await self.db.refresh(booking)
+        await self._sincronizar_acesso(booking.id)
         return booking
+
+
+    async def _sincronizar_acesso(self, booking_id: int) -> None:
+        """Atualiza as janelas de liberação do portão para esta reserva.
+
+        Falha aqui não pode derrubar a reserva: o jogo é o produto, o portão é
+        acessório, e o agente reconcilia no ciclo seguinte de qualquer forma.
+        """
+        try:
+            from app.services.acesso_service import AcessoService
+            await AcessoService(self.db).sincronizar_booking(booking_id)
+        except Exception:  # noqa: BLE001 — acessório não derruba o principal
+            logger.exception("Falha ao sincronizar acesso da reserva %s", booking_id)
 
     # ── Validações privadas ───────────────────────────────────────────────────
 
