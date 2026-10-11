@@ -1,0 +1,65 @@
+# Ambiente LOCAL — para testar na máquina antes de publicar em produção.
+#
+#   docker compose -f docker-compose.local.yml up -d --build
+#   docker compose -f docker-compose.local.yml exec api alembic upgrade head
+#   docker compose -f docker-compose.local.yml exec api python scripts/seed_local.py
+#
+# Depois abra http://localhost:8100/app/ e http://localhost:8100/admin/.
+# Passo a passo e credenciais de teste em docs/LOCAL.md.
+#
+# Diferenças em relação ao docker-compose.yml de produção, todas de propósito:
+#
+# - **Projeto separado** (`name:`): containers e volumes próprios. Nada aqui
+#   encosta no banco de produção, nem por engano de comando.
+# - **Sem Caddy**: a API responde direto em localhost:8100, sem HTTPS.
+#   (8100 e não 8000: a 8000 costuma estar ocupada por outros projetos.)
+# - **Sem `.env`**: as variáveis estão abaixo e são só de desenvolvimento.
+#   Asaas, SMTP, Autentique e WhatsApp ficam vazios — a tela funciona, e o que
+#   depende de serviço externo falha com mensagem, sem tocar em conta real.
+# - **Código montado como volume**: o frontend é lido do disco a cada
+#   requisição, então editar CSS/HTML/JS aparece no F5, sem rebuild. É o oposto
+#   da armadilha de produção (lá o frontend vai embutido na imagem).
+
+name: romatenis-local
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ranking_tenis
+      POSTGRES_USER: ranking
+      POSTGRES_PASSWORD: local-somente-desenvolvimento
+    volumes:
+      - pg_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ranking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ranking:local-somente-desenvolvimento@db:5432/ranking_tenis
+      SECRET_KEY: local-somente-desenvolvimento-nunca-use-em-producao
+      ENVIRONMENT: development
+      DOMAIN: http://localhost:8100
+      # O volume do Windows não repassa eventos de arquivo ao Linux do Docker;
+      # sem isto o --reload não percebe a edição do Python.
+      WATCHFILES_FORCE_POLLING: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8100:8000"
+    volumes:
+      - ./app:/app/app
+      - ./frontend:/app/frontend
+      - ./alembic:/app/alembic
+      - ./scripts:/app/scripts
+      - uploads_local:/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
+
+volumes:
+  pg_local:
+  uploads_local:

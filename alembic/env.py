@@ -39,7 +39,19 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # Uma transação por migration, não uma para o lote inteiro.
+        #
+        # O PostgreSQL proíbe usar um valor de enum na mesma transação em que
+        # ele foi criado (`ALTER TYPE ... ADD VALUE`). A 0016 cria
+        # 'aguardando_pagamento' e a 0030 o usa: num lote único, um banco novo
+        # falhava com UnsafeNewEnumValueUsage. Produção nunca viu o erro porque
+        # cada deploy aplicou uma migration de cada vez — mas recriar o banco do
+        # zero (servidor novo, recuperação de desastre, ambiente local) quebrava.
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            transaction_per_migration=True,
+        )
         with context.begin_transaction():
             context.run_migrations()
 
