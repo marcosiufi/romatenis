@@ -524,6 +524,10 @@ async def empresa_publica(db: AsyncSession = Depends(get_db)):
         "msg_reservas_desabilitado": cfg.msg_reservas_desabilitado,
         # Prazo de cancelamento sem penalidade (horas)
         "cancelamento_antecedencia_horas": cfg.cancelamento_antecedencia_horas,
+        # Antecedências do ranking: o app escreve a regra com os valores reais,
+        # em vez de um "6h" fixo que deixaria de valer ao mudar no painel
+        "ranking_antecedencia_minima_horas": cfg.ranking_antecedencia_minima_horas,
+        "ranking_ultima_hora_horas":         cfg.ranking_ultima_hora_horas,
         # Controle de acesso: o app cobra a selfie de quem ainda não tem foto,
         # senão a pessoa só descobre que não entra na hora do jogo.
         "acesso_ativo":        cfg.acesso_ativo,

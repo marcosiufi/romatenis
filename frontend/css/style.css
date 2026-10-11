@@ -362,6 +362,16 @@ a:active { opacity: 0.6; }
   font-size: var(--t-sub);
 }
 
+/* ═══ Logotipo ══════════════════════════════════════════════════════════════
+   ROMA em tinta, o traço e TÊNIS em saibro. Sobre a superfície de marca, tudo
+   claro — o saibro clareia para 5,2:1 sobre o verde. */
+.logo { color: var(--tinta); }
+.logo .logo-traco { stroke: var(--tint); }
+.logo .logo-acento { fill: var(--tint); }
+.login-marca .logo, .passe .logo { color: var(--sobre-marca); }
+.login-marca .logo .logo-traco, .passe .logo .logo-traco { stroke: #E8925C; }
+.login-marca .logo .logo-acento, .passe .logo .logo-acento { fill: #E8925C; }
+
 /* ═══ As linhas da quadra ═══════════════════════════════════════════════════
    O único ornamento do sistema, só em superfície de marca: a quadra vista de
    cima, em escala real (23,77 × 10,97 m), sangrando para fora do cartão. */
@@ -371,6 +381,7 @@ a:active { opacity: 0.6; }
   pointer-events: none;
   color: var(--sobre-marca);
 }
+.quadra svg * { vector-effect: non-scaling-stroke; }
 .quadra svg { position: absolute; width: 150%; height: auto; right: -30%; top: 50%; transform: translateY(-50%); }
 
 /* ═══ Estrutura do app ═══════════════════════════════════════════════════════ */
@@ -548,6 +559,7 @@ main {
 /* Linha com ícone ou avatar: o separador começa depois dele */
 .linha.com-icone { --recuo: calc(var(--e4) + 29px + var(--e3)); }
 .linha.com-avatar { --recuo: calc(var(--e4) + 40px + var(--e3)); }
+.linha.com-data { --recuo: calc(var(--e4) + 44px + var(--e3)); }
 .linha.com-posicao { --recuo: calc(var(--e4) + 1.6em + var(--e3) + 40px + var(--e3)); }
 
 a.linha, button.linha, .linha[onclick] { cursor: pointer; }
@@ -574,11 +586,12 @@ a.linha:active, button.linha:active, .linha[onclick]:active { background: var(--
   letter-spacing: -0.016em;
 }
 .linha-valor {
-  flex-shrink: 0;
-  max-width: 60%;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 72%;
   color: var(--tinta-2);
   text-align: right;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 /* Linha que leva a outra tela: o chevron de divulgação */
 .linha-nav::after {
@@ -633,8 +646,12 @@ a.linha:active, button.linha:active, .linha[onclick]:active { background: var(--
 .card-sub {
   font-size: var(--t-sub);
   color: var(--tinta-2);
+  line-height: 1.4;
   margin: calc(-1 * var(--e2)) 0 var(--e4);
 }
+/* Primeiro elemento do cartão não sobe para dentro do respiro */
+.card-sub:first-child { margin-top: 0; }
+.card-sub strong { color: var(--tinta); font-weight: 600; }
 
 /* ═══ Campos ══════════════════════════════════════════════════════════════════
    17 px no campo: abaixo de 16 o Safari do iPhone dá zoom ao focar. */
@@ -701,6 +718,13 @@ select {
 .campo-dica.erro-txt { color: var(--critico); }
 
 .grade-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--e3); }
+/* O último campo do cartão não soma a margem dele ao respiro do cartão —
+   senão o cartão fica com mais espaço embaixo do que em cima. (Isto é dentro
+   do cartão; a margem do PRÓPRIO cartão nunca é zerada — SISTEMA.md 16.5.) */
+/* "Último" é o último VISÍVEL: campos escondidos (parceiro de dupla, por
+   exemplo) ficam depois no DOM e enganariam o :last-child. */
+.card > .campo:not(:has(~ :not([hidden]))),
+.card > :is(.grade-2, .grade-uf):not(:has(~ :not([hidden]))) > .campo { margin-bottom: 0; }
 .grade-uf { display: grid; grid-template-columns: 1fr 5.5rem; gap: 0 var(--e3); }
 
 /* ═══ Botões ══════════════════════════════════════════════════════════════════
@@ -1004,6 +1028,15 @@ select {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.partida-placar-valor small {
+  display: block;
+  font-family: var(--fonte);
+  font-size: var(--t-legenda);
+  font-weight: 500;
+  text-align: right;
+}
+.partida-placar-valor .vitoria { color: var(--bom); }
+.partida-placar-valor .derrota { color: var(--tinta-2); }
 .partida-acoes {
   display: flex;
   justify-content: flex-end;
@@ -1228,6 +1261,9 @@ select {
 }
 .indicador-rotulo { display: block; font-size: var(--t-legenda); color: var(--tinta-2); margin-top: 2px; }
 
+/* Com uma folha aberta, o fundo não rola */
+body:has(.folha-fundo:not([hidden])) { overflow: hidden; }
+
 /* ═══ Folha — sobe do pé da tela, como no iOS ═══════════════════════════════ */
 .folha-fundo {
   position: fixed;
@@ -1280,6 +1316,23 @@ select {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--e3) var(--margem) calc(var(--e6) + env(safe-area-inset-bottom));
+}
+/* O destaque no alto da folha: o horário escolhido, com a data embaixo */
+.folha-destaque {
+  margin: var(--e2) 0 var(--e5);
+  text-align: center;
+  font-size: var(--t-titulo-2);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.folha-destaque small {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-sub);
+  font-weight: 400;
+  letter-spacing: -0.016em;
+  color: var(--tinta-2);
 }
 .folha-fundo.saindo { animation: esmaecer 0.2s var(--padrao) reverse both; }
 .folha-fundo.saindo .folha { animation: descer 0.25s var(--padrao) both; }
@@ -1408,6 +1461,12 @@ select {
   align-items: baseline;
   padding: var(--e3) 0;
   font-size: var(--t-corpo);
+}
+.preco-antigo {
+  margin-right: var(--e2);
+  color: var(--tinta-3);
+  font-weight: 400;
+  text-decoration: line-through;
 }
 .avulso-total strong { font-family: var(--fonte-valor); font-weight: 700; font-variant-numeric: tabular-nums; }
 
