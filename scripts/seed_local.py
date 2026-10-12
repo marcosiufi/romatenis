@@ -375,7 +375,11 @@ async def main() -> None:
                 booking_id=bk.id, valor=PRECO_LOCACAO,
                 metodo=random.choice([MetodoPagamento.PIX, MetodoPagamento.PIX, MetodoPagamento.CARTAO]),
                 status=st,
-                data_pagamento=(inicio - timedelta(days=random.randint(1, 5))) if st != StatusPagamento.FALHOU else None,
+                # Pago antes do jogo, mas nunca no futuro: locação marcada para a
+                # semana que vem foi paga até agora, não no dia do jogo.
+                data_pagamento=min(inicio - timedelta(days=random.randint(1, 5)),
+                                   agora - timedelta(hours=random.randint(1, 30)))
+                               if st != StatusPagamento.FALHOU else None,
             ))
             locacoes += 1
 

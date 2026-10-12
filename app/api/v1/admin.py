@@ -1260,3 +1260,49 @@ async def acesso_listar_eventos(
         }
         for e in linhas
     ]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Financeiro — o que entrou, o que falta receber e de onde vem
+# A regra da data de referência e o corte do mês em Brasília estão no
+# docstring de `app.services.financeiro_service`.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _mes_valido(ano: int | None, mes: int | None) -> tuple[int, int]:
+    hoje = datetime.now(FUSO_BR)
+    ano = ano or hoje.year
+    mes = mes or hoje.month
+    if not (2020 <= ano <= 2100 and 1 <= mes <= 12):
+        raise HTTPException(status_code=422, detail="Mês inválido.")
+    return ano, mes
+
+
+@router.get("/financeiro/resumo")
+async def financeiro_resumo(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+    ano: int | None = None,
+    mes: int | None = None,
+):
+    from app.services.financeiro_service import FinanceiroService
+
+    ano, mes = _mes_valido(ano, mes)
+    return await FinanceiroService(db).resumo(ano, mes)
+
+
+@router.get("/financeiro/transacoes")
+async def financeiro_transacoes(
+    _admin: Player = Depends(get_current_admin),
+    db=Depends(get_db),
+    ano: int | None = None,
+    mes: int | None = None,
+    filtro: str = "todos",
+    busca: str = "",
+):
+    from app.services.financeiro_service import FinanceiroService
+
+    if filtro not in ("todos", "recebidos", "pendentes", "estornos"):
+        raise HTTPException(status_code=422, detail="Filtro inválido.")
+    ano, mes = _mes_valido(ano, mes)
+    return await FinanceiroService(db).transacoes(ano, mes, filtro, busca[:80])
+

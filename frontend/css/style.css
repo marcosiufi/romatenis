@@ -86,6 +86,14 @@
   --atencao:      #F2B33D;
   --critico:      #C2342B;
 
+  /* Categorias de pagamento — as mesmas do Financeiro do admin. Matiz e
+     luminosidade diferentes, para distinguir mesmo sem ver cor */
+  --cat-plano:    #1F6B47;
+  --cat-locacao:  #C0622A;
+  --cat-avulso:   #E0A94A;
+  --sobre-cat-avulso: #3A2600;
+  --sobre-cat:    #FFFFFF;        /* ícone sobre plano e locação */
+
   /* Profundidade: curta e difusa, só no que flutua */
   --sombra-polegar: 0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04);
   --sombra-flutua:  0 0 0 0.5px rgb(17 26 21 / 0.08), 0 16px 40px -12px rgb(17 26 21 / 0.28);
@@ -121,6 +129,7 @@
     --alerta:       #F2C14E;
     --atencao:      #F2B33D;
     --critico:      #FF6B5E;
+    --cat-plano: #4FB584; --cat-locacao: #E8925C; --cat-avulso: #F0CB7E; --sobre-cat: #10201A;
     --sombra-polegar: 0 3px 8px rgb(0 0 0 / 0.30), 0 3px 1px rgb(0 0 0 / 0.10);
     --sombra-flutua:  0 0 0 0.5px rgb(255 255 255 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.60);
     --sombra-botao:   none;
@@ -149,6 +158,7 @@
   --alerta:       #F2C14E;
   --atencao:      #F2B33D;
   --critico:      #FF6B5E;
+  --cat-plano: #4FB584; --cat-locacao: #E8925C; --cat-avulso: #F0CB7E; --sobre-cat: #10201A;
   --sombra-polegar: 0 3px 8px rgb(0 0 0 / 0.30), 0 3px 1px rgb(0 0 0 / 0.10);
   --sombra-flutua:  0 0 0 0.5px rgb(255 255 255 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.60);
   --sombra-botao:   none;
@@ -1156,11 +1166,20 @@ select {
   text-align: right;
 }
 .transacao-valor.estornado { color: var(--tinta-3); text-decoration: line-through; }
+.transacao-valor .pendente { color: var(--alerta); }
+.transacao-valor .falhou { color: var(--critico); }
+/* O ícone da categoria: círculo cheio, como os comerciantes no Wallet */
+.icone-quadro.redondo { border-radius: 50%; }
+.icone-quadro.cat-plano   { background: var(--cat-plano); color: var(--sobre-cat); }
+.icone-quadro.cat-locacao { background: var(--cat-locacao); color: var(--sobre-cat); }
+.icone-quadro.cat-avulso  { background: var(--cat-avulso); color: var(--sobre-cat-avulso); }
+.icone-quadro.esmaecido   { background: var(--preenche); color: var(--tinta-2); }
 .transacao-valor small {
   display: block;
   font-family: var(--fonte);
   font-size: var(--t-legenda);
   font-weight: 500;
+  color: var(--tinta-2);
   text-decoration: none;
 }
 

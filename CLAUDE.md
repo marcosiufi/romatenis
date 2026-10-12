@@ -33,10 +33,19 @@ senão o PWA continua servindo o cache antigo mesmo após o deploy.
 
 ## Design
 
-O app e o admin compartilham a mesma identidade: **Cinzel** nos títulos, **Inter**
-no corpo, escala de superfícies (fundo → superfície → elevado) e espaçamento de
-base 4px. Tokens em `frontend/css/style.css` (app) e no `<style>` de
-`frontend/admin/index.html`. Detalhes nas seções 16 e 17 de `docs/SISTEMA.md`.
+**Leia [`docs/DESIGN.md`](docs/DESIGN.md) antes de mexer em tela.** O sistema
+segue a gramática da Apple traduzida para a web, com as cores da marca: o app
+fala **iOS** (texto de 17px, alvo de 44px, título grande que encolhe, listas
+agrupadas, folhas que sobem do pé da tela) e o admin fala **macOS** (13px,
+controles de 32px, barra lateral, barra de ferramentas presa). Fonte do sistema
+(SF Pro no aparelho Apple, Inter de `/fonts` no resto); Cinzel só nas letras do
+logotipo. Tokens com nome de papel (`--plano`, `--superficie`, `--tinta`,
+`--tint`) em `frontend/css/style.css` (app) e no `<style>` de
+`frontend/admin/index.html`. Histórico na seção 20 de `docs/SISTEMA.md`.
+
+Nada de `confirm()`/`alert()`: use `confirmar()` e `alertar()` (existem nos dois
+JS). Texto de interface em caixa de frase, sem emoji, sem "(s)" para plural, sem
+`opacity` para esmaecer texto (use `--tinta-2`/`--tinta-3`).
 
 **App e admin têm tema claro e escuro** (seções 17 e 18), com a mesma mecânica e
 a mesma paleta: `localStorage.tema` guarda `auto` | `claro` | `escuro`, e o CSS lê
@@ -68,6 +77,13 @@ Duas armadilhas de espaçamento já custaram caro (seção 16.5 de `docs/SISTEMA
 
 Ponto de retorno do design anterior: tag `pre-redesign-2026-08-30`.
 
+## Testar na máquina local
+
+Antes de publicar, rode tudo localmente com `docker-compose.local.yml` (porta
+**8100** — a 8000 é de outro projeto). Passo a passo e logins de teste em
+[`docs/LOCAL.md`](docs/LOCAL.md); o código entra por volume, então o frontend
+atualiza com F5. Mudanças de design só vão para `main` depois do Marco testar.
+
 ## Controle de acesso (portão da quadra)
 
 Leitores faciais Intelbras na rede local; a VPS **não** os alcança. Quem conversa
@@ -89,6 +105,9 @@ valida tudo contra leitores simulados, sem hardware.
 - `selectinload` para relações — lazy load quebra em async
 - Dados do usuário passam por `esc()` / `escHtml()` antes de ir para `innerHTML`
 - Enums do Postgres guardam o *value*; novo valor exige `ALTER TYPE ... ADD VALUE`
+  (cada migration roda na própria transação, `alembic/env.py`)
+- `admin.js` não usa `;`: linha que começa com `[` ou `(` gruda na de cima.
+  Guarde o array numa constante antes de iterar
 
 ## Segurança
 

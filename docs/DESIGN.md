@@ -114,6 +114,8 @@ a aparência são os papéis.
 | `--marca-verde` | `#173A27` | igual | superfície de marca — não muda no escuro |
 | `--marca-saibro` | `#C0622A` | igual | o saibro da marca |
 | `--bom`, `--alerta`, `--critico` | | | estados |
+| `--cat-plano` · `--cat-locacao` · `--cat-avulso` | `#1F6B47` · `#C0622A` · `#E0A94A` | `#4FB584` · `#E8925C` · `#F0CB7E` | categorias de receita — matiz **e** luminosidade diferentes |
+| `--sobre-cat` | branco | `#10201A` | ícone sobre plano e locação (branco no escuro dava 2,5:1) |
 
 O **saibro é o tint** — a cor da quadra de terra batida, que é o que o laranja
 da marca é. O **verde é a superfície de marca**.
@@ -188,7 +190,10 @@ O dinheiro do clube com a linguagem do Apple Card e do Wallet:
 
 No app, a assinatura é um **passe do Wallet**: o cartão verde com as linhas da
 quadra, o plano, a validade e quanto falta; o histórico de pagamentos logo
-abaixo, no mesmo desenho de transação.
+abaixo, no mesmo desenho de transação — ícone **redondo** da categoria (como o
+comerciante no Wallet), a data embaixo do título, o valor à direita e, embaixo
+dele, a forma de pagamento ou a situação. Quatro no perfil, pendentes primeiro;
+"Ver todos" abre uma folha separada por mês.
 
 ## 9. Componentes
 

@@ -376,10 +376,10 @@ Prefixo geral: `/api/v1`
 | `players` | listar/criar · `/me` · `/me/foto` · `PATCH /me` · `/{id}` |
 | `bookings` | `/slots` `/ranking` `/jogo-avulso` `/locacao` `/uso-semanal` `DELETE /{id}` `/feriados` |
 | `matches` | listar · `/{id}/placar` `/{id}/wo` `/{id}/cancelar` (admin) `/{id}/cancelar-jogador` `/recalcular-classificacao` |
-| `subscriptions` | `/contratar` `/renovar` `/precos` `/minhas` `/minha-ativa` `/pix-pendente` `/solicitar-pausa` `/lista-espera*` `/vagas-ranking` `/webhook` |
+| `subscriptions` | `/contratar` `/renovar` `/precos` `/minhas` `/minha-ativa` `/pix-pendente` `/meus-pagamentos` `/solicitar-pausa` `/lista-espera*` `/vagas-ranking` `/webhook` |
 | `seasons` | listar · `/ativa` · criar · `/{id}/encerrar` |
 | `cupons` | `POST /validar` (autenticado — preview do desconto) |
-| `admin` | `/dashboard` `/players` `/configuracoes` `/cupons*` `/email/status` `/email/testar` `/slots-ranking*` `/horarios-especiais*` `/horarios-semana` `/lista-espera*` `/contrato/clausulas` `/empresa` |
+| `admin` | `/dashboard` `/players` `/configuracoes` `/cupons*` `/email/status` `/email/testar` `/slots-ranking*` `/horarios-especiais*` `/horarios-semana` `/lista-espera*` `/contrato/clausulas` `/empresa` `/financeiro/resumo` `/financeiro/transacoes` `/acesso*` |
 | `webhooks` | `/webhooks/n8n/*` `/matchmaking/*` |
 
 `GET /public/empresa` é o endpoint que o front usa para saber preços, estado
@@ -404,6 +404,13 @@ cd /opt/romatenis && git pull && docker compose build --no-cache api && docker c
 ```bash
 cd /opt/romatenis && git pull && docker compose build --no-cache api && docker compose up -d --force-recreate api && docker compose exec -T api alembic upgrade head
 ```
+
+### Testar na máquina local antes
+
+`docker-compose.local.yml` sobe o sistema inteiro na porta **8100**, com banco
+próprio e 8 meses de dados de exemplo (`scripts/seed_local.py`). O código é
+montado como volume: mudança no frontend aparece com F5, no backend o uvicorn
+recarrega sozinho. Passo a passo e logins de teste em **[`LOCAL.md`](LOCAL.md)**.
 
 ### Checklist ao mexer no frontend
 
@@ -440,27 +447,32 @@ docker compose exec api python scripts/seed_admin.py   # cria o primeiro admin
 - **Eager loading:** `selectinload` — lazy load quebra em async
 - **XSS:** dados do usuário passam por `esc()` (app) / `escHtml()` (admin) antes de `innerHTML`
 - **CPF:** validado por dígitos verificadores no backend (`app/core/validators.py`) e no frontend
+- **JS sem ponto e vírgula:** `admin.js` não usa `;`. Linha que começa com `[` ou
+  `(` gruda na de cima — `const x = …` seguido de `['a','b'].forEach(…)` vira
+  um índice e quebra em silêncio. Foi o que travou o "Novo jogador" (seção 20.6).
+  Nesses casos, guarde o array numa constante antes
 - **Commits:** mensagem em português, corpo explicando o *porquê*, com
   `Co-Authored-By` do modelo
 
 ### Paleta e tipografia
 
+Desde o redesign de outubro a referência é **[`DESIGN.md`](DESIGN.md)** — a
+gramática da Apple traduzida para a web, com a paleta clara e escura, a escala
+de texto e os componentes. Resumo:
+
 ```
-App / Admin (escala de superfícies, do fundo ao elevado)
-  fundo       #0f1f15 (app) · #0c1a11 (admin)
-  superfície  #1b3324 (app) · #162c1d (admin)
-  elevado     #23422e (app) · #1d3826 (admin)
-
-Marca        terracota #c0622a  ·  hover #d97742
-Texto        #f0ebe4  ·  suave #a9c0b0  ·  fraco #7d9686
-Semânticas   sucesso #5cc182 · aviso #e3ab4d · perigo #e8785f
-
-Título: Cinzel 700 (serif romana)   Corpo: Inter 400/500/600/700
+Papel          claro      escuro
+plano          #F1F4F2    #0D1310     fundo da tela
+superfície     #FFFFFF    #18201C     grupos e cartões (admin escuro: #161E1A)
+tinta          #111A15    #F2F5F3     texto
+tint (saibro)  #A44E1C    #E8925C     ação, seleção
+bom/alerta/crítico  #1B7A43 / #7A5300 / #C2342B   (escuro: #3DCB74 / #F2C14E / #FF6B5E)
+Marca: verde #173A27, saibro #C0622A — só em superfícies de marca
 ```
 
-O tom secundário é **verde-acinzentado**, não o azulado `#9ab` anterior nem
-branco transparente: harmoniza com o fundo em vez de brigar com ele. O site
-(`landing.css`) mantém a própria paleta, mais escura, já alinhada à marca.
+Fonte do sistema (SF Pro em aparelho Apple; Inter servida de `/fonts` no resto),
+valores em `ui-rounded`, Cinzel só nas letras do logotipo. O site (`landing.css`)
+mantém a paleta própria, só no escuro.
 
 ---
 
@@ -494,6 +506,13 @@ branco transparente: harmoniza com o fundo em vez de brigar com ele. O site
 | 0028 | **Cupons** + snapshot no Payment |
 | 0029 | **Política de cancelamento**: prazo configurável + `cancelado_por_id` |
 | 0030 | **Constraint EXCLUDE** em bookings: impede reserva dupla no banco |
+| 0031 | Controle de acesso: leitores, janelas, eventos, selfie (seção 19) |
+
+`alembic/env.py` roda **cada migration na própria transação**
+(`transaction_per_migration=True`). Sem isso um banco novo falhava na 0030: o
+valor de enum criado na 0016 era usado na mesma transação, e o Postgres proíbe
+(`UnsafeNewEnumValueUsage`). Produção nunca viu porque aplicou uma migration por
+deploy — mas recriar o banco do zero, numa recuperação de desastre, quebrava.
 
 ---
 
@@ -630,6 +649,10 @@ metade. Se isso acontecer, cancele as reservas duplicadas no painel e rode o
 ---
 
 ## 16. Redesign de interface — 30/08/2026
+
+> Paleta, fontes e componentes desta seção e das 17 e 18 foram substituídos pelo
+> redesign de outubro (seção 20). Continuam valendo as armadilhas de
+> espaçamento (16.5) e a mecânica dos temas (17.1, 18.1).
 
 Modernização do app do associado (web e mobile) e do painel admin, respeitando
 a identidade visual. Ponto de retorno: tag `pre-redesign-2026-08-30` e cópia do
@@ -1056,4 +1079,107 @@ das respostas segue a documentação, mas só o equipamento confirma. Rode
 - **IP fixo** nos dois (ou reserva por MAC). IP mudou, agente perde o leitor.
 - **Confirmar que a mola fecha o portão** — a liberação de uma pessoa não pode
   virar porta aberta.
+
+---
+
+## 20. Redesign no estilo Apple — 11/10/2026
+
+App e admin redesenhados com a gramática da Apple, mantendo as cores da marca.
+O guia completo — princípios, o que não se traduz para a web, escalas, papéis
+de cor, componentes, movimento e checklist — está em **[`DESIGN.md`](DESIGN.md)**.
+Branch `design/apple`; ponto de retorno: tag `pre-redesign-2026-08-30` (design
+anterior ao de agosto) e o commit `1c8ca90` (último antes deste redesign).
+
+### 20.1 Duas gramáticas, uma paleta
+
+| | App do associado | Painel admin |
+|---|---|---|
+| Referência | iOS (o app é mais usado no iPhone) | macOS (o admin é usado no navegador) |
+| Texto | 17px; Dynamic Type no iOS (`font: -apple-system-body`) | 13px, a régua do Mac |
+| Alvo de toque | 44px | 32px |
+| Navegação | título grande que encolhe na barra; barra de abas com material | barra lateral (source list) com seleção cinza e ícones na cor de destaque; barra de ferramentas presa no topo, cujo título encolhe ao rolar |
+| Listas | grupos inset com separador recuado até o texto | tabelas com cabeçalho preso; linhas de lista para Locações e Financeiro |
+| Modais | folhas que sobem do pé da tela | folhas centralizadas |
+| Confirmação | alerta próprio (`confirmar()`), não `confirm()` | idem — 16 `confirm()` substituídos |
+
+Os tokens têm nome de papel (`--plano`, `--superficie`, `--tinta`, `--tint`…);
+os nomes antigos (`--clr-*`, `--cor-*`, `--fundo`…) seguem como aliases.
+Cor nova sempre por token — e, se mudar um, mude nos **dois** arquivos.
+
+### 20.2 Financeiro
+
+Tela nova no admin (barra lateral, Financeiro, **Resumo**), no espírito do
+Apple Card e do Wallet: recebido no mês com a variação, a receber, em atraso,
+de onde veio a receita (barra de composição por categoria), atividade dos
+últimos 12 meses e a lista de transações agrupada por dia, com filtro
+(Todas, Recebidas, Pendentes, Estornos), busca e folha de detalhe.
+
+A conta mora em `app/services/financeiro_service.py`, com uma regra só:
+
+- **Data de referência**: pago, vale a data do pagamento; não pago, a data de
+  origem (início do ciclo do plano ou horário da reserva). É ela que decide o
+  mês e o "em atraso".
+- **Corte do mês em Brasília** — um PIX das 22h do dia 31 não cai no mês seguinte.
+- **A receber é saldo**, não recorte do mês: mensalidade de agosto em aberto
+  continua devida em outubro. O filtro Pendentes ignora o mês pelo mesmo motivo.
+- **Mês em andamento compara com o mesmo trecho do mês anterior.** Onze dias de
+  outubro contra setembro inteiro sempre pareceriam queda.
+
+Rotas: `GET /admin/financeiro/resumo?ano=&mes=` e
+`GET /admin/financeiro/transacoes?ano=&mes=&filtro=&busca=`.
+
+Categorias com cor própria (`--cat-plano`, `--cat-locacao`, `--cat-avulso`), que
+diferem também em luminosidade, para continuar distinguíveis sem ver cor. O
+ícone sobre elas usa `--sobre-cat`: branco no claro, tinta escura no escuro
+(branco sobre o verde e o saibro claros do tema escuro dava 2,5:1).
+
+### 20.3 Pagamentos no app
+
+O Perfil mostra os pagamentos do associado abaixo do passe da assinatura — os
+quatro mais recentes (pendentes primeiro) e "Ver todos" numa folha separada por
+mês. Rota `GET /subscriptions/meus-pagamentos`: planos e as reservas pelas quais
+ele respondeu, até 24.
+
+### 20.4 Painel, tela por tela
+
+- **Locações**: separadas em Próximas (a mais perto primeiro) e Anteriores; uma
+  etiqueta com a situação que importa ("Paga no PIX", "Aguardando pagamento",
+  "Estornada"…) no lugar de duas; colunas alinhadas que viram duas linhas quando
+  a lista estreita (container query). Cancelar só aparece onde faz sentido: nas
+  próximas e nas passadas que nunca foram pagas.
+- **Partidas**: Simples/Duplas por extenso, etiqueta "Avulso", e as três ações
+  sem cor competindo — só Cancelar em vermelho.
+- **Lista de espera**: nome e e-mail juntos, telefone formatado, prazo de
+  confirmação embaixo da situação; a tabela cabe sem rolagem lateral.
+- **Contrato**: editor de cláusulas com os campos do painel e setas em ícone.
+- Textos em caixa de frase, sem emoji, sem "(s)" para plural, sem `opacity` em
+  texto (derruba o contraste; agora é `--tinta-2`/`--tinta-3`).
+- Cabeçalho dentro de cartão usa `.card-cabeca`; só a barra da tela é
+  `.section-header` — que agora gruda no topo e não pode aparecer aninhada.
+
+### 20.5 Ambiente local
+
+`docker compose -f docker-compose.local.yml up -d --build` (o projeto já se chama
+`romatenis-local` no próprio arquivo), depois `alembic upgrade head` e
+`scripts/seed_local.py` no container. Porta
+8100 (a 8000 já é usada por outro projeto na máquina). O seed se recusa a rodar
+fora de `ENVIRONMENT=development`. Detalhes e logins em [`LOCAL.md`](LOCAL.md).
+
+### 20.6 Bugs de produção encontrados no caminho
+
+| Onde | Problema | Correção |
+|---|---|---|
+| Admin, Jogadores | "Novo jogador" não abria: a linha `['jog-nome',…].forEach` grudava na de cima (JS sem `;`) | array numa constante antes do `forEach` |
+| Admin, Partidas | convidado de jogo avulso aparecia como `#null` | nome vem de `convidado_nome` |
+| Admin, Assinaturas | status `pendente` sem rótulo nem filtro | "Aguardando" na etiqueta e no filtro |
+| Admin, Locações e Lista de espera | nomes e e-mails iam para `innerHTML` sem `escHtml()` | escapados |
+| Banco novo | `alembic upgrade head` falhava na 0030 | transação por migration (seção 14) |
+| App | próximas partidas fora de ordem; placar dos horários passados nunca aparecia; Alugar abria no dia seguinte depois das 21h; regra de antecedência com "6h" fixo; apóstrofo como `&#39;` no placar | corrigidos no commit `de85f58` |
+
+### 20.7 Para verificar
+
+As capturas de tela do painel de navegador congelam animações quando o painel
+está oculto — uma folha aparece parada no quadro inicial. Confira posição e
+cor pelo DOM (`getBoundingClientRect`, `getComputedStyle`) antes de concluir que
+algo quebrou, e fure o cache (`fetch(url, {cache: 'reload'})`) ao recarregar.
 

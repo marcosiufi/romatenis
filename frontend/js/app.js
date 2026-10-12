@@ -462,6 +462,90 @@ const ICONE_PAUSA   = _icone('<path d="M9 6v12M15 6v12"/>');
 const ICONE_CHAVE   = _icone('<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>');
 const ICONE_FILA    = _icone('<path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>');
 
+// ── Pagamentos: o histórico no desenho do Wallet ─────────────────────────────
+// Ícone redondo da categoria, o que foi pago, a data; à direita o valor e,
+// embaixo dele, como foi pago — ou a situação, quando ainda não foi.
+const _PAG_ICONE = {
+  plano:   _icone('<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M7 14.5h4"/>'),
+  locacao: _icone('<rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="M12 6v12M3 9h18M3 15h18"/>'),
+  avulso:  _icone('<circle cx="12" cy="12" r="8"/><path d="M6.6 6.4c2.2 1.5 3.4 3.3 3.4 5.6s-1.2 4.1-3.4 5.6M17.4 6.4c-2.2 1.5-3.4 3.3-3.4 5.6s1.2 4.1 3.4 5.6"/>'),
+  outro:   _icone('<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'),
+};
+const _PAG_METODO = { pix: "PIX", cartao: "Cartão", boleto: "Boleto" };
+const _PAG_SITUACAO = {
+  pendente:  '<small class="pendente">Pendente</small>',
+  falhou:    '<small class="falhou">Não aprovado</small>',
+  estornado: "<small>Estornado</small>",
+};
+
+function _dataCurta(iso) {
+  const d = new Date(iso);
+  const outroAno = d.getFullYear() !== new Date().getFullYear();
+  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short", ...(outroAno ? { year: "numeric" } : {}), timeZone: FUSO });
+}
+
+function _pagamentoLinha(t) {
+  const riscado = t.status === "estornado" || t.status === "falhou";
+  const embaixo = _PAG_SITUACAO[t.status] || `<small>${esc(_PAG_METODO[t.metodo] || "")}</small>`;
+  const cupom = t.cupom ? `, cupom ${esc(t.cupom)}` : "";
+  return `
+    <div class="linha com-icone">
+      <span class="icone-quadro redondo ${riscado ? "esmaecido" : `cat-${esc(t.categoria)}`}">${_PAG_ICONE[t.categoria] || _PAG_ICONE.outro}</span>
+      <span class="linha-texto">
+        <span class="linha-titulo">${esc(t.titulo)}</span>
+        <span class="linha-sub">${esc(_dataCurta(t.data))}${cupom}</span>
+      </span>
+      <span class="transacao-valor${riscado ? " estornado" : ""}">${fmtBRL(t.valor)}${embaixo}</span>
+    </div>`;
+}
+
+/** Os pendentes primeiro — são os que pedem ação —, depois do mais novo ao mais antigo */
+function _ordenarPagamentos(lista) {
+  return [...lista].sort((a, b) =>
+    (b.status === "pendente") - (a.status === "pendente") || new Date(b.data) - new Date(a.data));
+}
+
+function _pagamentosHtml(lista) {
+  if (!lista?.length) return "";
+  const ordem = _ordenarPagamentos(lista);
+  const VISIVEIS = 4;
+  return `
+    <div class="grupo-cabecalho">
+      <span>Pagamentos</span>
+      ${ordem.length > VISIVEIS ? `<button type="button" class="btn btn-texto" onclick="abrirFolha('folha-pagamentos')">Ver todos</button>` : ""}
+    </div>
+    <div class="grupo">${ordem.slice(0, VISIVEIS).map(_pagamentoLinha).join("")}</div>`;
+}
+
+/** A folha com o histórico inteiro, separado por mês */
+function _folhaPagamentosHtml(lista) {
+  if (!lista?.length) return "";
+  const meses = new Map();
+  for (const t of _ordenarPagamentos(lista)) {
+    const chave = t.status === "pendente" ? "Pendentes"
+      : _primeiraMaiuscula(new Date(t.data).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: FUSO }));
+    if (!meses.has(chave)) meses.set(chave, []);
+    meses.get(chave).push(t);
+  }
+  const grupos = [...meses].map(([mes, itens]) => `
+    <h2 class="grupo-cabecalho">${esc(mes)}</h2>
+    <div class="grupo">${itens.map(_pagamentoLinha).join("")}</div>`).join("");
+  return `
+    <div id="folha-pagamentos" class="folha-fundo" hidden>
+      <div class="folha" role="dialog" aria-modal="true" aria-labelledby="t-pagamentos">
+        <div class="folha-barra">
+          <span></span>
+          <p class="folha-titulo" id="t-pagamentos">Pagamentos</p>
+          <button type="button" class="btn btn-texto forte" onclick="fecharFolha('folha-pagamentos')">OK</button>
+        </div>
+        <div class="folha-corpo">
+          ${grupos}
+          <p class="grupo-rodape">Planos, locações e jogos avulsos pelos quais você respondeu.</p>
+        </div>
+      </div>
+    </div>`;
+}
+
 function fmtData(isoStr) {
   return new Date(isoStr).toLocaleDateString("pt-BR", { timeZone: FUSO });
 }
@@ -571,7 +655,7 @@ function _folhasPerfilHtml(p) {
         <div class="folha-corpo">
           <div class="card">
             <div class="campo"><label for="edit-nome">Nome completo</label><input type="text" id="edit-nome" autocomplete="name" value="${v(p.nome)}" /></div>
-            <div class="campo"><label for="edit-apelido">Apelido</label><input type="text" id="edit-apelido" value="${v(p.apelido)}" placeholder="Opcional — aparece no ranking" /></div>
+            <div class="campo"><label for="edit-apelido">Apelido</label><input type="text" id="edit-apelido" value="${v(p.apelido)}" placeholder="Opcional, aparece no ranking" /></div>
             <div class="campo"><label for="edit-email">E-mail</label><input type="email" id="edit-email" autocomplete="email" inputmode="email" autocapitalize="none" value="${v(p.email)}" /></div>
             <div class="campo"><label for="edit-telefone">Telefone</label><input type="tel" id="edit-telefone" autocomplete="tel" value="${v(p.telefone)}" placeholder="16 99123-4567" /></div>
             <div class="grade-2">
@@ -656,7 +740,7 @@ function _folhasPerfilHtml(p) {
             </div>
           </div>
           <div id="renovar-pix-box" class="pix-box" hidden>
-            <p class="pix-label">PIX gerado — copie e pague no app do seu banco</p>
+            <p class="pix-label">PIX gerado. Copie o código e pague no app do seu banco.</p>
             <div class="pix-row">
               <input id="renovar-pix-input" class="pix-code" readonly aria-label="Código PIX" />
               <button class="btn btn-primario pix-copy-btn" onclick="copiarPixRenovar()">Copiar</button>
@@ -700,11 +784,12 @@ async function carregarPerfil() {
   const el = document.getElementById("perfil-info");
   if (!el.innerHTML.trim()) el.innerHTML = carregandoHtml();
   try {
-    const [p, sub, pixPendente, filaPos] = await Promise.all([
+    const [p, sub, pixPendente, filaPos, pagamentos] = await Promise.all([
       apiFetch("/auth/me"),
       apiFetch("/subscriptions/minha-ativa").catch(() => null),
       apiFetch("/subscriptions/pix-pendente").catch(() => null),
       apiFetch("/subscriptions/lista-espera/minha-posicao").catch(() => null),
+      apiFetch("/subscriptions/meus-pagamentos").catch(() => []),
     ]);
     if (!p) return;
     _eu = p;
@@ -772,6 +857,8 @@ async function carregarPerfil() {
       <h2 class="grupo-cabecalho">Assinatura</h2>
       ${subHtml}
 
+      ${_pagamentosHtml(pagamentos)}
+
       <h2 class="grupo-cabecalho">Desempenho</h2>
       <div class="indicadores">
         <div class="indicador"><span class="indicador-valor">${nivel}</span><span class="indicador-rotulo">Nível</span></div>
@@ -804,6 +891,7 @@ async function carregarPerfil() {
       </div>
 
       ${_folhasPerfilHtml(p)}
+      ${_folhaPagamentosHtml(pagamentos)}
     `;
 
     // Preços reais no seletor de plano
@@ -816,7 +904,7 @@ async function carregarPerfil() {
         ["anual",      "Anual"],
       ].map(([v, l]) => {
         const valor = precos[v]?.valor_total;
-        return `<option value="${v}">${l}${valor != null ? ` — ${fmtBRL(valor)}` : ""}</option>`;
+        return `<option value="${v}">${l}${valor != null ? ` (${fmtBRL(valor)})` : ""}</option>`;
       }).join("");
     }).catch(() => {});
 

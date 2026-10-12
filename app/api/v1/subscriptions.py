@@ -207,6 +207,17 @@ async def listar_minhas(
     return await svc.listar_minhas(player)
 
 
+@router.get("/meus-pagamentos")
+async def meus_pagamentos(
+    player: Player = Depends(get_current_player),
+    db=Depends(get_db),
+):
+    """Histórico do associado — planos e as reservas pelas quais respondeu."""
+    from app.services.financeiro_service import FinanceiroService
+
+    return await FinanceiroService(db).do_jogador(player.id)
+
+
 @router.get("/minha-ativa", response_model=SubscriptionOut | None)
 async def minha_ativa(
     player: Player = Depends(get_current_player),

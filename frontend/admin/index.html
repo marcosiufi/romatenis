@@ -7,846 +7,1261 @@
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Cinzel só com as letras da marca (ROMA, Roma Tênis); o resto da
+       interface usa a fonte do sistema, servida em /fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&text=Roma%20T%C3%AAnisROMA&display=swap" rel="stylesheet" />
   <style>
     /* ═══════════════════════════════════════════════════════════════════
        Painel administrativo — Roma Tênis
-       Sistema de estilos único, com tema claro e escuro.
+       A gramática do macOS, traduzida para a web (docs/DESIGN.md). A mesma
+       paleta do app do associado; a mesma régua de texto do SIUFI.
 
-       Tema: atributo `data-tema` no <html>.
-         ausente   → segue a configuração do sistema operacional
-         "claro"   → claro fixado pelo usuário
-         "escuro"  → escuro fixado pelo usuário
-       Os tokens escuros aparecem duas vezes de propósito: uma vez sob
-       prefers-color-scheme (modo automático) e outra sob [data-tema="escuro"]
-       (escolha explícita). Sem isso, fixar um tema não venceria o sistema.
+       - Tokens com nome de PAPEL. Os nomes antigos (--clr-*) continuam como
+         aliases porque o HTML e o admin.js têm estilos inline que os citam.
+       - Tema: atributo data-tema no <html>; ausente = segue o sistema.
+       - Texto padrão de 13 px e controles de 32 px: é ferramenta de mesa,
+         usada com mouse, no Windows.
        ═══════════════════════════════════════════════════════════════════ */
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* ── Tema claro (padrão) ─────────────────────────────────────────── */
-    :root {
-      color-scheme: light;
-
-      --fundo:            #f4f1ea;
-      --superficie:       #ffffff;
-      --superficie-alta:  #faf8f3;
-      --superficie-sutil: rgba(22,40,29,.045);
-      --borda:            rgba(22,40,29,.14);
-      --borda-forte:      rgba(22,40,29,.26);
-
-      --texto:            #16281d;
-      --texto-suave:      #4a6353;
-      --texto-fraco:      #4f6659;
-
-      --terracota:        #94461a;
-      --terracota-hover:  #8f4416;
-      --terracota-fraco:  rgba(168,81,29,.10);
-      --btn-fundo:        #a8511d;
-      --btn-fundo-hover:  #8f4416;
-      --btn-texto:        #ffffff;
-
-      --ok:      #166034;
-      --aviso:   #734a0b;
-      --perigo:  #9c2b20;
-
-      --sombra-1: 0 1px 2px rgba(22,40,29,.07), 0 1px 3px rgba(22,40,29,.05);
-      --sombra-2: 0 10px 30px rgba(22,40,29,.13);
-      --sombra-nav: 1px 0 0 var(--borda);
+    @font-face {
+      font-family: "Inter Variable";
+      font-style: normal;
+      font-display: swap;
+      font-weight: 100 900;
+      src: url("/fonts/inter-latin-opsz-normal.woff2") format("woff2-variations");
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+        U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+        U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: "Inter Variable";
+      font-style: normal;
+      font-display: swap;
+      font-weight: 100 900;
+      src: url("/fonts/inter-latin-ext-opsz-normal.woff2") format("woff2-variations");
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+        U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+        U+2113, U+2C60-2C7F, U+A720-A7FF;
     }
 
-    /* ── Tema escuro — automático (configuração do sistema) ──────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    /* ── Aparência clara (padrão) ─────────────────────────────────────── */
+    :root {
+      color-scheme: light;
+      --plano:        #F1F4F2;
+      --superficie:   #FFFFFF;
+      --elevado:      #FFFFFF;
+      --controle:     #FFFFFF;
+      --barra-lateral:#E8EDEA;
+      --material:     rgb(241 244 242 / 0.80);
+      --polegar:      #FFFFFF;
+
+      --tinta:        #111A15;
+      --tinta-2:      #55625B;
+      --tinta-3:      #66726B;
+
+      --linha:        rgb(60 70 64 / 0.14);
+      --linha-forte:  rgb(60 70 64 / 0.26);
+
+      --preenche:     rgb(118 128 122 / 0.20);
+      --preenche-2:   rgb(118 128 122 / 0.14);
+      --preenche-3:   rgb(118 128 122 / 0.08);
+
+      --tint:         #A44E1C;
+      --tint-toque:   #8E4317;
+      --sobre-tint:   #FFFFFF;
+
+      --bom:          #1B7A43;
+      --alerta:       #7A5300;
+      --atencao:      #F2B33D;
+      --critico:      #C2342B;
+
+      /* Dados — categorias de receita. Matiz E luminosidade diferentes, para
+         continuar distinguível sem cor (daltonismo): escuro, médio, claro */
+      --cat-plano:    #1F6B47;
+      --cat-locacao:  #C0622A;
+      --cat-avulso:   #E0A94A;
+      --sobre-cat-avulso: #3A2600;
+      --sobre-cat:    #FFFFFF;        /* ícone sobre plano e locação */
+
+      --sombra-cartao:   0 1px 2px rgb(17 26 21 / 0.04), 0 3px 10px -4px rgb(17 26 21 / 0.06);
+      --sombra-controle: 0 1px 1.5px rgb(17 26 21 / 0.07);
+      --sombra-polegar:  0 1px 3px rgb(17 26 21 / 0.12), 0 0 0 0.5px rgb(17 26 21 / 0.06);
+      --sombra-flutua:   0 0 0 0.5px rgb(17 26 21 / 0.10), 0 12px 32px -8px rgb(17 26 21 / 0.22),
+                         0 4px 10px -4px rgb(17 26 21 / 0.08);
+      --sombra-folha:    0 0 0 0.5px rgb(17 26 21 / 0.08), 0 32px 80px -16px rgb(17 26 21 / 0.36),
+                         0 12px 28px -12px rgb(17 26 21 / 0.18);
+      --veu:             rgb(17 26 21 / 0.28);
+    }
+
+    /* ── Aparência escura — automática e fixada (mesmos valores) ───────── */
     @media (prefers-color-scheme: dark) {
       :root:not([data-tema="claro"]) {
         color-scheme: dark;
-
-        --fundo:            #14241b;
-        --superficie:       #1d3427;
-        --superficie-alta:  #264130;
-        --superficie-sutil: rgba(255,255,255,.05);
-        --borda:            rgba(255,255,255,.10);
-        --borda-forte:      rgba(255,255,255,.20);
-
-        --texto:            #f0ebe4;
-        --texto-suave:      #b3c9ba;
-        --texto-fraco:      #9db5a5;
-
-        --terracota:        #e79a63;
-        --terracota-hover:  #e08a52;
-        --terracota-fraco:  rgba(231,154,99,.12);
-        --btn-fundo:        #c0622a;
-        --btn-fundo-hover:  #d2743a;
-        --btn-texto:        #ffffff;
-
-        --ok:      #5cc182;
-        --aviso:   #e3ab4d;
-        --perigo:  #ea8068;
-
-        --sombra-1: 0 1px 2px rgba(0,0,0,.25);
-        --sombra-2: 0 10px 30px rgba(0,0,0,.42);
-        --sombra-nav: 1px 0 0 var(--borda);
+        --plano: #0D1310; --superficie: #161E1A; --elevado: #212A25; --controle: #1C2420;
+        --barra-lateral: #111815; --material: rgb(13 19 16 / 0.80); --polegar: #4A5650;
+        --tinta: #F2F5F3; --tinta-2: #A9B5AF; --tinta-3: #87948E;
+        --linha: rgb(255 255 255 / 0.09); --linha-forte: rgb(255 255 255 / 0.18);
+        --preenche: rgb(150 168 160 / 0.30); --preenche-2: rgb(150 168 160 / 0.20); --preenche-3: rgb(150 168 160 / 0.11);
+        --tint: #E8925C; --tint-toque: #EFA675; --sobre-tint: #2A1407;
+        --bom: #3DCB74; --alerta: #F2C14E; --atencao: #F2B33D; --critico: #FF6B5E;
+        --cat-plano: #4FB584; --cat-locacao: #E8925C; --cat-avulso: #F0CB7E; --sobre-cat-avulso: #3A2600; --sobre-cat: #10201A;
+        --sombra-cartao: none; --sombra-controle: none;
+        --sombra-polegar: 0 1px 3px rgb(0 0 0 / 0.35);
+        --sombra-flutua: 0 0 0 0.5px rgb(255 255 255 / 0.10), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+        --sombra-folha: 0 0 0 0.5px rgb(255 255 255 / 0.10), 0 32px 80px -16px rgb(0 0 0 / 0.7);
+        --veu: rgb(0 0 0 / 0.5);
       }
     }
-
-    /* ── Tema escuro — fixado pelo usuário ───────────────────────────── */
     :root[data-tema="escuro"] {
       color-scheme: dark;
-
-      --fundo:            #14241b;
-      --superficie:       #1d3427;
-      --superficie-alta:  #264130;
-      --superficie-sutil: rgba(255,255,255,.05);
-      --borda:            rgba(255,255,255,.10);
-      --borda-forte:      rgba(255,255,255,.20);
-
-      --texto:            #f0ebe4;
-      --texto-suave:      #b3c9ba;
-      --texto-fraco:      #9db5a5;
-
-      --terracota:        #e79a63;
-      --terracota-hover:  #e08a52;
-      --terracota-fraco:  rgba(231,154,99,.12);
-      --btn-fundo:        #c0622a;
-      --btn-fundo-hover:  #d2743a;
-      --btn-texto:        #ffffff;
-
-      --ok:      #5cc182;
-      --aviso:   #e3ab4d;
-      --perigo:  #ea8068;
-
-      --sombra-1: 0 1px 2px rgba(0,0,0,.25);
-      --sombra-2: 0 10px 30px rgba(0,0,0,.42);
-      --sombra-nav: 1px 0 0 var(--borda);
+      --plano: #0D1310; --superficie: #161E1A; --elevado: #212A25; --controle: #1C2420;
+      --barra-lateral: #111815; --material: rgb(13 19 16 / 0.80); --polegar: #4A5650;
+      --tinta: #F2F5F3; --tinta-2: #A9B5AF; --tinta-3: #87948E;
+      --linha: rgb(255 255 255 / 0.09); --linha-forte: rgb(255 255 255 / 0.18);
+      --preenche: rgb(150 168 160 / 0.30); --preenche-2: rgb(150 168 160 / 0.20); --preenche-3: rgb(150 168 160 / 0.11);
+      --tint: #E8925C; --tint-toque: #EFA675; --sobre-tint: #2A1407;
+      --bom: #3DCB74; --alerta: #F2C14E; --atencao: #F2B33D; --critico: #FF6B5E;
+      --cat-plano: #4FB584; --cat-locacao: #E8925C; --cat-avulso: #F0CB7E; --sobre-cat-avulso: #3A2600; --sobre-cat: #10201A;
+      --sombra-cartao: none; --sombra-controle: none;
+      --sombra-polegar: 0 1px 3px rgb(0 0 0 / 0.35);
+      --sombra-flutua: 0 0 0 0.5px rgb(255 255 255 / 0.10), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+      --sombra-folha: 0 0 0 0.5px rgb(255 255 255 / 0.10), 0 32px 80px -16px rgb(0 0 0 / 0.7);
+      --veu: rgb(0 0 0 / 0.5);
     }
 
-    /* ── Forma, espaço e tipografia ──────────────────────────────────── */
+    /* ── Tokens fixos ──────────────────────────────────────────────────── */
     :root {
-      --e1: .25rem; --e2: .5rem; --e3: .75rem; --e4: 1rem;
-      --e5: 1.25rem; --e6: 1.5rem; --e8: 2rem;
+      --marca-verde: #173A27;
+      --marca-verde-2: #0F2A1C;
 
-      --r1: 8px; --r2: 12px; --r3: 16px; --r-full: 999px;
+      --fonte: -apple-system, BlinkMacSystemFont, "Inter Variable", "Inter",
+               "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      --fonte-valor: ui-rounded, -apple-system, BlinkMacSystemFont, "Inter Variable", system-ui, sans-serif;
 
-      /* Altura única de todo controle de formulário. Antes os selects da
-         barra de filtros ficavam com 30px ao lado de campos de 40px — era
-         a origem do desalinhamento visível. */
-      --h-controle: 40px;
-      --h-botao-tabela: 32px;
+      /* A régua do SIUFI — os dois sistemas leem igual. Mínimo de 11 px: abaixo
+         disso o ClearType do Windows desmancha a letra */
+      --t-legenda: 0.6875rem;     /* 11/15 */
+      --t-nota: 0.75rem;          /* 12/16 */
+      --t-chamada: 0.8125rem;     /* 13/18 — o padrão */
+      --t-corpo: 0.875rem;        /* 14/20 */
+      --t-titulo-3: 0.9375rem;    /* 15/20 */
+      --t-titulo-2: 1.0625rem;    /* 17/22 */
+      --t-titulo-1: 1.375rem;     /* 22/28 */
+      --t-titulo-grande: 1.75rem; /* 28/34 */
+      --t-exibicao: 2.125rem;     /* 34/40 */
 
-      --sidebar-w: 236px;
-      --sidebar-w-min: 62px;
+      --r-controle: 7px;
+      --r-cartao: 12px;
+      --r-folha: 14px;
+      --r-pilula: 999px;
 
-      --fonte-titulo: "Cinzel", Georgia, serif;
-      --fonte-corpo: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --h-controle: 32px;
+      --h-pequeno: 28px;
+      --h-grande: 40px;
 
-      /* Aliases legados: o HTML e o JS têm estilos inline que ainda usam
-         os nomes antigos. Mantidos apontando para os tokens novos. */
-      --clr-bg: var(--fundo);
+      --lateral: 236px;
+      --lateral-min: 60px;
+
+      --mola: cubic-bezier(0.32, 0.72, 0, 1);
+      --padrao: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+      /* Aliases legados — inline no HTML e no admin.js */
+      --clr-bg: var(--plano);
       --clr-surface: var(--superficie);
-      --clr-surface-alt: var(--superficie-alta);
-      --clr-surface-soft: var(--superficie-sutil);
-      --clr-border: var(--borda);
-      --clr-border-strong: var(--borda-forte);
-      --clr-accent: var(--terracota);
-      --clr-accent-hover: var(--terracota-hover);
-      --clr-accent-soft: var(--terracota-fraco);
-      --clr-text: var(--texto);
-      --clr-text-muted: var(--texto-suave);
-      --clr-text-faint: var(--texto-fraco);
-      --clr-ok: var(--ok);
-      --clr-warn: var(--aviso);
-      --clr-danger: var(--perigo);
-      --ar-1: var(--r1); --ar-2: var(--r2); --ar-3: var(--r3); --ar-full: var(--r-full);
-      --sb-1: var(--sombra-1); --sb-2: var(--sombra-2);
+      --clr-surface-alt: var(--elevado);
+      --clr-surface-soft: var(--preenche-3);
+      --clr-border: var(--linha);
+      --clr-border-strong: var(--linha-forte);
+      --clr-accent: var(--tint);
+      --clr-accent-hover: var(--tint-toque);
+      --clr-accent-soft: color-mix(in srgb, var(--tint) 12%, transparent);
+      --clr-text: var(--tinta);
+      --clr-text-muted: var(--tinta-2);
+      --clr-text-faint: var(--tinta-3);
+      --clr-ok: var(--bom);
+      --clr-warn: var(--alerta);
+      --clr-danger: var(--critico);
+      --fundo: var(--plano);
+      --superficie-alta: var(--elevado);
+      --superficie-sutil: var(--preenche-3);
+      --borda: var(--linha);
+      --borda-forte: var(--linha-forte);
+      --texto: var(--tinta);
+      --texto-suave: var(--tinta-2);
+      --texto-fraco: var(--tinta-3);
+      --terracota: var(--tint);
+      --terracota-fraco: color-mix(in srgb, var(--tint) 12%, transparent);
+      --ok: var(--bom);
+      --aviso: var(--alerta);
+      --perigo: var(--critico);
+      --sucesso: var(--bom);
     }
 
+    /* ══ Base ═════════════════════════════════════════════════════════════ */
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      font-family: var(--fonte-corpo);
-      background: var(--fundo);
-      color: var(--texto);
       min-height: 100dvh;
+      background: var(--plano);
+      color: var(--tinta);
+      font-family: var(--fonte);
+      font-size: var(--t-chamada);
+      line-height: 1.385;
+      letter-spacing: -0.003em;
+      font-optical-sizing: auto;
       -webkit-font-smoothing: antialiased;
-      /* a troca de tema não deve piscar */
-      transition: background-color .2s ease, color .2s ease;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
     }
-
-    /* ── Barras de rolagem ───────────────────────────────────────────── */
+    button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+    a { color: var(--tint); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ::selection { background: color-mix(in srgb, var(--tint) 24%, transparent); }
+    :focus { outline: none; }
+    :focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--tint) 50%, transparent);
+      outline-offset: 1px;
+      border-radius: 6px;
+    }
+    * { scrollbar-width: thin; scrollbar-color: var(--preenche) transparent; }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb {
-      background: var(--borda-forte);
-      border-radius: var(--r-full);
-      border: 3px solid transparent;
-      background-clip: content-box;
+      background: var(--preenche); border-radius: 99px;
+      border: 3px solid transparent; background-clip: content-box;
     }
-    ::-webkit-scrollbar-thumb:hover { background: var(--texto-fraco); background-clip: content-box; }
-    * { scrollbar-width: thin; scrollbar-color: var(--borda-forte) transparent; }
+    .tabular { font-variant-numeric: tabular-nums; }
 
-    /* ═══ Login ══════════════════════════════════════════════════════ */
+    /* Caixa de seleção e rádio com desenho próprio: o Windows desenharia os
+       seus, azuis, que brigam com o tint */
+    input[type="checkbox"]:not(.interruptor), input[type="radio"] {
+      -webkit-appearance: none;
+      appearance: none;
+      flex-shrink: 0;
+      display: inline-grid;
+      place-content: center;
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--linha-forte);
+      border-radius: 4px;
+      background: var(--controle);
+      box-shadow: var(--sombra-controle);
+      cursor: pointer;
+      vertical-align: -3px;
+      transition: background-color 0.12s var(--padrao), border-color 0.12s var(--padrao);
+    }
+    input[type="radio"] { border-radius: 50%; }
+    input[type="checkbox"]:not(.interruptor)::after {
+      content: "";
+      width: 9px; height: 5px;
+      border-left: 2px solid var(--sobre-tint);
+      border-bottom: 2px solid var(--sobre-tint);
+      transform: rotate(-45deg) translate(1px, -1px) scale(0);
+      transition: transform 0.15s var(--mola);
+    }
+    input[type="radio"]::after {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--sobre-tint); transform: scale(0); transition: transform 0.15s var(--mola);
+    }
+    input[type="checkbox"]:not(.interruptor):checked, input[type="radio"]:checked {
+      background: var(--tint); border-color: var(--tint);
+    }
+    input[type="checkbox"]:not(.interruptor):checked::after { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+    input[type="radio"]:checked::after { transform: scale(1); }
+
+    /* ══ Login ═══════════════════════════════════════════════════════════ */
     .login-tela {
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100dvh; background: var(--fundo); padding: var(--e6);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1.5rem;
+      background: linear-gradient(160deg, var(--marca-verde), var(--marca-verde-2));
     }
+    .login-tela .quadra { position: absolute; inset: 0; color: #FFFFFF; opacity: 0.10; pointer-events: none; }
+    .login-tela .quadra svg { position: absolute; width: 140%; height: auto; left: -20%; top: 50%; transform: translateY(-50%); }
+    .login-tela .quadra svg * { vector-effect: non-scaling-stroke; }
     .login-card {
-      background: var(--superficie);
-      border: 1px solid var(--borda);
-      border-radius: var(--r3);
-      padding: var(--e8) var(--e6);
-      width: 100%; max-width: 380px;
-      box-shadow: var(--sombra-2);
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      padding: 2rem 1.75rem 1.75rem;
+      background: var(--elevado);
+      border-radius: var(--r-folha);
+      box-shadow: var(--sombra-folha);
     }
-    .login-card .logo { text-align: center; margin-bottom: var(--e3); }
-    .login-card .logo svg { width: 180px; height: auto; display: block; margin: 0 auto; }
-    /* o "ROMA" do SVG é claro; no tema claro precisa de tinta escura */
-    .login-card .logo svg text:first-of-type { fill: var(--texto); }
+    .login-card .logo { text-align: center; margin-bottom: 0.25rem; color: var(--tinta); }
+    .login-card .logo svg { width: 150px; height: auto; display: block; margin: 0 auto; }
+    .login-card .logo svg text:first-of-type { fill: currentColor; }
     .login-card h1 { display: none; }
     .login-card .login-sub {
-      font-size: .78rem; color: var(--texto-suave);
-      text-align: center; margin-bottom: var(--e6);
-      letter-spacing: .04em; text-transform: uppercase;
+      text-align: center;
+      font-size: var(--t-chamada);
+      color: var(--tinta-2);
+      margin-bottom: 1.5rem;
     }
-    .login-card .campo { margin-bottom: var(--e4); }
+    .login-card .campo { margin-bottom: 0.875rem; }
     .login-card .campo label {
-      display: block; font-size: .78rem; font-weight: 600;
-      color: var(--texto-suave); margin-bottom: var(--e1);
+      display: block; margin-bottom: 0.3rem;
+      font-size: var(--t-nota); font-weight: 500; color: var(--tinta-2);
     }
     .login-card .campo input {
-      width: 100%; min-height: var(--h-controle);
-      background: var(--superficie-sutil);
-      border: 1px solid var(--borda);
-      border-radius: var(--r1);
-      padding: .6rem .85rem;
-      color: var(--texto); font-family: inherit; font-size: .9rem; outline: none;
-      transition: border-color .15s, box-shadow .15s, background .15s;
+      width: 100%; min-height: var(--h-grande);
+      padding: 0 0.75rem;
+      background: var(--controle);
+      border: 1px solid var(--linha-forte);
+      border-radius: var(--r-controle);
+      font-size: var(--t-corpo);
+      box-shadow: var(--sombra-controle);
+      transition: border-color 0.15s var(--padrao), box-shadow 0.15s var(--padrao);
     }
     .login-card .campo input:focus {
-      border-color: var(--terracota);
-      box-shadow: 0 0 0 3px var(--terracota-fraco);
+      border-color: var(--tint);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 22%, transparent);
     }
     .btn-primary {
-      width: 100%; min-height: 44px;
-      background: var(--btn-fundo); color: var(--btn-texto);
-      border: none; border-radius: var(--r1);
-      padding: .75rem; font-family: inherit; font-size: .9rem; font-weight: 700;
-      cursor: pointer; margin-top: var(--e3); letter-spacing: .03em;
-      transition: background .15s, transform .1s;
+      width: 100%;
+      min-height: var(--h-grande);
+      margin-top: 0.5rem;
+      border: none;
+      border-radius: var(--r-controle);
+      background: var(--tint);
+      color: var(--sobre-tint);
+      font-size: var(--t-corpo);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s var(--padrao);
     }
-    .btn-primary:hover { background: var(--btn-fundo-hover); }
-    .btn-primary:active { transform: scale(.99); }
+    .btn-primary:hover { background: var(--tint-toque); }
 
     .erro-msg {
-      color: var(--perigo); font-size: .82rem;
-      background: color-mix(in srgb, var(--perigo) 10%, transparent);
-      border: 1px solid color-mix(in srgb, var(--perigo) 30%, transparent);
-      border-radius: var(--r1);
-      padding: .55rem .75rem; margin-bottom: var(--e3);
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      margin-bottom: 0.75rem;
+      border-radius: var(--r-controle);
+      background: color-mix(in srgb, var(--critico) 10%, var(--superficie));
+      color: var(--critico);
+      font-size: var(--t-chamada);
     }
 
-    /* ═══ Layout ═════════════════════════════════════════════════════ */
-    #admin-app {
-      position: fixed; inset: 0;
-      display: flex; overflow: hidden; z-index: 10;
-    }
+    /* ══ Estrutura ═══════════════════════════════════════════════════════ */
+    #admin-app { position: fixed; inset: 0; z-index: 10; display: flex; overflow: hidden; }
 
-    /* ── Barra lateral ───────────────────────────────────────────────── */
+    /* ── Barra lateral: a lista de origem do Finder ───────────────────── */
     .admin-sidebar {
-      width: var(--sidebar-w);
-      min-width: var(--sidebar-w);
-      background: var(--superficie);
-      border-right: 1px solid var(--borda);
-      display: flex; flex-direction: column;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       flex-shrink: 0;
-      transition: width .2s ease, min-width .2s ease;
+      width: var(--lateral);
+      min-width: var(--lateral);
+      background: var(--barra-lateral);
+      border-right: 1px solid var(--linha);
+      overflow: hidden;
+      transition: width 0.25s var(--mola), min-width 0.25s var(--mola);
     }
-    .admin-sidebar.collapsed {
-      width: var(--sidebar-w-min);
-      min-width: var(--sidebar-w-min);
-    }
+    .admin-sidebar.collapsed { width: var(--lateral-min); min-width: var(--lateral-min); }
 
-    /* Topo: marca à esquerda, botão de recolher à direita, na mesma linha */
     .admin-sidebar-top {
-      display: flex; align-items: center; gap: var(--e2);
-      padding: var(--e4) var(--e3) var(--e4) var(--e4);
-      border-bottom: 1px solid var(--borda);
-      min-height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 52px;
+      padding: 0 0.625rem 0 1rem;
     }
     .admin-sidebar-marca {
-      font-family: var(--fonte-titulo);
-      font-size: 1.05rem; font-weight: 700;
-      color: var(--terracota);
-      letter-spacing: .05em;
-      white-space: nowrap; overflow: hidden;
-      flex: 1; min-width: 0;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      font-family: "Cinzel", Georgia, serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--tinta);
     }
-    .admin-sidebar.collapsed .admin-sidebar-top { padding: var(--e4) 0; justify-content: center; }
+    .admin-sidebar.collapsed .admin-sidebar-top { padding: 0; justify-content: center; }
     .admin-sidebar.collapsed .admin-sidebar-marca { display: none; }
-
     .sidebar-toggle {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
       flex-shrink: 0;
-      width: 30px; height: 30px;
-      display: inline-flex; align-items: center; justify-content: center;
+      border: none;
+      border-radius: var(--r-controle);
       background: transparent;
-      border: 1px solid var(--borda);
-      border-radius: var(--r1);
-      color: var(--texto-fraco);
-      font-size: .7rem; line-height: 1; cursor: pointer;
-      transition: color .15s, background .15s, border-color .15s;
+      color: var(--tinta-2);
+      font-size: 0.625rem;
+      cursor: pointer;
     }
-    .sidebar-toggle:hover {
-      color: var(--terracota);
-      background: var(--terracota-fraco);
-      border-color: var(--terracota);
-    }
+    .sidebar-toggle:hover { background: var(--preenche-2); color: var(--tinta); }
 
-    /* Navegação em grupos */
     .admin-nav {
       flex: 1;
-      display: flex; flex-direction: column;
-      padding: var(--e3) 0 var(--e4);
-      overflow-y: auto; overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
       gap: 1px;
+      padding: 0.25rem 0.625rem 1rem;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     .nav-grupo {
-      font-size: .66rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .1em;
-      color: var(--texto-fraco);
-      padding: var(--e4) var(--e4) var(--e2);
+      padding: 0.875rem 0.5rem 0.3rem;
+      font-size: var(--t-legenda);
+      font-weight: 600;
+      color: var(--tinta-3);
       white-space: nowrap;
     }
-    .nav-grupo:first-child { padding-top: var(--e1); }
+    .nav-grupo:first-child { padding-top: 0.25rem; }
     .admin-sidebar.collapsed .nav-grupo {
-      /* vira um separador discreto quando não há espaço para o rótulo */
-      font-size: 0; padding: var(--e2) var(--e3) var(--e1);
-      border-top: 1px solid var(--borda);
-      margin-top: var(--e2);
+      font-size: 0;
+      padding: 0.5rem 0.25rem 0.25rem;
+      border-top: 1px solid var(--linha);
+      margin-top: 0.375rem;
     }
     .admin-sidebar.collapsed .nav-grupo:first-child { border-top: none; margin-top: 0; }
 
     .admin-nav button {
-      position: relative;
-      display: flex; align-items: center; gap: var(--e3);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       width: 100%;
-      padding: .6rem var(--e4);
-      border: none; background: transparent;
-      color: var(--texto-suave);
-      font-family: inherit; font-size: .875rem; font-weight: 500;
-      text-align: left; cursor: pointer;
-      white-space: nowrap; overflow: hidden;
-      transition: color .15s, background .15s;
+      min-height: 28px;
+      padding: 0 0.5rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--tinta);
+      font-size: var(--t-chamada);
+      font-weight: 400;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      cursor: pointer;
+      transition: background-color 0.12s var(--padrao);
     }
-    .nav-icone {
-      flex-shrink: 0;
-      width: 18px; height: 18px;
-      display: inline-flex; align-items: center; justify-content: center;
-      color: currentColor;
-    }
-    .nav-icone svg { width: 18px; height: 18px; display: block; }
+    /* Ícones em tint, como no Finder; a seleção é cinza, não colorida */
+    .nav-icone { flex-shrink: 0; display: inline-flex; width: 18px; height: 18px; color: var(--tint); }
+    .nav-icone svg { width: 18px; height: 18px; }
     .nav-texto { overflow: hidden; text-overflow: ellipsis; }
-
-    .admin-nav button:hover:not(.active) {
-      background: var(--superficie-sutil);
-      color: var(--texto);
-    }
-    .admin-nav button.active {
-      background: var(--terracota-fraco);
-      /* rótulo em tinta cheia: a cor da marca sobre o próprio fundo tingido
-         só alcançava 3.6:1 no tema escuro. A marca fica no ícone e na barra
-         lateral, que são elementos gráficos e pedem menos contraste. */
-      color: var(--texto);
-      font-weight: 600;
-    }
-    .admin-nav button.active .nav-icone { color: var(--terracota); }
-    .admin-nav button.active::before {
-      content: "";
-      position: absolute; left: 0; top: 0; bottom: 0;
-      width: 3px; background: var(--terracota);
-    }
-    .admin-nav button:focus-visible {
-      outline: 2px solid var(--terracota);
-      outline-offset: -2px;
-    }
-
-    .admin-sidebar.collapsed .admin-nav button {
-      justify-content: center;
-      padding: .6rem 0;
-      gap: 0;
-    }
+    .admin-nav button:hover:not(.active) { background: var(--preenche-3); }
+    .admin-nav button.active { background: var(--preenche); font-weight: 500; }
+    .admin-nav button.active::before { display: none; }
+    .admin-sidebar.collapsed .admin-nav button { justify-content: center; padding: 0; min-height: 32px; }
     .admin-sidebar.collapsed .nav-texto { display: none; }
 
-    /* Rodapé: usuário, tema e sair */
     .admin-sidebar-rodape {
-      border-top: 1px solid var(--borda);
-      padding: var(--e3);
-      display: flex; flex-direction: column; gap: var(--e2);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.75rem 0.75rem 0.875rem;
+      border-top: 1px solid var(--linha);
     }
     .admin-sidebar-usuario {
-      display: flex; align-items: center; gap: var(--e2);
-      font-size: .8rem; color: var(--texto-suave);
-      min-height: 32px; min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 0;
+      font-size: var(--t-chamada);
     }
     .usuario-avatar {
       flex-shrink: 0;
-      width: 28px; height: 28px; border-radius: var(--r-full);
-      background: var(--terracota-fraco); color: var(--terracota);
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: .72rem; font-weight: 700;
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, var(--preenche-2), var(--preenche));
+      color: var(--tinta-2);
+      font-size: var(--t-legenda);
+      font-weight: 600;
     }
-    .admin-sidebar-usuario #admin-nome {
-      flex: 1; min-width: 0;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      font-weight: 500; color: var(--texto);
-    }
-    .admin-sidebar.collapsed .admin-sidebar-rodape { padding: var(--e2) var(--e1); align-items: center; }
-    .admin-sidebar.collapsed .admin-sidebar-usuario #admin-nome { display: none; }
-    .admin-sidebar.collapsed .admin-sidebar-usuario { justify-content: center; }
-
-    .rodape-acoes { display: flex; gap: var(--e2); }
+    #admin-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .admin-sidebar.collapsed .admin-sidebar-rodape { align-items: center; padding: 0.625rem 0.25rem; }
+    .admin-sidebar.collapsed #admin-nome { display: none; }
+    .rodape-acoes { display: flex; gap: 0.375rem; }
     .rodape-acoes > * { flex: 1; }
     .admin-sidebar.collapsed .rodape-acoes { flex-direction: column; }
-
     .btn-icone {
-      display: inline-flex; align-items: center; justify-content: center;
-      gap: var(--e2);
-      min-height: 34px; padding: 0 var(--e2);
-      background: transparent;
-      border: 1px solid var(--borda);
-      border-radius: var(--r1);
-      color: var(--texto-suave);
-      font-family: inherit; font-size: .76rem; font-weight: 600;
-      cursor: pointer; white-space: nowrap;
-      transition: color .15s, background .15s, border-color .15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      min-height: var(--h-pequeno);
+      padding: 0 0.5rem;
+      border: none;
+      border-radius: var(--r-controle);
+      background: var(--preenche-2);
+      color: var(--tinta);
+      font-size: var(--t-nota);
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
     }
-    .btn-icone svg { width: 15px; height: 15px; flex-shrink: 0; }
-    .btn-icone:hover {
-      color: var(--terracota);
-      border-color: var(--terracota);
-      background: var(--terracota-fraco);
-    }
+    .btn-icone svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .btn-icone:hover { background: var(--preenche); }
     .admin-sidebar.collapsed .btn-icone-texto { display: none; }
-    .admin-sidebar.collapsed .btn-icone { padding: 0; }
+    .admin-sidebar.collapsed .btn-icone { width: 32px; padding: 0; }
 
-    /* ── Área de conteúdo ────────────────────────────────────────────── */
+    /* ── Área de conteúdo ─────────────────────────────────────────────── */
     .admin-main {
-      flex: 1; min-width: 0;
+      flex: 1;
+      min-width: 0;
       overflow-y: auto;
-      background: var(--fundo);
-      padding: var(--e8) var(--e8) var(--e8);
+      background: var(--plano);
+      padding: 0 1.75rem 2.5rem;
     }
-    @media (max-width: 768px) { .admin-main { padding: var(--e5); } }
-
-    .admin-section { display: none; width: 100%; max-width: 1760px; }
+    .admin-section { display: none; width: 100%; max-width: 1440px; margin: 0 auto; }
     .admin-section.active { display: block; }
 
-    .section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: var(--e4); flex-wrap: wrap;
-      margin-bottom: var(--e6);
-      padding-bottom: var(--e4);
-      border-bottom: 1px solid var(--borda);
+    /* A barra de ferramentas da tela: título grande e ações. Presa no topo;
+       quando o conteúdo rola por baixo, ganha o material, o separador e o
+       título encolhe — o título grande da Apple, no Mac */
+    .admin-section > .section-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      margin: 0 -1.75rem 1.25rem;
+      padding: 1.5rem 1.75rem 0.75rem;
+      background: transparent;
+      border-bottom: 1px solid transparent;
+      transition: background-color 0.2s var(--padrao), border-color 0.2s var(--padrao), padding 0.25s var(--mola);
+    }
+    .admin-main.rolada .admin-section.active > .section-header {
+      padding-top: 0.75rem;
+      background: var(--material);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border-bottom-color: var(--linha);
     }
     .section-header h2 {
-      font-family: var(--fonte-titulo);
-      font-size: 1.25rem; font-weight: 700; letter-spacing: .03em;
-      color: var(--texto);
+      font-size: var(--t-titulo-grande);
+      line-height: 1.214;
+      font-weight: 700;
+      letter-spacing: -0.021em;
+      transition: font-size 0.25s var(--mola);
     }
-    .section-header-actions { display: flex; gap: var(--e2); align-items: center; flex-wrap: wrap; }
+    .admin-main.rolada .admin-section.active > .section-header h2 { font-size: var(--t-titulo-2); }
+    .section-header .descricao { width: 100%; order: 3; margin-top: -0.5rem; font-size: var(--t-corpo); color: var(--tinta-2); }
+    .admin-main.rolada .section-header .descricao { display: none; }
+    .section-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
-    /* ── Cards ───────────────────────────────────────────────────────── */
-    #admin-app .card {
+    /* ══ Cartões ═════════════════════════════════════════════════════════ */
+    #admin-app .card, .card {
       background: var(--superficie);
-      border: 1px solid var(--borda);
-      border-radius: var(--r3);
-      padding: var(--e6);
-      margin-bottom: var(--e5);
-      box-shadow: var(--sombra-1);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--sombra-cartao);
     }
+    .card-titulo { font-size: var(--t-titulo-3); font-weight: 600; letter-spacing: -0.009em; }
 
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--e4);
-      margin-bottom: var(--e5);
-    }
-    @media (min-width: 600px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
-
+    /* Indicadores do painel */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.875rem; margin-bottom: 1.25rem; }
+    .stat-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    @media (max-width: 1100px) { .stat-grid-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .stat-card {
+      padding: 1rem 1.125rem;
       background: var(--superficie);
-      border: 1px solid var(--borda);
-      border-radius: var(--r3);
-      padding: var(--e5);
-      box-shadow: var(--sombra-1);
-      transition: border-color .15s, box-shadow .15s, transform .15s;
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      box-shadow: var(--sombra-cartao);
     }
-    .stat-card:hover {
-      border-color: var(--terracota);
-      box-shadow: var(--sombra-2);
-      transform: translateY(-1px);
-    }
+    .stat-card .lbl { order: -1; font-size: var(--t-chamada); color: var(--tinta-2); margin: 0 0 0.25rem; }
+    .stat-card { display: flex; flex-direction: column; }
     .stat-card .valor {
-      font-size: 1.9rem; font-weight: 700; line-height: 1.05;
-      color: var(--texto); font-variant-numeric: tabular-nums;
-      letter-spacing: -.02em;
-    }
-    .stat-card .lbl {
-      font-size: .72rem; color: var(--texto-fraco);
-      margin-top: var(--e2);
-      text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
+      font-family: var(--fonte-valor);
+      font-size: var(--t-titulo-grande);
+      line-height: 1.2;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      color: var(--tinta);
     }
 
-    .dash-extra { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e4); }
-    @media (max-width: 500px) { .dash-extra { grid-template-columns: 1fr; } }
+    .dash-extra { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.875rem; }
     .dash-card {
+      padding: 1rem 1.125rem;
       background: var(--superficie);
-      border: 1px solid var(--borda);
-      border-radius: var(--r3);
-      padding: var(--e5);
-      box-shadow: var(--sombra-1);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      box-shadow: var(--sombra-cartao);
+      transition: border-color 0.15s var(--padrao);
     }
-    .dash-card .dc-label {
-      font-size: .7rem; color: var(--texto-fraco);
-      text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
-      margin-bottom: var(--e1);
-    }
-    .dash-card .dc-val { font-size: .95rem; font-weight: 600; color: var(--texto); }
+    .dash-card[onclick]:hover { border-color: var(--linha-forte); }
+    .dash-card .dc-label { font-size: var(--t-nota); color: var(--tinta-2); margin-bottom: 0.2rem; }
+    .dash-card .dc-val { font-size: var(--t-corpo); font-weight: 600; }
 
-    /* ── Tabelas ─────────────────────────────────────────────────────── */
+    /* ══ Tabelas ═════════════════════════════════════════════════════════ */
     .admin-table-wrap {
       background: var(--superficie);
-      border: 1px solid var(--borda);
-      border-radius: var(--r3);
-      overflow: hidden; overflow-x: auto;
-      box-shadow: var(--sombra-1);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      box-shadow: var(--sombra-cartao);
+      overflow: auto;
+      margin-bottom: 1.25rem;
     }
-    .admin-table, .data-table {
-      width: 100%; border-collapse: collapse;
-      font-size: .85rem; color: var(--texto);
-    }
+    .admin-table, .data-table { width: 100%; border-collapse: collapse; font-size: var(--t-chamada); }
     .admin-table th, .data-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 0.5rem 0.75rem;
+      background: var(--superficie);
+      border-bottom: 1px solid var(--linha-forte);
+      color: var(--tinta-2);
+      font-size: var(--t-nota);
+      font-weight: 600;
       text-align: left;
-      padding: .7rem .85rem;
-      font-size: .7rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .07em;
-      color: var(--texto-fraco);
-      background: var(--superficie-alta);
-      border-bottom: 1px solid var(--borda-forte);
       white-space: nowrap;
-      position: sticky; top: 0; z-index: 1;
     }
     .admin-table td, .data-table td {
-      padding: .7rem .85rem;
-      border-bottom: 1px solid var(--borda);
+      padding: 0.5625rem 0.75rem;
+      border-bottom: 1px solid var(--linha);
       vertical-align: middle;
     }
-    .admin-table tbody tr, .data-table tbody tr { transition: background .12s; }
-    .admin-table tbody tr:hover td, .data-table tbody tr:hover td { background: var(--superficie-sutil); }
     .admin-table tbody tr:last-child td, .data-table tbody tr:last-child td { border-bottom: none; }
+    .admin-table tbody tr:hover td, .data-table tbody tr:hover td { background: var(--preenche-3); }
     .admin-table td:has(+ td) { font-variant-numeric: tabular-nums; }
+    /* A primeira coluna identifica a linha (nome, data): não quebra — a tabela
+       rola de lado no notebook estreito, como o Finder em lista */
+    .admin-table td:first-child { white-space: nowrap; }
+    .data-table td { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-    /* ── Controles de formulário ─────────────────────────────────────
-       Uma altura só (--h-controle) para input, select, textarea e para os
-       controles das barras de filtro. Antes o select do filtro tinha 30px
-       ao lado de campos de 40px.                                        */
-    .form-row { margin-bottom: var(--e4); }
-    .form-row label {
+    /* ══ Formulários ═════════════════════════════════════════════════════ */
+    .form-row { margin-bottom: 0.875rem; }
+    .form-row > label:not(.form-check) {
       display: block;
-      font-size: .76rem; font-weight: 600;
-      color: var(--texto-suave);
-      letter-spacing: .02em;
-      margin-bottom: var(--e1);
-      /* altura mínima de uma linha: rótulos curtos e longos começam o
-         campo na mesma altura dentro de uma grade */
-      min-height: 1.15rem;
+      margin-bottom: 0.3rem;
+      font-size: var(--t-nota);
+      font-weight: 500;
+      color: var(--tinta-2);
     }
-    .form-row input,
+    .form-row input:not([type="checkbox"]):not([type="radio"]),
     .form-row select,
     .form-row textarea,
     .filtro-bar input,
     .filtro-bar select,
     #busca-jogador,
-    #filtro-sub-nome {
+    #filtro-sub-nome,
+    .campo-busca {
       width: 100%;
       min-height: var(--h-controle);
-      padding: .55rem .75rem;
-      background: var(--superficie-sutil);
-      border: 1px solid var(--borda);
-      border-radius: var(--r1);
-      color: var(--texto);
-      font-family: inherit; font-size: .875rem;
-      outline: none;
-      transition: border-color .15s, background .15s, box-shadow .15s;
+      padding: 0 0.625rem;
+      background: var(--controle);
+      border: 1px solid var(--linha-forte);
+      border-radius: var(--r-controle);
+      box-shadow: var(--sombra-controle);
+      color: var(--tinta);
+      font-size: var(--t-chamada);
+      transition: border-color 0.15s var(--padrao), box-shadow 0.15s var(--padrao);
     }
-    .form-row textarea { min-height: 90px; padding-top: .6rem; resize: vertical; line-height: 1.5; }
-    .form-row input:focus,
-    .form-row select:focus,
-    .form-row textarea:focus,
-    .filtro-bar input:focus,
-    .filtro-bar select:focus,
-    #busca-jogador:focus,
-    #filtro-sub-nome:focus {
-      border-color: var(--terracota);
-      background: var(--superficie);
-      box-shadow: 0 0 0 3px var(--terracota-fraco);
+    .form-row textarea { min-height: 96px; padding: 0.5rem 0.625rem; line-height: 1.5; resize: vertical; }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus,
+    .filtro-bar input:focus, .filtro-bar select:focus,
+    #busca-jogador:focus, #filtro-sub-nome:focus, .campo-busca:focus {
+      border-color: var(--tint);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 22%, transparent);
     }
-    .form-row input::placeholder,
-    .filtro-bar input::placeholder,
-    #busca-jogador::placeholder,
-    #filtro-sub-nome::placeholder { color: var(--texto-fraco); }
-
-    /* seta própria — a nativa não acompanha o tema */
-    .form-row select,
-    .filtro-bar select,
-    select.form-control {
+    .form-row input::placeholder, .filtro-bar input::placeholder, .campo-busca::placeholder,
+    #busca-jogador::placeholder, #filtro-sub-nome::placeholder { color: var(--tinta-3); }
+    /* O seletor com o chevron duplo do macOS */
+    .form-row select, .filtro-bar select, select.campo-seletor {
+      -webkit-appearance: none;
       appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right .65rem center;
-      background-size: 16px;
-      padding-right: 2.2rem;
+      padding-right: 1.75rem;
       cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16' fill='none' stroke='%2378807A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6l3-3 3 3M3 10l3 3 3-3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.55rem center;
+      background-size: 9px 13px;
     }
+    /* Campo de busca: cinza sem contorno, com a lupa */
+    #busca-jogador, #filtro-sub-nome, .campo-busca {
+      max-width: 280px;
+      padding-left: 1.875rem;
+      background-color: var(--preenche-2);
+      border-color: transparent;
+      box-shadow: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2378807A' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 20 20'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 0.6rem center;
+      background-size: 13px;
+    }
+    #busca-jogador:focus, #filtro-sub-nome:focus, .campo-busca:focus { background-color: var(--controle); }
+    #busca-jogador { margin-bottom: 0; }
 
     .form-check {
-      display: flex; align-items: center; gap: var(--e2);
-      font-size: .875rem; cursor: pointer;
-      min-height: var(--h-controle);
-    }
-    .form-check input[type=checkbox] {
-      width: 1.05rem; height: 1.05rem;
-      min-height: 0; flex-shrink: 0;
-      accent-color: var(--terracota);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: var(--h-pequeno);
+      font-size: var(--t-chamada);
       cursor: pointer;
     }
-
-    /* Grades de formulário — o row-gap era 0 e as linhas dependiam da
-       margem do .form-row; agora o espaçamento é da própria grade. */
-    .form-grid-2, .form-grid-4, .cfg-grid-horas {
-      display: grid;
-      align-items: start;
-      gap: var(--e4) var(--e5);
-    }
-    .form-grid-2 { grid-template-columns: 1fr 1fr; }
-    .form-grid-4 { grid-template-columns: repeat(2, 1fr); }
-    .cfg-grid-horas { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-    @media (min-width: 900px) { .form-grid-4 { grid-template-columns: repeat(4, 1fr); } }
-    @media (max-width: 520px) { .form-grid-2 { grid-template-columns: 1fr; } }
-    /* dentro de uma grade, a margem do campo viraria espaço duplicado */
-    .form-grid-2 > .form-row,
-    .form-grid-4 > .form-row,
-    .cfg-grid-horas > .form-row { margin-bottom: 0; }
-
-    .form-section-label {
-      font-size: .7rem; font-weight: 700;
-      color: var(--terracota);
-      text-transform: uppercase; letter-spacing: .08em;
-      margin: var(--e6) 0 var(--e3);
-      padding-bottom: var(--e1);
-      border-bottom: 1px solid var(--borda);
-    }
-
-    .filtro-bar {
-      display: flex; gap: var(--e2);
-      margin-bottom: var(--e4);
-      flex-wrap: wrap; align-items: center;
-    }
-    .filtro-bar input, .filtro-bar select { width: auto; min-width: 160px; }
-    #busca-jogador { max-width: 320px; margin-bottom: var(--e4); }
-
-    /* ── Botões ──────────────────────────────────────────────────────── */
-    .btn-xs {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-height: var(--h-botao-tabela);
-      padding: .35rem .8rem;
-      border: 1px solid transparent;
-      border-radius: var(--r1);
-      font-family: inherit; font-size: .78rem; font-weight: 600;
-      line-height: 1.3; cursor: pointer; white-space: nowrap;
-      transition: background .15s, border-color .15s, color .15s, transform .1s;
-    }
-    .btn-xs:active { transform: scale(.97); }
-    .btn-xs + .btn-xs { margin-left: var(--e1); }
-    /* na barra de filtros e no cabeçalho o botão fica lado a lado com campos */
-    .filtro-bar .btn-xs, .section-header .btn-xs { min-height: var(--h-controle); }
-
-    .btn-xs.primary { background: var(--btn-fundo); color: var(--btn-texto); }
-    .btn-xs.primary:hover { background: var(--btn-fundo-hover); }
-    .btn-xs.danger { background: var(--perigo); color: #fff; }
-    .btn-xs.danger:hover { filter: brightness(1.08); }
-    .btn-xs.warn { background: var(--aviso); color: #fff; }
-    .btn-xs.warn:hover { filter: brightness(1.08); }
-    .btn-xs.sec {
-      background: transparent; color: var(--texto);
-      border-color: var(--borda-forte);
-    }
-    .btn-xs.sec:hover { background: var(--superficie-sutil); border-color: var(--texto-fraco); }
-    .btn-xs.bnc { background: var(--superficie-sutil); color: var(--texto-suave); border-color: var(--borda); }
-
-    /* ── Badges ──────────────────────────────────────────────────────── */
-    .badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-width: 1.5rem;
-      padding: .18rem .55rem;
-      border-radius: var(--r-full);
-      font-size: .68rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .03em;
-      white-space: nowrap;
-      color: #fff;
-    }
-    .ba, .b-realizado, .b-ativa, .b-confirmado { background: #2e8b57; }
-    .bb, .b-agendado { background: #2f6fa8; }
-    .bc, .b-pendente, .b-aguardando { background: #b9761c; }
-    .bd, .b-cancelado, .b-encerrada, .b-expirado { background: #78867d; }
-    .b-wo, .b-recusado, .b-falhou { background: #b5382b; }
-    .bnc { background: var(--superficie-sutil); color: var(--texto-suave); }
-
-    /* ── Cartões de locação ──────────────────────────────────────────── */
-    .locacao-card {
-      display: flex; align-items: center; gap: var(--e4);
-      padding: var(--e3) 0;
-      border-bottom: 1px solid var(--borda);
-      flex-wrap: wrap;
-    }
-    .locacao-card:last-child { border-bottom: none; }
-    .lc-data { min-width: 90px; text-align: center; }
-    .lc-dia { font-size: .88rem; font-weight: 700; }
-    .lc-hora { font-size: .75rem; color: var(--texto-suave); white-space: nowrap; }
-    .lc-jogador { flex: 1; min-width: 140px; }
-    .lc-nome { font-size: .88rem; font-weight: 600; }
-    .lc-email { font-size: .73rem; color: var(--texto-suave); }
-    .lc-valor { font-size: .9rem; font-weight: 700; white-space: nowrap; min-width: 70px; font-variant-numeric: tabular-nums; }
-    .lc-badges { display: flex; flex-direction: column; gap: var(--e1); min-width: 110px; }
-    .lc-actions { margin-left: auto; }
-
-    /* ── Modais ──────────────────────────────────────────────────────── */
-    .modal-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(8,18,12,.62);
-      backdrop-filter: blur(3px);
-      z-index: 100;
-      align-items: center; justify-content: center;
-      padding: var(--e4);
-    }
-    .modal-overlay.open { display: flex; }
-    .modal {
-      background: var(--superficie);
-      border: 1px solid var(--borda-forte);
-      border-radius: var(--r3);
-      box-shadow: var(--sombra-2);
-      padding: var(--e6);
-      width: 100%; max-width: 440px;
-      max-height: 85vh; overflow-y: auto;
-    }
-    .modal-lg { max-width: 680px; }
-    .modal h2 { font-size: 1rem; font-weight: 700; margin-bottom: var(--e4); }
-    .modal-header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: var(--e3);
-      margin-bottom: var(--e4);
-      padding-bottom: var(--e3);
-      border-bottom: 1px solid var(--borda);
-    }
-    .modal-header h3 {
-      font-family: var(--fonte-titulo);
-      font-size: 1rem; font-weight: 700; letter-spacing: .03em; margin: 0;
-    }
-    .modal-close {
-      background: none; border: none;
-      color: var(--texto-fraco);
-      font-size: 1.3rem; line-height: 1; cursor: pointer;
-      width: 30px; height: 30px; border-radius: var(--r1);
-      display: inline-flex; align-items: center; justify-content: center;
-      transition: color .15s, background .15s;
-    }
-    .modal-close:hover { background: var(--superficie-sutil); color: var(--texto); }
-    .modal-footer {
-      display: flex; gap: var(--e2); justify-content: flex-end;
-      margin-top: var(--e5);
-      padding-top: var(--e3);
-      border-top: 1px solid var(--borda);
-    }
-    .modal-footer .btn-xs { min-height: var(--h-controle); padding-inline: var(--e5); }
-
-    /* ── Configurações ───────────────────────────────────────────────── */
-    .cfg-toggle { font-weight: 600; }
-    .cfg-hint {
-      font-size: .72rem; color: var(--texto-fraco);
-      margin-top: var(--e1); line-height: 1.45;
-    }
+    .cfg-toggle { font-weight: 500; }
+    .cfg-hint { margin-top: 0.3rem; font-size: var(--t-nota); line-height: 1.4; color: var(--tinta-2); }
     .cfg-off-badge {
-      display: inline-block;
-      font-size: .66rem; font-weight: 700;
-      padding: .1rem .5rem; border-radius: var(--r-full);
-      margin-left: var(--e2);
-      background: var(--terracota-fraco); color: var(--terracota);
+      display: inline-flex; margin-left: 0.4rem; padding: 1px 7px;
+      border-radius: var(--r-pilula);
+      background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint);
+      font-size: var(--t-legenda); font-weight: 600;
     }
 
-    /* ── Temporadas ──────────────────────────────────────────────────── */
-    .season-card {
-      background: var(--superficie);
-      border: 1px solid var(--borda);
-      border-radius: var(--r2);
-      padding: var(--e4);
-      margin-bottom: var(--e3);
-      box-shadow: var(--sombra-1);
-    }
-    .season-card.ativa { border-left: 3px solid var(--ok); }
-    .season-card.encerrada { border-left: 3px solid var(--texto-fraco); }
-    .season-card .s-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--e3); margin-bottom: var(--e2); }
-    .season-card .s-title { font-weight: 700; font-size: .92rem; }
-    .season-card .s-dates { font-size: .78rem; color: var(--texto-suave); }
-    .ranking-top { font-size: .8rem; color: var(--texto-suave); margin-top: var(--e2); }
-    .ranking-top ol { margin: var(--e1) 0 0; padding-left: var(--e5); }
-    .ranking-top li { padding: .1rem 0; }
+    /* A grade ocupa o lugar de uma linha do formulário: mesma folga embaixo,
+       senão duas grades seguidas encostam o rótulo de uma na dica da outra */
+    .form-grid-2, .form-grid-4, .cfg-grid-horas { display: grid; align-items: start; gap: 0.875rem 1rem; margin-bottom: 0.875rem; }
+    .form-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .form-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (min-width: 1000px) { .form-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .cfg-grid-horas { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    @media (max-width: 560px) { .form-grid-2 { grid-template-columns: 1fr; } }
+    .form-grid-2 > .form-row, .form-grid-4 > .form-row, .cfg-grid-horas > .form-row { margin-bottom: 0; }
 
-    /* ── Matchmaking ─────────────────────────────────────────────────── */
-    .mm-result {
-      background: var(--superficie-alta);
-      border: 1px solid var(--borda);
-      border-radius: var(--r2);
-      padding: var(--e3) var(--e4);
-      margin-bottom: var(--e4);
+    /* Rótulo de seção do formulário: caixa de frase, sem linha laranja */
+    .form-section-label {
+      margin: 1.5rem 0 0.75rem;
+      font-size: var(--t-titulo-3);
+      font-weight: 600;
+      color: var(--tinta);
+      letter-spacing: -0.009em;
+    }
+    .form-section-label:first-child { margin-top: 0; }
+
+    .filtro-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+    .filtro-bar input, .filtro-bar select { width: auto; min-width: 150px; }
+
+    /* ══ Botões — os push buttons do macOS ══════════════════════════════ */
+    .btn-xs {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      min-height: var(--h-pequeno);
+      padding: 0 0.75rem;
+      border: 1px solid transparent;
+      border-radius: var(--r-controle);
+      font-size: var(--t-chamada);
+      font-weight: 500;
+      line-height: 1.2;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background-color 0.12s var(--padrao), border-color 0.12s var(--padrao), filter 0.12s var(--padrao);
+    }
+    .btn-xs:active:not(:disabled) { filter: brightness(0.94); }
+    .btn-xs:disabled { opacity: 0.45; cursor: default; }
+    .btn-xs + .btn-xs { margin-left: 0.25rem; }
+    .section-header .btn-xs, .filtro-bar .btn-xs, .modal-footer .btn-xs { min-height: var(--h-controle); padding: 0 0.875rem; }
+    /* Botão só com ícone: quadrado, com o nome no title e no aria-label */
+    .btn-xs.so-icone, .section-header .btn-xs.so-icone { display: inline-grid; place-items: center; width: var(--h-controle); min-height: var(--h-controle); padding: 0; }
+    .btn-xs.so-icone svg { width: 15px; height: 15px; }
+    /* Preenchido: a ação principal da região */
+    .btn-xs.primary { background: var(--tint); color: var(--sobre-tint); box-shadow: var(--sombra-controle); }
+    .btn-xs.primary:hover:not(:disabled) { background: var(--tint-toque); }
+    /* Secundário: o botão branco com contorno do macOS */
+    .btn-xs.sec, .btn-xs:not(.primary):not(.danger):not(.warn):not(.bnc) {
+      background: var(--controle);
+      color: var(--tinta);
+      border-color: var(--linha-forte);
+      box-shadow: var(--sombra-controle);
+    }
+    .btn-xs.sec:hover:not(:disabled) { background: var(--preenche-3); }
+    /* Destrutivo e de atenção: tingidos, não sólidos — o vermelho cheio fica
+       para a confirmação no alerta */
+    .btn-xs.danger { background: color-mix(in srgb, var(--critico) 11%, transparent); color: var(--critico); }
+    .btn-xs.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--critico) 18%, transparent); }
+    .btn-xs.warn { background: color-mix(in srgb, var(--atencao) 20%, transparent); color: var(--alerta); }
+    .btn-xs.warn:hover:not(:disabled) { background: color-mix(in srgb, var(--atencao) 30%, transparent); }
+    .btn-xs.bnc { background: var(--preenche-2); color: var(--tinta-2); }
+
+    /* ══ Etiquetas — cápsula tingida, sem contorno ══════════════════════ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 1px 0.5rem;
+      border-radius: var(--r-pilula);
+      font-size: var(--t-legenda);
+      font-weight: 600;
+      line-height: 1.45;
+      white-space: nowrap;
+      color: var(--tinta-2);
+      background: var(--preenche-2);
+      text-transform: none;
+    }
+    .ba, .b-realizado, .b-ativa, .b-confirmado, .e-bom       { color: var(--bom);     background: color-mix(in srgb, var(--bom) 13%, transparent); }
+    .bb, .b-agendado, .e-tint                                  { color: var(--tint);    background: color-mix(in srgb, var(--tint) 12%, transparent); }
+    .bc, .b-pendente, .b-aguardando, .e-alerta                 { color: var(--alerta);  background: color-mix(in srgb, var(--atencao) 22%, transparent); }
+    .b-wo, .b-recusado, .b-falhou, .e-critico                  { color: var(--critico); background: color-mix(in srgb, var(--critico) 12%, transparent); }
+    .bd, .bnc, .b-cancelado, .b-encerrada, .b-expirado, .e-neutro { color: var(--tinta-2); background: var(--preenche-2); }
+
+    /* ══ Locações ════════════════════════════════════════════════════════ */
+    .lc-grupo + .lc-grupo { margin-top: 1.75rem; }
+    .lc-lista { padding: 0; overflow: hidden; container-type: inline-size; }
+    .locacao-card {
+      display: grid;
+      grid-template-columns: 7.75rem minmax(0, 1fr) 10rem 6rem 5.5rem;
+      grid-template-areas: "data pessoa situacao valor acao";
+      align-items: center;
+      gap: 0.25rem 1.25rem;
+      padding: 0.625rem 1.25rem;
+    }
+    .locacao-card + .locacao-card { border-top: 1px solid var(--linha); }
+    .locacao-card.cancelada .lc-nome, .locacao-card.cancelada .lc-valor { color: var(--tinta-3); }
+    .locacao-card.cancelada .lc-valor { text-decoration: line-through; }
+    .lc-data { grid-area: data; }
+    .lc-dia { font-weight: 600; }
+    .lc-hora { font-size: var(--t-nota); color: var(--tinta-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .lc-jogador { grid-area: pessoa; min-width: 0; }
+    .lc-nome { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-email { font-size: var(--t-nota); color: var(--tinta-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-situacao { grid-area: situacao; }
+    .lc-valor { grid-area: valor; text-align: right; font-family: var(--fonte-valor); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .lc-actions { grid-area: acao; text-align: right; }
+    /* Lista estreita (janela pequena ou barra lateral aberta): duas linhas */
+    @container (max-width: 760px) {
+      .locacao-card {
+        grid-template-columns: 7.25rem minmax(0, 1fr) auto;
+        grid-template-areas: "data pessoa valor" "data situacao acao";
+        padding-inline: 1rem;
+      }
+    }
+
+    /* ══ Folhas (modais) ═════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
       display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: var(--veu);
+    }
+    .modal-overlay.open { display: flex; animation: esmaecer 0.2s var(--padrao) both; }
+    .modal {
+      width: 100%;
+      max-width: 460px;
+      max-height: min(88vh, 860px);
+      overflow-y: auto;
+      padding: 1.25rem 1.5rem 1.25rem;
+      background: var(--elevado);
+      border-radius: var(--r-folha);
+      box-shadow: var(--sombra-folha);
+    }
+    .modal-overlay.open .modal { animation: folha 0.36s var(--mola) both; }
+    .modal-lg { max-width: 720px; }
+    .modal h2 { font-size: var(--t-titulo-2); font-weight: 600; margin-bottom: 1rem; }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.125rem;
+    }
+    .modal-header h3 { font-size: var(--t-titulo-2); font-weight: 600; letter-spacing: -0.013em; }
+    .modal-close {
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 50%;
+      background: var(--preenche-2);
+      color: var(--tinta-2);
+      font-size: 0.95rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .modal-close:hover { background: var(--preenche); color: var(--tinta); }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--linha);
+    }
+    .modal-footer .btn-xs + .btn-xs { margin-left: 0; }
+
+    /* ══ Alerta — substitui confirm()/alert() ═══════════════════════════ */
+    .alerta-fundo {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      background: var(--veu);
+      animation: esmaecer 0.18s var(--padrao) both;
+    }
+    .alerta {
+      width: min(300px, 100%);
+      padding: 1.25rem 1rem 1rem;
+      border-radius: var(--r-folha);
+      background: var(--elevado);
+      box-shadow: var(--sombra-folha);
+      text-align: center;
+      animation: folha 0.3s var(--mola) both;
+    }
+    .alerta-icone {
+      display: grid; place-items: center;
+      width: 44px; height: 44px; margin: 0 auto 0.625rem;
+      border-radius: 11px;
+      background: linear-gradient(160deg, var(--marca-verde), var(--marca-verde-2));
+      color: #FFFFFF;
+    }
+    .alerta-icone svg { width: 24px; height: 24px; }
+    .alerta-titulo { font-size: var(--t-chamada); font-weight: 700; }
+    .alerta-msg { margin-top: 0.3rem; font-size: var(--t-nota); line-height: 1.4; color: var(--tinta); }
+    .alerta-botoes { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+    .alerta-botoes.lado { flex-direction: row; }
+    .alerta-botoes.lado button { flex: 1; }
+    .alerta-botoes button {
+      min-height: 28px;
+      border: none;
+      border-radius: var(--r-controle);
+      background: var(--preenche-2);
+      color: var(--tinta);
+      font-size: var(--t-chamada);
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .alerta-botoes button:hover { background: var(--preenche); }
+    .alerta-botoes button.forte { background: var(--tint); color: var(--sobre-tint); }
+    .alerta-botoes button.forte:hover { background: var(--tint-toque); }
+    .alerta-botoes button.perigo { background: var(--critico); color: #FFFFFF; }
+
+    /* ══ Controle segmentado ═════════════════════════════════════════════ */
+    .segmentado {
+      --n: 2;
+      --i: 0;
+      position: relative;
+      display: inline-grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      padding: 2px;
+      border-radius: 8px;
+      background: var(--preenche-2);
+      isolation: isolate;
+    }
+    .segmentado[data-n="3"] { --n: 3; }
+    .segmentado[data-n="4"] { --n: 4; }
+    .segmentado::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 2px; bottom: 2px; left: 2px;
+      width: calc((100% - 4px) / var(--n));
+      border-radius: 6px;
+      background: var(--polegar);
+      box-shadow: var(--sombra-polegar);
+      transform: translateX(calc(var(--i) * 100%));
+      transition: transform 0.3s var(--mola);
+    }
+    .segmentado:has(> :nth-child(2)[aria-pressed="true"]) { --i: 1; }
+    .segmentado:has(> :nth-child(3)[aria-pressed="true"]) { --i: 2; }
+    .segmentado:has(> :nth-child(4)[aria-pressed="true"]) { --i: 3; }
+    .segmentado > button {
+      min-height: 24px;
+      padding: 0 0.875rem;
+      border: none;
+      background: none;
+      border-radius: 6px;
+      font-size: var(--t-chamada);
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .segmentado > [aria-pressed="true"] { font-weight: 600; }
+
+    /* ══ Financeiro — o Apple Card do clube ═════════════════════════════ */
+    .fin-mes { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .fin-mes .btn-xs { min-width: 32px; padding: 0; }
+    .fin-mes-rotulo { min-width: 9.5rem; text-align: center; font-weight: 600; font-size: var(--t-corpo); }
+
+    .fin-topo { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 0.875rem; margin-bottom: 1.25rem; }
+    @media (max-width: 1000px) { .fin-topo { grid-template-columns: 1fr 1fr; } .fin-topo > :first-child { grid-column: 1 / -1; } }
+    .fin-indicador {
+      padding: 1.125rem 1.25rem;
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      box-shadow: var(--sombra-cartao);
+    }
+    .fin-indicador-rotulo { font-size: var(--t-chamada); color: var(--tinta-2); }
+    .fin-valor {
+      display: block;
+      margin-top: 0.125rem;
+      font-family: var(--fonte-valor);
+      font-size: var(--t-titulo-grande);
+      line-height: 1.2;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .fin-valor .centavos { font-size: 0.6em; letter-spacing: 0; color: var(--tinta-2); }
+    .fin-indicador.destaque .fin-valor { font-size: var(--t-exibicao); }
+    .fin-detalhe { margin-top: 0.375rem; font-size: var(--t-nota); color: var(--tinta-2); }
+    .fin-variacao { display: inline-flex; align-items: center; gap: 0.2rem; font-weight: 600; }
+    .fin-variacao.sobe { color: var(--bom); }
+    .fin-variacao.desce { color: var(--critico); }
+    .fin-indicador.atraso .fin-valor { color: var(--critico); }
+
+    .fin-grade { display: grid; grid-template-columns: 1fr 1.25fr; gap: 0.875rem; margin-bottom: 1.25rem; }
+    @media (max-width: 1000px) { .fin-grade { grid-template-columns: 1fr; } }
+    .fin-grade > .card { margin-bottom: 0; }
+    .card-cabeca { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 1rem; }
+    .card-cabeca .card-nota { font-size: var(--t-nota); color: var(--tinta-2); }
+    .card-cabeca:has(> button) { align-items: center; margin-bottom: 0.5rem; }
+    .card-explica { margin: 0 0 1rem; font-size: var(--t-nota); color: var(--tinta-2); line-height: 1.45; }
+
+    /* A composição numa barra só, como as categorias de gasto do Apple Card */
+    .fin-barra {
+      display: flex;
+      height: 12px;
+      gap: 2px;
+      margin-bottom: 1rem;
+      border-radius: var(--r-pilula);
+      overflow: hidden;
+      background: var(--preenche-2);
+    }
+    .fin-barra > span { min-width: 3px; transition: flex-grow 0.5s var(--mola); }
+    .cat-plano   { background: var(--cat-plano); }
+    .cat-locacao { background: var(--cat-locacao); }
+    .cat-avulso  { background: var(--cat-avulso); }
+    .fin-legenda { display: flex; flex-direction: column; }
+    .fin-legenda-linha {
+      display: grid;
+      grid-template-columns: 10px 1fr auto 3.25rem;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 0;
+      border-top: 1px solid var(--linha);
+    }
+    .fin-legenda-linha:first-child { border-top: none; }
+    .fin-ponto { width: 10px; height: 10px; border-radius: 3px; }
+    .fin-legenda-valor { font-family: var(--fonte-valor); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .fin-legenda-pct { text-align: right; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+
+    /* Atividade mensal — doze barras; o mês escolhido no tint */
+    .fin-grafico {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      align-items: end;
+      gap: 0.5rem;
+      height: 168px;
+      padding-top: 0.5rem;
+    }
+    .fin-coluna {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.375rem;
+      height: 100%;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+    .fin-coluna .fin-pilar {
+      width: 100%;
+      max-width: 28px;
+      min-height: 3px;
+      border-radius: 5px 5px 2px 2px;
+      background: var(--preenche);
+      transition: height 0.5s var(--mola), background-color 0.15s var(--padrao);
+    }
+    .fin-coluna:hover .fin-pilar { background: var(--linha-forte); }
+    .fin-coluna.atual .fin-pilar { background: var(--tint); }
+    .fin-coluna .fin-mes-curto { font-size: var(--t-legenda); color: var(--tinta-3); }
+    .fin-coluna.atual .fin-mes-curto { color: var(--tinta); font-weight: 600; }
+
+    /* Transações — o desenho do Wallet */
+    .fin-barra-ferramentas { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.875rem; }
+    .fin-barra-ferramentas .campo-busca { margin-left: auto; }
+    .fin-lista {
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      box-shadow: var(--sombra-cartao);
+      overflow: hidden;
+    }
+    .fin-dia {
+      position: sticky;
+      top: 0;
+      padding: 0.5rem 1.25rem 0.375rem;
+      background: var(--superficie);
+      border-bottom: 1px solid var(--linha);
+      font-size: var(--t-nota);
+      font-weight: 600;
+      color: var(--tinta-2);
+    }
+    .fin-dia:not(:first-child) { border-top: 1px solid var(--linha); }
+    .transacao {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      padding: 0.5625rem 1.25rem;
+      border: none;
+      background: none;
+      text-align: left;
+      cursor: pointer;
+    }
+    .transacao + .transacao { border-top: 1px solid var(--linha); }
+    .transacao:hover { background: var(--preenche-3); }
+    .transacao-icone {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      color: var(--sobre-cat);
+    }
+    .transacao-icone svg { width: 17px; height: 17px; }
+    .transacao-icone.cat-avulso { color: var(--sobre-cat-avulso); }
+    .transacao-icone.cat-outro { background: var(--tinta-3); }
+    .transacao-titulo { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .transacao-sub { display: block; font-size: var(--t-nota); color: var(--tinta-2); }
+    .transacao-direita { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .transacao-valor { font-family: var(--fonte-valor); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .transacao-valor.riscado { color: var(--tinta-3); text-decoration: line-through; }
+
+    /* Detalhe da transação: o valor grande no topo, como no Wallet */
+    .fin-detalhe-topo { text-align: center; padding: 0.25rem 0 1.25rem; }
+    .fin-detalhe-topo .transacao-icone { width: 52px; height: 52px; margin: 0 auto 0.75rem; border-radius: 13px; }
+    .fin-detalhe-topo .transacao-icone svg { width: 26px; height: 26px; }
+    .fin-detalhe-valor {
+      font-family: var(--fonte-valor);
+      font-size: var(--t-exibicao);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .fin-detalhe-pessoa { font-size: var(--t-corpo); color: var(--tinta-2); margin-top: 0.125rem; }
+    .lista-dados {
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      overflow: hidden;
+    }
+    .lista-dados > div {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.5625rem 0.875rem;
+    }
+    .lista-dados > div + div { border-top: 1px solid var(--linha); }
+    .lista-dados dt { color: var(--tinta-2); }
+    .lista-dados dd { text-align: right; font-weight: 500; }
+
+    /* ══ Temporadas, matchmaking, contrato ══════════════════════════════ */
+    .season-card {
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
+      box-shadow: var(--sombra-cartao);
+    }
+    .season-card .s-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .season-card .s-title { font-size: var(--t-titulo-3); font-weight: 600; }
+    .season-card .s-dates { font-size: var(--t-nota); color: var(--tinta-2); }
+    .ranking-top { margin-top: 0.75rem; font-size: var(--t-chamada); color: var(--tinta-2); }
+    .ranking-top > span { font-size: var(--t-nota); font-weight: 600; color: var(--tinta-2); }
+    .ranking-top ol { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+    .ranking-top li { padding: 0.1rem 0; }
+
+    .mm-controles { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; }
+    .mm-controles .form-row { margin: 0; min-width: 160px; }
+    .mm-controles .btn-xs { min-height: var(--h-controle); padding: 0 0.875rem; }
+    .mm-result {
+      display: none;
+      padding: 0.875rem 1.125rem;
+      margin-bottom: 1rem;
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
     }
     .mm-result.show { display: block; }
-    .mm-result .mm-row { display: flex; justify-content: space-between; gap: var(--e3); font-size: .85rem; padding: .15rem 0; }
-    .mm-result .mm-val { font-weight: 700; color: var(--terracota); }
+    .mm-result .mm-row { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.2rem 0; }
+    .mm-result .mm-val { font-weight: 600; color: var(--tint); }
 
-    /* ── Contrato ────────────────────────────────────────────────────── */
+    .le-posicao { width: 1%; text-align: center; font-family: var(--fonte-valor); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--tinta-2); }
     .contrato-clausula-card {
-      background: var(--superficie-alta);
-      border: 1px solid var(--borda);
-      border-radius: var(--r2);
-      padding: var(--e4);
-      margin-bottom: var(--e3);
+      padding: 1rem 1.125rem;
+      margin-bottom: 0.75rem;
+      background: var(--superficie);
+      border: 1px solid var(--linha);
+      border-radius: var(--r-cartao);
     }
-    .ct-titulo { font-size: .9rem; font-weight: 700; color: var(--texto); margin-bottom: var(--e1); }
-    .ct-texto { font-size: .82rem; color: var(--texto-suave); line-height: 1.55; white-space: pre-wrap; }
-    .ct-ativo { font-size: .72rem; font-weight: 700; color: var(--ok); }
+    .ct-cabeca { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.625rem; }
+    .ct-cabeca .form-check { margin: 0; white-space: nowrap; }
+    .ct-acoes { display: flex; gap: 0.25rem; }
+    .ct-acoes .btn-xs + .btn-xs { margin-left: 0; }
+    .ct-acoes svg { display: block; }
+    .contrato-clausula-card .ct-titulo, .contrato-clausula-card .ct-texto {
+      width: 100%;
+      background: var(--controle);
+      border: 1px solid var(--linha-forte);
+      border-radius: var(--r-controle);
+      box-shadow: var(--sombra-controle);
+      color: var(--tinta);
+      font-size: var(--t-chamada);
+    }
+    .contrato-clausula-card .ct-titulo { flex: 1; min-width: 0; min-height: var(--h-controle); padding: 0 0.625rem; font-weight: 600; }
+    .contrato-clausula-card .ct-texto { display: block; min-height: 110px; padding: 0.5rem 0.625rem; line-height: 1.55; resize: vertical; }
+    .contrato-clausula-card .ct-titulo:focus, .contrato-clausula-card .ct-texto:focus {
+      border-color: var(--tint);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 22%, transparent);
+    }
 
-    /* ── Vazio e avisos ──────────────────────────────────────────────── */
-    .empty {
-      text-align: center; color: var(--texto-fraco);
-      padding: var(--e8) var(--e4); font-size: .85rem;
-    }
+    /* ══ Vazio, aviso flutuante ═════════════════════════════════════════ */
+    .empty { padding: 2.5rem 1rem; text-align: center; color: var(--tinta-2); }
 
     #toast {
       position: fixed;
-      bottom: var(--e6); left: 50%;
-      transform: translateX(-50%);
-      background: var(--texto); color: var(--fundo);
-      padding: .6rem 1.15rem;
-      border-radius: var(--r-full);
-      box-shadow: var(--sombra-2);
-      font-size: .83rem; font-weight: 500;
       z-index: 300;
-      opacity: 0; transition: opacity .25s;
-      pointer-events: none; white-space: nowrap;
+      bottom: 1.5rem;
+      left: 50%;
+      max-width: min(92vw, 480px);
+      padding: 0.625rem 1rem;
+      border-radius: 12px;
+      background: var(--elevado);
+      color: var(--tinta);
+      box-shadow: var(--sombra-flutua);
+      font-size: var(--t-chamada);
+      font-weight: 500;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      transition: opacity 0.25s var(--padrao), transform 0.35s var(--mola);
+      pointer-events: none;
     }
-    #toast.show { opacity: 1; }
-    #toast.err { background: var(--perigo); color: #fff; }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    #toast.err { color: var(--critico); }
 
+    @keyframes esmaecer { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes folha { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 768px) {
+      .admin-main { padding: 0 1rem 2rem; }
+      .admin-section > .section-header { margin-inline: -1rem; padding-inline: 1rem; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition-duration: .01ms !important; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
   </style>
 
@@ -906,6 +1321,7 @@
 
 <!-- ── Login ── -->
 <div id="tela-login" class="login-tela">
+  <div class="quadra" aria-hidden="true"><svg viewBox="-40 -40 2457 1177" fill="none" stroke="currentColor" stroke-width="1.25"><rect x="0" y="0" width="2377" height="1097"/><line x1="0" y1="137" x2="2377" y2="137"/><line x1="0" y1="960" x2="2377" y2="960"/><line x1="1188.5" y1="-30" x2="1188.5" y2="1127"/><line x1="548.5" y1="137" x2="548.5" y2="960"/><line x1="1828.5" y1="137" x2="1828.5" y2="960"/><line x1="548.5" y1="548.5" x2="1828.5" y2="548.5"/><line x1="0" y1="548.5" x2="15" y2="548.5"/><line x1="2362" y1="548.5" x2="2377" y2="548.5"/></svg></div>
   <div class="login-card">
     <div class="logo">
       <svg viewBox="0 0 300 105" xmlns="http://www.w3.org/2000/svg" aria-label="Roma Tênis">
@@ -948,11 +1364,12 @@
       <button data-tab="temporada" onclick="switchTab('temporada')" title="Temporada"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></span><span class="nav-texto">Temporada</span></button>
       <button data-tab="matchmaking" onclick="switchTab('matchmaking')" title="Matchmaking"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></span><span class="nav-texto">Matchmaking</span></button>
       <p class="nav-grupo">Financeiro</p>
+      <button data-tab="financeiro" onclick="switchTab('financeiro')" title="Resumo financeiro"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span class="nav-texto">Resumo</span></button>
       <button data-tab="assinaturas" onclick="switchTab('assinaturas')" title="Assinaturas"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span><span class="nav-texto">Assinaturas</span></button>
       <button data-tab="locacoes" onclick="switchTab('locacoes')" title="Locações"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span class="nav-texto">Locações</span></button>
       <button data-tab="cupons" onclick="switchTab('cupons')" title="Cupons"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span><span class="nav-texto">Cupons</span></button>
       <p class="nav-grupo">Operação</p>
-      <button data-tab="lista-espera" onclick="switchTab('lista-espera')" title="Lista de Espera"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><span class="nav-texto">Lista de Espera</span></button>
+      <button data-tab="lista-espera" onclick="switchTab('lista-espera')" title="Lista de espera"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><span class="nav-texto">Lista de espera</span></button>
       <button data-tab="contrato" onclick="switchTab('contrato')" title="Contrato"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><span class="nav-texto">Contrato</span></button>
       <p class="nav-grupo">Ajustes</p>
       <button data-tab="acesso" onclick="switchTab('acesso')" title="Acesso"><span class="nav-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><span class="nav-texto">Acesso</span></button>
@@ -979,11 +1396,15 @@
   <main class="admin-main">
     <!-- Dashboard -->
     <section id="sec-dashboard" class="admin-section active">
+      <div class="section-header">
+        <h2>Dashboard</h2>
+        <p class="descricao" id="dash-data"></p>
+      </div>
       <div class="stat-grid">
         <div class="stat-card"><div class="valor" id="st-jogadores">–</div><div class="lbl">Jogadores</div></div>
-        <div class="stat-card"><div class="valor" id="st-subs">–</div><div class="lbl">Assinaturas Ativas</div></div>
-        <div class="stat-card"><div class="valor" id="st-sem-placar">–</div><div class="lbl">Sem Placar</div></div>
-        <div class="stat-card"><div class="valor" id="st-hoje">–</div><div class="lbl">Reservas Hoje</div></div>
+        <div class="stat-card"><div class="valor" id="st-subs">–</div><div class="lbl">Assinaturas ativas</div></div>
+        <div class="stat-card"><div class="valor" id="st-sem-placar">–</div><div class="lbl">Partidas sem placar</div></div>
+        <div class="stat-card"><div class="valor" id="st-hoje">–</div><div class="lbl">Reservas hoje</div></div>
       </div>
       <div class="dash-extra" id="dash-extra"></div>
     </section>
@@ -992,7 +1413,7 @@
     <section id="sec-jogadores" class="admin-section">
       <div class="section-header">
         <h2>Jogadores</h2>
-        <button class="btn-xs primary" onclick="abrirModalJogador()">+ Criar</button>
+        <button class="btn-xs primary" onclick="abrirModalJogador()">Novo jogador</button>
       </div>
       <div class="filtro-bar">
         <input type="text" id="busca-jogador" placeholder="Buscar por nome..." oninput="filtrarJogadores()">
@@ -1012,7 +1433,7 @@
     <section id="sec-partidas" class="admin-section">
       <div class="section-header">
         <h2>Partidas</h2>
-        <button class="btn-xs sec" onclick="loadMatches()">↺</button>
+        <button class="btn-xs sec so-icone" onclick="loadMatches()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
       </div>
       <div class="filtro-bar">
         <select id="filtro-status" onchange="filtrarPartidas()">
@@ -1038,36 +1459,112 @@
     <section id="sec-temporada" class="admin-section">
       <div class="section-header">
         <h2>Temporadas</h2>
-        <button class="btn-xs primary" onclick="abrirModalTemporada()">+ Nova</button>
+        <button class="btn-xs primary" onclick="abrirModalTemporada()">Nova temporada</button>
       </div>
       <div id="seasons-lista"></div>
       <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-        <button class="btn-xs sec" onclick="recalcularClassificacao()">↺ Recalcular Classificação</button>
+        <button class="btn-xs sec" onclick="recalcularClassificacao()">Recalcular níveis</button>
       </div>
     </section>
 
     <!-- Assinaturas -->
-    <section id="sec-assinaturas" class="admin-section">
-      <div class="stat-grid" style="margin-bottom:1rem">
-        <div class="stat-card"><div class="valor" id="sub-st-ativas">–</div><div class="lbl">Ativas</div></div>
-        <div class="stat-card"><div class="valor" id="sub-st-pausadas">–</div><div class="lbl">Pausadas</div></div>
-        <div class="stat-card"><div class="valor" id="sub-st-expiradas">–</div><div class="lbl">Expiradas</div></div>
-        <div class="stat-card"><div class="valor" id="sub-st-7d" style="color:#e67e22">–</div><div class="lbl">Vencem em 7 dias</div></div>
-        <div class="stat-card" id="sub-st-pausas-card" style="cursor:pointer" onclick="filtrarPausasPendentes()" title="Clique para filtrar">
-          <div class="valor" id="sub-st-pausas-pendentes" style="color:#e0a040">–</div>
-          <div class="lbl">⏸ Pausa pendente</div>
+    <!-- Financeiro -->
+    <section id="sec-financeiro" class="admin-section">
+      <div class="section-header">
+        <h2>Financeiro</h2>
+        <div class="section-header-actions">
+          <div class="fin-mes">
+            <button class="btn-xs sec" onclick="finMudarMes(-1)" aria-label="Mês anterior">‹</button>
+            <span class="fin-mes-rotulo" id="fin-mes-rotulo"></span>
+            <button class="btn-xs sec" id="fin-proximo" onclick="finMudarMes(1)" aria-label="Próximo mês">›</button>
+          </div>
+        </div>
+        <p class="descricao">O que entrou, o que falta receber e de onde vem.</p>
+      </div>
+
+      <div class="fin-topo">
+        <div class="fin-indicador destaque">
+          <span class="fin-indicador-rotulo">Recebido no mês</span>
+          <span class="fin-valor" id="fin-recebido">–</span>
+          <p class="fin-detalhe" id="fin-recebido-detalhe"></p>
+        </div>
+        <div class="fin-indicador">
+          <span class="fin-indicador-rotulo">A receber</span>
+          <span class="fin-valor" id="fin-areceber">–</span>
+          <p class="fin-detalhe" id="fin-areceber-detalhe"></p>
+        </div>
+        <div class="fin-indicador" id="fin-card-atraso">
+          <span class="fin-indicador-rotulo">Em atraso</span>
+          <span class="fin-valor" id="fin-atraso">–</span>
+          <p class="fin-detalhe" id="fin-atraso-detalhe"></p>
         </div>
       </div>
+
+      <div class="fin-grade">
+        <div class="card">
+          <div class="card-cabeca">
+            <p class="card-titulo">De onde veio</p>
+            <span class="card-nota" id="fin-composicao-nota"></span>
+          </div>
+          <div class="fin-barra" id="fin-barra" role="img"></div>
+          <div class="fin-legenda" id="fin-legenda"></div>
+        </div>
+        <div class="card">
+          <div class="card-cabeca">
+            <p class="card-titulo">Atividade</p>
+            <span class="card-nota">Recebido por mês, nos últimos 12</span>
+          </div>
+          <div class="fin-grafico" id="fin-grafico"></div>
+        </div>
+      </div>
+
+      <div class="fin-barra-ferramentas">
+        <div class="segmentado" data-n="4" role="group" aria-label="Filtrar transações" id="fin-filtro">
+          <button type="button" aria-pressed="true" data-filtro="todos" onclick="finFiltrar('todos')">Todas</button>
+          <button type="button" aria-pressed="false" data-filtro="recebidos" onclick="finFiltrar('recebidos')">Recebidas</button>
+          <button type="button" aria-pressed="false" data-filtro="pendentes" onclick="finFiltrar('pendentes')">Pendentes</button>
+          <button type="button" aria-pressed="false" data-filtro="estornos" onclick="finFiltrar('estornos')">Estornos</button>
+        </div>
+        <span class="card-nota" id="fin-contagem"></span>
+        <input type="search" class="campo-busca" id="fin-busca" placeholder="Buscar pessoa ou cupom"
+               aria-label="Buscar transações" oninput="finBuscar()">
+      </div>
+      <div class="fin-lista" id="fin-lista"></div>
+    </section>
+
+    <!-- Detalhe de transação -->
+    <div class="modal-overlay" id="modal-transacao">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="transacao-titulo">
+        <div class="modal-header">
+          <h3 id="transacao-titulo">Transação</h3>
+          <button class="modal-close" onclick="fecharModal('modal-transacao')" aria-label="Fechar">&times;</button>
+        </div>
+        <div id="transacao-corpo"></div>
+      </div>
+    </div>
+
+    <section id="sec-assinaturas" class="admin-section">
       <div class="section-header">
         <h2>Assinaturas</h2>
         <div style="display:flex;gap:0.4rem">
-          <button class="btn-xs primary" onclick="abrirModalNovaAssinatura()">+ Nova</button>
-          <button class="btn-xs sec" onclick="loadAssinaturas()">↺</button>
+          <button class="btn-xs primary" onclick="abrirModalNovaAssinatura()">Nova assinatura</button>
+          <button class="btn-xs sec so-icone" onclick="loadAssinaturas()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+        </div>
+      </div>
+      <div class="stat-grid stat-grid-5">
+        <div class="stat-card"><div class="valor" id="sub-st-ativas">–</div><div class="lbl">Ativas</div></div>
+        <div class="stat-card"><div class="valor" id="sub-st-pausadas">–</div><div class="lbl">Pausadas</div></div>
+        <div class="stat-card"><div class="valor" id="sub-st-expiradas">–</div><div class="lbl">Expiradas</div></div>
+        <div class="stat-card"><div class="valor" id="sub-st-7d" style="color:var(--alerta)">–</div><div class="lbl">Vencem em 7 dias</div></div>
+        <div class="stat-card" id="sub-st-pausas-card" style="cursor:pointer" onclick="filtrarPausasPendentes()" title="Clique para filtrar">
+          <div class="valor" id="sub-st-pausas-pendentes" style="color:var(--alerta)">–</div>
+          <div class="lbl">Pausas pedidas</div>
         </div>
       </div>
       <div class="filtro-bar">
         <select id="filtro-sub-status" onchange="filtrarAssinaturas()">
           <option value="">Todos os status</option>
+          <option value="pendente">Aguardando</option>
           <option value="ativa">Ativa</option>
           <option value="pausada">Pausada</option>
           <option value="expirada">Expirada</option>
@@ -1091,26 +1588,27 @@
     <section id="sec-matchmaking" class="admin-section">
       <div class="section-header"><h2>Matchmaking</h2></div>
       <div class="card" style="margin-bottom:1rem">
-        <h3 style="font-size:0.88rem;font-weight:700;margin-bottom:0.75rem">Executar</h3>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end">
-          <div class="form-row" style="margin:0">
-            <label style="font-size:0.78rem;color:var(--clr-text-muted);display:block;margin-bottom:0.25rem">Data</label>
-            <input type="date" id="mm-data" style="padding:0.4rem 0.5rem;border:1px solid var(--clr-border);border-radius:0.35rem;background:var(--clr-surface);color:var(--clr-text);font-size:0.85rem">
+        <div class="card-cabeca"><h3 class="card-titulo">Montar jogos</h3></div>
+        <p class="card-explica">Preenche os horários livres do dia com jogadores de rating parecido e envia os convites a quem aceita jogos do sistema.</p>
+        <div class="mm-controles">
+          <div class="form-row">
+            <label for="mm-data">Data</label>
+            <input type="date" id="mm-data">
           </div>
-          <div class="form-row" style="margin:0">
-            <label style="font-size:0.78rem;color:var(--clr-text-muted);display:block;margin-bottom:0.25rem">Tipo</label>
-            <select id="mm-tipo" style="padding:0.4rem 0.5rem;border:1px solid var(--clr-border);border-radius:0.35rem;background:var(--clr-surface);color:var(--clr-text);font-size:0.85rem">
+          <div class="form-row">
+            <label for="mm-tipo">Tipo</label>
+            <select id="mm-tipo">
               <option value="simples">Simples</option>
               <option value="duplas">Duplas</option>
             </select>
           </div>
-          <button class="btn-xs primary" style="margin-bottom:0.1rem" onclick="executarMatchmaking()">Executar</button>
+          <button class="btn-xs primary" onclick="executarMatchmaking()">Montar jogos</button>
         </div>
       </div>
       <div id="mm-resultado" class="mm-result"></div>
-      <div class="section-header" style="margin-top:0.5rem">
-        <h3 style="font-size:0.88rem;font-weight:700">Convites Recentes</h3>
-        <button class="btn-xs sec" onclick="loadInvitations()">↺</button>
+      <div class="card-cabeca" style="margin-top:1.75rem">
+        <h3 class="card-titulo">Convites recentes</h3>
+        <button class="btn-xs sec so-icone" onclick="loadInvitations()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -1122,16 +1620,14 @@
       </div>
     </section>
 
-    <!-- Locações de Quadra -->
+    <!-- Locações da quadra -->
     <section id="sec-locacoes" class="admin-section">
       <div class="section-header">
-        <h2>Locações de Quadra</h2>
-        <button class="btn-xs" onclick="loadLocacoes()">↻ Atualizar</button>
+        <h2>Locações da quadra</h2>
+        <button class="btn-xs sec so-icone" onclick="loadLocacoes()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
       </div>
-      <div class="card">
-        <div id="lista-locacoes">
-          <p style="opacity:.5;text-align:center;padding:1rem">Carregando…</p>
-        </div>
+      <div id="lista-locacoes">
+        <p class="empty">Carregando…</p>
       </div>
     </section>
 
@@ -1143,8 +1639,8 @@
 
       <div class="card">
         <form id="form-config" onsubmit="salvarConfiguracoes(event)">
-          <p class="form-section-label">Planos de Assinatura</p>
-          <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">Valor total cobrado por período. O valor mensal equivalente é calculado automaticamente.</p>
+          <p class="form-section-label">Planos de assinatura</p>
+          <p class="card-explica">Valor total cobrado por período. O valor mensal equivalente é calculado automaticamente.</p>
           <div class="form-grid-4">
             <div class="form-row">
               <label>Mensal (R$)</label>
@@ -1152,17 +1648,17 @@
               <small id="cfg-mensal-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
             <div class="form-row">
-              <label>Trimestral — total (R$)</label>
+              <label>Total trimestral (R$)</label>
               <input type="number" id="cfg-trimestral" step="0.01" min="0" required>
               <small id="cfg-trimestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
             <div class="form-row">
-              <label>Semestral — total (R$)</label>
+              <label>Total semestral (R$)</label>
               <input type="number" id="cfg-semestral" step="0.01" min="0" required>
               <small id="cfg-semestral-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
             <div class="form-row">
-              <label>Anual — total (R$)</label>
+              <label>Total anual (R$)</label>
               <input type="number" id="cfg-anual" step="0.01" min="0" required>
               <small id="cfg-anual-info" style="color:var(--clr-text-muted);font-size:.72rem"></small>
             </div>
@@ -1170,25 +1666,25 @@
 
           <div style="display:flex;gap:2rem;align-items:flex-start;margin-top:1.25rem;flex-wrap:wrap">
             <div>
-              <p class="form-section-label" style="margin-bottom:.6rem">Locação Avulsa</p>
+              <p class="form-section-label" style="margin-bottom:.6rem">Locação avulsa</p>
               <div class="form-row" style="max-width:200px;margin-bottom:0">
                 <label>Valor por hora (R$)</label>
                 <input type="number" id="cfg-locacao" step="0.01" min="0" required>
               </div>
             </div>
             <div>
-              <p class="form-section-label" style="margin-bottom:.6rem">Jogo Avulso</p>
+              <p class="form-section-label" style="margin-bottom:.6rem">Jogo avulso</p>
               <div class="form-row" style="max-width:200px;margin-bottom:0">
                 <label>Valor por convidado (R$)</label>
                 <input type="number" id="cfg-jogo-avulso" step="0.01" min="0" required>
-                <p style="font-size:.72rem;opacity:.55;margin-top:.3rem">
+                <p class="cfg-hint">
                   Cobrado do membro que reserva, por jogador de fora do ranking.
                 </p>
               </div>
             </div>
-            <div style="flex:1;min-width:200px">
-              <p class="form-section-label" style="margin-bottom:.6rem">Parcelamento (gerado automaticamente)</p>
-              <p style="font-size:.78rem;opacity:.6;margin-bottom:.5rem">PIX à vista. Cartão e boleto parcelados conforme abaixo.</p>
+            <div style="flex:1 1 100%">
+              <p class="form-section-label" style="margin-bottom:.6rem">Parcelamento</p>
+              <p class="cfg-hint" style="margin:0 0 .5rem">Calculado a partir dos preços acima. PIX é à vista; cartão e boleto, parcelados assim:</p>
               <table class="data-table" style="font-size:.82rem;width:100%">
                 <thead><tr><th>Plano</th><th>Parcelas</th><th>Valor/parcela</th><th>Total</th></tr></thead>
                 <tbody id="tbody-parcelas"></tbody>
@@ -1198,8 +1694,8 @@
 
           <hr style="border:none;border-top:1px solid var(--clr-border);margin:1.75rem 0">
 
-          <p class="form-section-label" style="margin-bottom:.35rem">Disponibilidade Comercial</p>
-          <p style="font-size:.78rem;opacity:.6;margin-bottom:.9rem">
+          <p class="form-section-label" style="margin-bottom:.35rem">Disponibilidade comercial</p>
+          <p class="card-explica">
             Desligue para divulgar antes da abertura. O cadastro de jogadores e a
             entrada na lista de espera continuam funcionando normalmente.
           </p>
@@ -1231,29 +1727,29 @@
 
           <hr style="border:none;border-top:1px solid var(--clr-border);margin:1.75rem 0">
 
-          <p class="form-section-label" style="margin-bottom:.35rem">Regras de Antecedência</p>
-          <p style="font-size:.78rem;opacity:.6;margin-bottom:.9rem">
+          <p class="form-section-label" style="margin-bottom:.35rem">Regras de antecedência</p>
+          <p class="card-explica">
             Todos os valores em horas.
           </p>
 
           <div class="cfg-grid-horas">
             <div class="form-row">
-              <label>Ranking — antecedência mínima</label>
+              <label>Antecedência mínima no ranking</label>
               <input type="number" id="cfg-ant-ranking-min" min="0" max="168" step="1" required>
               <p class="cfg-hint">Abaixo disso, só na janela de última hora.</p>
             </div>
             <div class="form-row">
-              <label>Ranking — janela de última hora</label>
+              <label>Última hora no ranking</label>
               <input type="number" id="cfg-ant-ranking-ultima" min="0" max="168" step="1" required>
               <p class="cfg-hint">Libera qualquer horário livre. Deve ser menor que a mínima.</p>
             </div>
             <div class="form-row">
-              <label>Jogo avulso — janela de última hora</label>
+              <label>Última hora no jogo avulso</label>
               <input type="number" id="cfg-ant-jogo-avulso" min="0" max="168" step="1" required>
               <p class="cfg-hint">Só pode ser reservado dentro desta janela.</p>
             </div>
             <div class="form-row">
-              <label>Locação — libera horário do ranking</label>
+              <label>Horário do ranking vira locação</label>
               <input type="number" id="cfg-ant-locacao" min="0" max="168" step="1" required>
               <p class="cfg-hint">Horário do ranking vira locação avulsa faltando este tempo.</p>
             </div>
@@ -1266,13 +1762,13 @@
 
           <div id="cfg-erro" class="erro-msg" style="display:none;margin-top:.75rem"></div>
           <div style="margin-top:1.5rem">
-            <button type="submit" class="btn-xs primary">Salvar Configurações</button>
+            <button type="submit" class="btn-xs primary">Salvar configurações</button>
           </div>
 
           <hr style="border:none;border-top:1px solid var(--clr-border);margin:1.75rem 0">
 
-          <p class="form-section-label" style="margin-bottom:.35rem">Envio de E-mails</p>
-          <p style="font-size:.78rem;opacity:.6;margin-bottom:.9rem">
+          <p class="form-section-label" style="margin-bottom:.35rem">Envio de e-mails</p>
+          <p class="card-explica">
             Configurado no arquivo <code>.env</code> do servidor. Use o teste abaixo
             para conferir se está funcionando.
           </p>
@@ -1290,8 +1786,8 @@
 
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-          <p class="form-section-label" style="margin:0">Horário de Funcionamento por Dia</p>
-          <button class="btn-xs primary" onclick="salvarHorarios()">Salvar Horários</button>
+          <p class="form-section-label" style="margin:0">Horário de funcionamento por dia</p>
+          <button class="btn-xs primary" onclick="salvarHorarios()">Salvar horários</button>
         </div>
         <p style="color:var(--clr-text-muted);font-size:.78rem;margin-bottom:.75rem">
           Configure abertura e fechamento por dia da semana. Dias desmarcados ficam fechados para locação.
@@ -1303,34 +1799,34 @@
 
       <!-- ── Slots de Ranking ── -->
       <div class="card">
-        <div class="section-header" style="margin-bottom:.75rem;padding-bottom:.6rem">
-          <p class="form-section-label" style="margin:0">Horários Reservados para o Ranking</p>
-          <button class="btn-xs primary" onclick="abrirModalSlotRanking()">+ Adicionar</button>
+        <div class="card-cabeca">
+          <h3 class="card-titulo">Horários reservados para o ranking</h3>
+          <button class="btn-xs sec" onclick="abrirModalSlotRanking()">Adicionar horário</button>
         </div>
-        <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">
+        <p class="card-explica">
           Nesses horários, o aluguel público só é permitido nas <strong id="sr-horas-libera">6</strong> horas que antecedem o jogo, caso o slot esteja livre.
         </p>
         <table class="admin-table" id="tbl-slots-ranking">
           <thead><tr><th>Dia</th><th>Início</th><th>Fim</th><th>Status</th><th></th></tr></thead>
           <tbody id="tbody-slots-ranking">
-            <tr><td colspan="5" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>
+            <tr><td colspan="5" style="text-align:center;color:var(--tinta-3);padding:1rem">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
 
       <!-- ── Feriados e Dias Especiais ── -->
       <div class="card">
-        <div class="section-header" style="margin-bottom:.75rem;padding-bottom:.6rem">
-          <p class="form-section-label" style="margin:0">Feriados e Dias Especiais</p>
-          <button class="btn-xs primary" onclick="abrirModalHorarioEspecial()">+ Adicionar</button>
+        <div class="card-cabeca">
+          <h3 class="card-titulo">Feriados e dias especiais</h3>
+          <button class="btn-xs sec" onclick="abrirModalHorarioEspecial()">Adicionar data</button>
         </div>
-        <p style="font-size:.78rem;opacity:.6;margin-bottom:1rem">
+        <p class="card-explica">
           Defina datas com horário diferente do normal ou em que a quadra ficará fechada.
         </p>
         <table class="admin-table" id="tbl-horarios-especiais">
           <thead><tr><th>Data</th><th>Descrição</th><th>Horário</th><th></th></tr></thead>
           <tbody id="tbody-horarios-especiais">
-            <tr><td colspan="4" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>
+            <tr><td colspan="4" style="text-align:center;color:var(--tinta-3);padding:1rem">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1340,7 +1836,7 @@
     <div id="modal-slot-ranking" class="modal-overlay" style="display:none">
       <div class="modal" style="max-width:360px">
         <div class="modal-header">
-          <h3 id="sr-modal-titulo">Adicionar Horário de Ranking</h3>
+          <h3 id="sr-modal-titulo">Adicionar horário do ranking</h3>
           <button class="modal-close" onclick="fecharModalSlotRanking()">×</button>
         </div>
         <div style="padding:1rem">
@@ -1378,15 +1874,12 @@
     <!-- Lista de Espera -->
     <section id="sec-cupons" class="admin-section">
       <div class="section-header">
-        <h2>Cupons de Desconto</h2>
-        <button class="btn-xs sec" onclick="loadCupons()">↺ Atualizar</button>
+        <h2>Cupons de desconto</h2>
+        <button class="btn-xs sec so-icone" onclick="loadCupons()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+        <p class="descricao">Valem para planos, locação da quadra e jogo avulso. O desconto do cupom substitui o desconto do PIX; os dois não se somam.</p>
       </div>
-      <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
-        Cupons valem para planos, locação de quadra e jogo avulso. O desconto do
-        cupom substitui o desconto do PIX (não acumulam).
-      </p>
 
-      <form id="cupom-form" onsubmit="criarCupom(event)" style="background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:10px;padding:18px 20px;margin-bottom:1.5rem">
+      <form id="cupom-form" class="card" onsubmit="criarCupom(event)" style="margin-bottom:1.5rem">
         <p class="form-section-label" style="margin-top:0">Novo cupom</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem 1rem">
           <div class="form-row" style="margin-bottom:0">
@@ -1427,13 +1920,13 @@
 
     <section id="sec-lista-espera" class="admin-section">
       <div class="section-header">
-        <h2>Lista de Espera do Ranking</h2>
+        <h2>Lista de espera do ranking</h2>
         <div style="display:flex;gap:.5rem;align-items:center">
-          <span id="le-vagas-badge" style="font-size:.85rem;color:var(--clr-text-muted)"></span>
-          <button class="btn-xs sec" onclick="loadListaEspera()">↺ Atualizar</button>
+          <span id="le-vagas-badge" style="font-size:var(--t-nota);color:var(--tinta-2)"></span>
+          <button class="btn-xs sec so-icone" onclick="loadListaEspera()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
         </div>
       </div>
-      <div id="le-aviso-vagas" style="display:none;margin-bottom:1rem;padding:.75rem 1rem;background:rgba(74,184,112,.12);border:1px solid rgba(74,184,112,.3);border-radius:8px;color:#4ab870;font-size:.9rem"></div>
+      <div id="le-aviso-vagas" style="display:none;margin-bottom:1rem;padding:.75rem 1rem;background:color-mix(in srgb, var(--bom) 12%, var(--superficie));border-radius:var(--r-cartao);color:var(--bom)"></div>
       <div id="le-tabela-wrap">
         <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
       </div>
@@ -1442,24 +1935,22 @@
     <!-- Contrato -->
     <section id="sec-contrato" class="admin-section">
       <div class="section-header">
-        <h2>Contrato de Adesão</h2>
-        <button class="btn-xs sec" onclick="loadContrato()">↺ Recarregar</button>
+        <h2>Contrato de adesão</h2>
+        <button class="btn-xs sec" onclick="loadContrato()" title="Descarta o que não foi salvo">Desfazer alterações</button>
+        <p class="descricao">As cláusulas valem a partir do próximo contrato enviado para assinatura.</p>
       </div>
-      <p style="color:var(--clr-text-muted);font-size:.85rem;margin-bottom:1.2rem">
-        Edite as cláusulas abaixo. As alterações serão refletidas no próximo contrato enviado ao Autentique.
-      </p>
       <div id="contrato-clausulas-wrap">
         <p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>
       </div>
       <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:space-between;align-items:center">
-        <button class="btn-xs sec" onclick="contratoAddClausula()">+ Adicionar Cláusula</button>
-        <button class="btn-xs primary" onclick="salvarContrato()">Salvar Alterações</button>
+        <button class="btn-xs sec" onclick="contratoAddClausula()">Adicionar cláusula</button>
+        <button class="btn-xs primary" onclick="salvarContrato()">Salvar alterações</button>
       </div>
     </section>
 
     <section id="sec-empresa" class="admin-section">
       <div class="section-header">
-        <h2>Dados da Empresa</h2>
+        <h2>Dados da empresa</h2>
       </div>
       <div class="card">
         <form id="form-empresa" onsubmit="salvarEmpresa(event)">
@@ -1467,11 +1958,11 @@
           <!-- Identificação -->
           <div class="form-grid-2" style="margin-bottom:.75rem">
             <div class="form-row">
-              <label>Razão Social</label>
+              <label>Razão social</label>
               <input type="text" id="emp-razao-social" required />
             </div>
             <div class="form-row">
-              <label>Nome Fantasia</label>
+              <label>Nome fantasia</label>
               <input type="text" id="emp-nome-fantasia" required />
             </div>
           </div>
@@ -1481,7 +1972,7 @@
               <input type="text" id="emp-cnpj" placeholder="00.000.000/0001-00" required />
             </div>
             <div class="form-row">
-              <label>CPF do Responsável</label>
+              <label>CPF do responsável</label>
               <input type="text" id="emp-cpf-responsavel" placeholder="000.000.000-00" required />
               <small style="color:var(--clr-text-muted);font-size:.72rem">Usado no cabeçalho do contrato PDF</small>
             </div>
@@ -1560,8 +2051,8 @@
       <div class="section-header">
         <h2>Acesso à quadra</h2>
         <div class="section-header-actions">
-          <span id="acesso-agente-status" class="badge bnc">agente: —</span>
-          <button class="btn-xs sec" onclick="loadAcesso()">Atualizar</button>
+          <span id="acesso-agente-status" class="badge bnc">Agente</span>
+          <button class="btn-xs sec so-icone" onclick="loadAcesso()" title="Atualizar" aria-label="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
         </div>
       </div>
 
@@ -1622,7 +2113,7 @@
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
           <p class="card-titulo" style="margin:0">Leitores</p>
-          <button class="btn-xs primary" onclick="abrirModalDispositivo()">+ Adicionar leitor</button>
+          <button class="btn-xs primary" onclick="abrirModalDispositivo()">Adicionar leitor</button>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
@@ -1735,7 +2226,7 @@
   <div id="modal-horario-especial" class="modal-overlay" style="display:none">
     <div class="modal" style="max-width:400px">
       <div class="modal-header">
-        <h3 id="he-modal-titulo">Adicionar Dia Especial</h3>
+        <h3 id="he-modal-titulo">Adicionar dia especial</h3>
         <button class="modal-close" onclick="fecharModalHorarioEspecial()">×</button>
       </div>
       <div style="padding:1rem">
@@ -1766,7 +2257,7 @@
           </div>
           <small style="color:var(--clr-text-muted);font-size:.72rem">Deixe em branco para usar o horário normal da quadra.</small>
         </div>
-        <div id="he-erro" style="color:var(--clr-danger,#c0392b);font-size:.82rem;margin-top:.5rem;display:none"></div>
+        <div id="he-erro" style="color:var(--critico);font-size:var(--t-nota);margin-top:.5rem;display:none"></div>
         <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">
           <button class="btn-xs" onclick="fecharModalHorarioEspecial()">Cancelar</button>
           <button class="btn-xs primary" onclick="salvarHorarioEspecial()">Salvar</button>
@@ -1777,12 +2268,13 @@
 </div>
 
 <!-- Toast -->
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="raiz-alerta"></div>
 
 <!-- ── Modal Jogador ── -->
 <div id="modal-jogador" class="modal-overlay">
   <div class="modal modal-lg">
-    <h2 id="modal-jogador-titulo">Criar Jogador</h2>
+    <h2 id="modal-jogador-titulo">Criar jogador</h2>
     <form id="form-jogador" onsubmit="salvarJogador(event)">
       <input type="hidden" id="jog-id">
 
@@ -1810,14 +2302,14 @@
         </div>
       </div>
 
-      <p class="form-section-label">Dados Pessoais</p>
+      <p class="form-section-label">Dados pessoais</p>
       <div class="form-grid-2">
         <div class="form-row">
           <label>CPF</label>
           <input type="text" id="jog-cpf" placeholder="000.000.000-00" maxlength="14">
         </div>
         <div class="form-row">
-          <label>Data de Nascimento</label>
+          <label>Data de nascimento</label>
           <input type="date" id="jog-nascimento">
         </div>
       </div>
@@ -1825,7 +2317,7 @@
       <p class="form-section-label">Endereço</p>
       <div class="form-grid-2">
         <div class="form-row" style="grid-column:1/-1">
-          <label>Rua / Logradouro</label>
+          <label>Logradouro</label>
           <input type="text" id="jog-rua" placeholder="Rua das Flores">
         </div>
         <div class="form-row">
@@ -1872,7 +2364,7 @@
         <div class="form-row" id="row-nivel" style="display:none">
           <label>Nível</label>
           <select id="jog-nivel">
-            <option value="nao_classificado">Não Classificado</option>
+            <option value="nao_classificado">Não classificado</option>
             <option value="A">A</option><option value="B">B</option>
             <option value="C">C</option><option value="D">D</option>
           </select>
@@ -1911,18 +2403,18 @@
 <!-- ── Modal Placar ── -->
 <div id="modal-placar" class="modal-overlay">
   <div class="modal">
-    <h2>Lançar Placar</h2>
+    <h2>Lançar placar</h2>
     <p id="placar-info" style="font-size:0.82rem;color:var(--clr-text-muted);margin-bottom:1rem"></p>
     <form id="form-placar-admin" onsubmit="submitPlacar(event)">
       <input type="hidden" id="placar-match-id">
       <div style="display:grid;grid-template-columns:1fr 1.5rem 1fr;gap:0.5rem;align-items:end;margin-bottom:0.75rem">
         <div class="form-row" style="margin:0">
-          <label id="lbl-a">Games Lado A</label>
+          <label id="lbl-a">Games do lado A</label>
           <input type="number" id="adm-ga" min="0" max="9" required>
         </div>
         <div style="text-align:center;padding-bottom:0.5rem;font-weight:700;color:var(--clr-text-muted)">×</div>
         <div class="form-row" style="margin:0">
-          <label id="lbl-b">Games Lado B</label>
+          <label id="lbl-b">Games do lado B</label>
           <input type="number" id="adm-gb" min="0" max="9" required>
         </div>
       </div>
@@ -1930,12 +2422,12 @@
         <p style="font-size:0.78rem;color:var(--clr-text-muted);margin-bottom:0.5rem">Tiebreak (8-8):</p>
         <div style="display:grid;grid-template-columns:1fr 1.5rem 1fr;gap:0.5rem;align-items:end">
           <div class="form-row" style="margin:0">
-            <label>TB Lado A</label>
+            <label>Tiebreak do lado A</label>
             <input type="number" id="adm-ta" min="0">
           </div>
           <div style="text-align:center;padding-bottom:0.5rem;font-weight:700;color:var(--clr-text-muted)">×</div>
           <div class="form-row" style="margin:0">
-            <label>TB Lado B</label>
+            <label>Tiebreak do lado B</label>
             <input type="number" id="adm-tb" min="0">
           </div>
         </div>
@@ -1966,17 +2458,17 @@
   </div>
 </div>
 
-<!-- ── Modal Nova Temporada ── -->
+<!-- ── Modal Nova temporada ── -->
 <div id="modal-temporada" class="modal-overlay">
   <div class="modal">
-    <h2>Nova Temporada</h2>
+    <h2>Nova temporada</h2>
     <form id="form-temporada" onsubmit="criarTemporada(event)">
       <div class="form-row">
-        <label>Data de Início</label>
+        <label>Data de início</label>
         <input type="date" id="temp-inicio" required>
       </div>
       <div class="form-row">
-        <label>Data de Fim</label>
+        <label>Data de fim</label>
         <input type="date" id="temp-fim" required>
       </div>
       <div id="temp-erro" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
@@ -1988,10 +2480,10 @@
   </div>
 </div>
 
-<!-- ── Modal Nova Assinatura ── -->
+<!-- ── Modal Nova assinatura ── -->
 <div id="modal-assinatura" class="modal-overlay">
   <div class="modal">
-    <h2>Nova Assinatura</h2>
+    <h2>Nova assinatura</h2>
     <form id="form-assinatura" onsubmit="salvarAssinatura(event)">
       <div class="form-row">
         <label>Jogador</label>
@@ -2007,14 +2499,14 @@
         </select>
       </div>
       <div class="form-row">
-        <label>Forma de Pagamento</label>
+        <label>Forma de pagamento</label>
         <select id="sub-forma" onchange="atualizarPrecoSub()">
           <option value="pix_avista">PIX à vista</option>
-          <option value="cartao_parcelado">Cartão de Crédito</option>
+          <option value="cartao_parcelado">Cartão de crédito</option>
         </select>
       </div>
       <div class="form-row">
-        <label>Valor Mensal (R$)</label>
+        <label>Valor mensal (R$)</label>
         <input type="number" id="sub-valor-mensal" step="0.01" min="1" required>
         <small id="sub-preco-info" style="color:var(--clr-text-muted);font-size:.72rem;margin-top:.2rem"></small>
       </div>
@@ -2028,7 +2520,7 @@
       <div id="sub-err" class="erro-msg" style="display:none;margin-top:0.5rem"></div>
       <div class="modal-footer">
         <button type="button" class="btn-xs sec" onclick="fecharModalAssinatura()">Fechar</button>
-        <button type="submit" id="sub-btn-salvar" class="btn-xs primary">Criar e Gerar PIX</button>
+        <button type="submit" id="sub-btn-salvar" class="btn-xs primary">Criar e gerar PIX</button>
       </div>
     </form>
   </div>
@@ -2037,14 +2529,14 @@
 <!-- ── Modal Status Assinatura ── -->
 <div id="modal-sub-status" class="modal-overlay">
   <div class="modal">
-    <h2>Alterar Status</h2>
+    <h2>Alterar status</h2>
     <input type="hidden" id="sub-status-id">
-    <div id="pausa-request-info" style="display:none;background:rgba(224,160,64,.12);border:1px solid #e0a040;border-radius:0.4rem;padding:0.6rem 0.75rem;margin-bottom:0.75rem">
-      <p style="font-size:0.78rem;font-weight:700;color:#e0a040;margin-bottom:0.2rem">⏸ Solicitação de pausa pendente</p>
+    <div id="pausa-request-info" style="display:none;background:color-mix(in srgb, var(--atencao) 14%, var(--superficie));border-radius:var(--r-controle);padding:0.6rem 0.75rem;margin-bottom:0.75rem">
+      <p style="font-weight:600;color:var(--alerta);margin-bottom:0.2rem">Pedido de pausa aguardando</p>
       <p style="font-size:0.8rem" id="pausa-request-motivo"></p>
     </div>
     <div class="form-row">
-      <label>Novo Status</label>
+      <label>Novo status</label>
       <select id="sub-novo-status" onchange="togglePausaFields()">
         <option value="ativa">Ativa</option>
         <option value="pausada">Pausada</option>
@@ -2055,11 +2547,11 @@
     </div>
     <div id="pausa-fields" style="display:none">
       <div class="form-row">
-        <label>Data da Pausa</label>
+        <label>Data da pausa</label>
         <input type="date" id="sub-data-pausa">
       </div>
       <div class="form-row">
-        <label>Retorno Previsto (máx. 15 dias)</label>
+        <label>Retorno previsto (até 15 dias)</label>
         <input type="date" id="sub-data-retorno">
       </div>
     </div>
@@ -2078,7 +2570,7 @@
 <!-- ── Modal Ver PIX ── -->
 <div id="modal-ver-pix" class="modal-overlay">
   <div class="modal">
-    <h2>Cobrança Pendente</h2>
+    <h2>Cobrança pendente</h2>
     <div id="ver-pix-body"></div>
     <div class="modal-footer">
       <button type="button" class="btn-xs sec" onclick="document.getElementById('modal-ver-pix').classList.remove('open')">Fechar</button>

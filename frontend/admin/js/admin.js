@@ -14,6 +14,9 @@ function fmtDH(iso) {
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+/** "1 convite enviado", "3 convites enviados": nada de "convite(s)" */
+const _plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+
 function fmtD(iso) {
   if (!iso) return '–'
   const d = new Date(iso)
@@ -63,6 +66,63 @@ function toast(msg, isErr = false) {
   _toastTimer = setTimeout(() => { el.className = '' }, 3000)
 }
 function showToast(msg, type) { toast(msg, type === 'error') }
+
+// ── Alerta e confirmação ─────────────────────────────────────────────────────
+// Substituem confirm(): o do navegador aparece como "localhost diz…", não
+// segue a aparência do painel e trava a página. O desenho é o alerta do
+// macOS: o ícone do app, título em forma de pergunta, a consequência, e o
+// botão nomeado pelo verbo da ação.
+
+const _ICONE_ALERTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6.2 5.8c2.4 1.6 3.8 3.6 3.8 6.2s-1.4 4.6-3.8 6.2"/><path d="M17.8 5.8c-2.4 1.6-3.8 3.6-3.8 6.2s1.4 4.6 3.8 6.2"/></svg>'
+
+function alertar({ titulo, mensagem = '', botoes = [{ rotulo: 'OK', valor: true, forte: true }] }) {
+  return new Promise(resolver => {
+    const raiz = document.getElementById('raiz-alerta')
+    const anterior = document.activeElement
+    // Dois botões curtos ficam lado a lado (Cancelar à esquerda); senão,
+    // empilhados com a ação principal em cima
+    const lado = botoes.length === 2 && botoes.every(b => b.rotulo.length <= 12)
+    const ordem = lado ? botoes : [...botoes].reverse()
+    raiz.innerHTML = `
+      <div class="alerta-fundo">
+        <div class="alerta" role="alertdialog" aria-modal="true" aria-labelledby="alerta-t">
+          <div class="alerta-icone">${_ICONE_ALERTA}</div>
+          <p class="alerta-titulo" id="alerta-t">${escHtml(titulo)}</p>
+          ${mensagem ? `<p class="alerta-msg">${escHtml(mensagem)}</p>` : ''}
+          <div class="alerta-botoes${lado ? ' lado' : ''}">
+            ${ordem.map(b => `<button type="button" data-i="${botoes.indexOf(b)}" class="${b.forte ? 'forte' : ''}${b.perigo ? ' perigo' : ''}">${escHtml(b.rotulo)}</button>`).join('')}
+          </div>
+        </div>
+      </div>`
+    const tecla = e => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        const c = botoes.find(b => b.cancelar)
+        fechar(c ? c.valor : false)
+      }
+    }
+    function fechar(valor) {
+      raiz.innerHTML = ''
+      document.removeEventListener('keydown', tecla, true)
+      anterior?.focus?.()
+      resolver(valor)
+    }
+    raiz.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => fechar(botoes[+b.dataset.i].valor)))
+    document.addEventListener('keydown', tecla, true)
+    ;(raiz.querySelector('button.forte, button.perigo') || raiz.querySelector('button'))?.focus()
+  })
+}
+
+/** Confirmação com a ação nomeada. Destrutiva sai em vermelho. */
+function confirmar(titulo, mensagem = '', { acao = 'Confirmar', perigo = false, voltar = 'Cancelar' } = {}) {
+  return alertar({
+    titulo, mensagem,
+    botoes: [
+      { rotulo: voltar, valor: false, cancelar: true },
+      { rotulo: acao, valor: true, forte: !perigo, perigo },
+    ],
+  })
+}
 
 function showErr(id, msg) {
   const el = document.getElementById(id)
@@ -152,8 +212,12 @@ function switchTab(tab) {
   })
   document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'))
   document.getElementById(`sec-${tab}`).classList.add('active')
+  const main = document.querySelector('.admin-main')
+  main.scrollTop = 0
+  main.classList.remove('rolada')
   switch (tab) {
     case 'dashboard':    loadDashboard(); break
+    case 'financeiro':   loadFinanceiro(); break
     case 'acesso':       loadAcesso(); break
     case 'jogadores':    loadPlayers(); break
     case 'partidas':     loadMatches(); break
@@ -172,6 +236,9 @@ function switchTab(tab) {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 async function loadDashboard() {
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' })
+  const elData = document.getElementById('dash-data')
+  if (elData) elData.textContent = hoje.charAt(0).toUpperCase() + hoje.slice(1)
   try {
     const d = await api('/admin/dashboard')
     document.getElementById('st-jogadores').textContent = d.total_jogadores
@@ -180,23 +247,29 @@ async function loadDashboard() {
     document.getElementById('st-hoje').textContent = d.reservas_hoje
 
     const extra = document.getElementById('dash-extra')
+    const diaMes = iso => new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
     const tempInfo = d.temporada_ativa
-      ? `Temporada ativa: ${fmtD(d.temporada_ativa.data_inicio)} → ${fmtD(d.temporada_ativa.data_fim)}`
+      ? `De ${diaMes(d.temporada_ativa.data_inicio)} a ${diaMes(d.temporada_ativa.data_fim)}`
       : 'Nenhuma temporada ativa'
     const liderInfo = d.lider_ranking
-      ? `${escHtml(d.lider_ranking.nome)} (${d.lider_ranking.pontos} pts)`
+      ? `${escHtml(d.lider_ranking.nome)}, ${d.lider_ranking.pontos} pontos`
       : 'Sem pontuações ainda'
+    const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+    // Pendências que pedem ação vêm primeiro, com o tom do estado — e levam
+    // direto à tela onde se resolve
     const pausaCard = d.pausas_pendentes > 0
-      ? `<div class="dash-card" style="border-left:3px solid var(--aviso);cursor:pointer" onclick="switchTab('assinaturas');filtrarPausasPendentes()">
-           <div class="dc-label">⏸ Solicitações de Pausa</div>
-           <div class="dc-val" style="color:var(--aviso)">${d.pausas_pendentes} aguardando aprovação →</div>
+      ? `<div class="dash-card" role="button" tabindex="0" onclick="switchTab('assinaturas');filtrarPausasPendentes()">
+           <div class="dc-label"><span class="badge e-alerta">Pausas</span></div>
+           <div class="dc-val">${plural(d.pausas_pendentes, 'pedido de pausa aguardando', 'pedidos de pausa aguardando')} aprovação</div>
          </div>`
       : ''
     // Pagou mas a Autentique nunca enviou o contrato: fica bloqueado em silêncio
     const contratoCard = d.contratos_nao_enviados > 0
-      ? `<div class="dash-card" style="border-left:3px solid var(--perigo);cursor:pointer" onclick="switchTab('jogadores')">
-           <div class="dc-label">🚨 Contrato não enviado</div>
-           <div class="dc-val" style="color:var(--perigo)">${d.contratos_nao_enviados} jogador(es) pagos e bloqueados →</div>
+      ? `<div class="dash-card" role="button" tabindex="0" onclick="switchTab('jogadores')">
+           <div class="dc-label"><span class="badge e-critico">Contrato não enviado</span></div>
+           <div class="dc-val">${d.contratos_nao_enviados === 1
+             ? '1 jogador pagou e está bloqueado'
+             : `${d.contratos_nao_enviados} jogadores pagaram e estão bloqueados`}</div>
          </div>`
       : ''
     extra.innerHTML = `
@@ -207,7 +280,7 @@ async function loadDashboard() {
         <div class="dc-val">${tempInfo}</div>
       </div>
       <div class="dash-card">
-        <div class="dc-label">Líder do Ranking</div>
+        <div class="dc-label">Líder do ranking</div>
         <div class="dc-val">${liderInfo}</div>
       </div>
     `
@@ -239,24 +312,24 @@ function filtrarJogadores() {
 }
 
 function _nomeExibicao(p) {
-  return p.apelido ? `${escHtml(p.apelido)} <span style="opacity:.55;font-size:.75em">(${escHtml(p.nome)})</span>` : escHtml(p.nome)
+  return p.apelido ? `${escHtml(p.apelido)} <span style="color:var(--tinta-3);font-size:.85em">(${escHtml(p.nome)})</span>` : escHtml(p.nome)
 }
 
 function _statusBadge(status) {
   const map = {
-    ativo:      '<span class="badge ba" style="background:#2a6e3a">ATIVO</span>',
-    assinatura: '<span class="badge ba" style="background:#7a5c00">ASSINATURA</span>',
-    pagamento:  '<span class="badge ba" style="background:#1a3d6e">PAGAMENTO</span>',
-    renovacao:  '<span class="badge ba" style="background:#7a3c00">RENOVAÇÃO</span>',
-    inativo:    '<span class="badge ba" style="background:#555">INATIVO</span>',
+    ativo:      '<span class="badge e-bom">Ativo</span>',
+    assinatura: '<span class="badge e-alerta">Assinatura</span>',
+    pagamento:  '<span class="badge e-alerta">Pagamento</span>',
+    renovacao:  '<span class="badge e-tint">Renovação</span>',
+    inativo:    '<span class="badge e-neutro">Inativo</span>',
   }
-  return map[status] || `<span class="badge ba" style="background:#555">${status || 'N/D'}</span>`
+  return map[status] || `<span class="badge e-neutro">${escHtml(status || 'Sem status')}</span>`
 }
 
 function _contratoBadge(p) {
-  if (p.contrato_assinado) return '<span class="badge ba" style="background:#2a6e3a">✓ assinado</span>'
-  if (p.contrato_enviado_em) return '<span class="badge ba" style="background:#7a6a10">aguardando</span>'
-  return '<span class="badge ba" style="background:#555">não enviado</span>'
+  if (p.contrato_assinado) return '<span class="badge e-bom">Assinado</span>'
+  if (p.contrato_enviado_em) return '<span class="badge e-alerta">Aguardando</span>'
+  return '<span class="badge e-neutro">Não enviado</span>'
 }
 
 function renderJogadores(lista) {
@@ -272,22 +345,20 @@ function renderJogadores(lista) {
       <td>${nivelBadge(p.nivel)}</td>
       <td>${p.rating_atual.toFixed(0)}</td>
       <td>${p.pontos_ranking_temporada_atual}</td>
-      <td>${p.aceita_convites_sistema ? '✓' : '–'}</td>
+      <td>${p.aceita_convites_sistema ? 'Sim' : 'Não'}</td>
       <td>${_statusBadge(p.status)}</td>
       <td>${_contratoBadge(p)}</td>
       <td style="white-space:nowrap">
         <button class="btn-xs sec" onclick="abrirModalJogador(${p.id})">Editar</button>
-        <button class="btn-xs sec" onclick="enviarContrato(${p.id})" title="${p.contrato_enviado_em ? 'Reenviar' : 'Enviar'} contrato">
-          ${p.contrato_enviado_em ? '↺' : '📄'}
-        </button>
-        ${!p.contrato_assinado ? `<button class="btn-xs sec" onclick="marcarContratoAssinado(${p.id})" title="Marcar como assinado manualmente">✓</button>` : ''}
+        <button class="btn-xs sec" onclick="enviarContrato(${p.id})">${p.contrato_enviado_em ? 'Reenviar contrato' : 'Enviar contrato'}</button>
+        ${!p.contrato_assinado ? `<button class="btn-xs sec" onclick="marcarContratoAssinado(${p.id})" title="Marcar o contrato como assinado">Marcar assinado</button>` : ''}
       </td>
     </tr>
   `).join('')
 }
 
 async function enviarContrato(playerId) {
-  if (!confirm('Enviar Termo de Adesão via Autentique para este jogador?')) return
+  if (!(await confirmar('Enviar o termo de adesão?', 'O jogador recebe o contrato pelo WhatsApp, pela Autentique.', { acao: 'Enviar' }))) return
   try {
     await api(`/admin/players/${playerId}/enviar-contrato`, { method: 'POST' })
     toast('Contrato enviado')
@@ -298,7 +369,7 @@ async function enviarContrato(playerId) {
 }
 
 async function marcarContratoAssinado(playerId) {
-  if (!confirm('Marcar o contrato como assinado manualmente?')) return
+  if (!(await confirmar('Marcar o contrato como assinado?', 'Use só quando o jogador assinou fora da Autentique. As reservas ficam liberadas na hora.', { acao: 'Marcar' }))) return
   try {
     await api(`/admin/players/${playerId}/marcar-contrato-assinado`, { method: 'POST' })
     toast('Contrato marcado como assinado')
@@ -311,12 +382,15 @@ async function marcarContratoAssinado(playerId) {
 function _setVal(id, val) { document.getElementById(id).value = val || '' }
 
 function abrirModalJogador(playerId = null) {
-  document.getElementById('modal-jogador-titulo').textContent = playerId ? 'Editar Jogador' : 'Criar Jogador'
+  document.getElementById('modal-jogador-titulo').textContent = playerId ? 'Editar jogador' : 'Criar jogador'
   document.getElementById('jog-id').value = playerId || ''
-  // Limpa todos os campos
-  ['jog-nome','jog-apelido','jog-email','jog-telefone','jog-senha',
-   'jog-cpf','jog-nascimento','jog-rua','jog-numero','jog-complemento',
-   'jog-bairro','jog-cidade','jog-cep'].forEach(id => _setVal(id, ''))
+  // Limpa todos os campos. Em variável, e não começando a linha com "[": sem
+  // ponto e vírgula, o JS colava o array na linha de cima — `'' [ … ]` — e o
+  // forEach rodava em undefined. O "+ Criar" jogador nunca abria.
+  const campos = ['jog-nome','jog-apelido','jog-email','jog-telefone','jog-senha',
+    'jog-cpf','jog-nascimento','jog-rua','jog-numero','jog-complemento',
+    'jog-bairro','jog-cidade','jog-cep']
+  campos.forEach(id => _setVal(id, ''))
   document.getElementById('jog-estado').value = ''
   document.getElementById('jog-pais').value = 'Brasil'
   document.getElementById('jog-convites').checked = true
@@ -437,7 +511,8 @@ function playerNome(playerId) {
 function nomesSide(parts, lado) {
   return parts
     .filter(p => p.lado === lado)
-    .map(p => playerNome(p.player_id))
+    // Convidado de jogo avulso não tem player_id: vale o nome que veio com ele
+    .map(p => p.player_id != null ? playerNome(p.player_id) : (p.convidado_nome || 'Convidado').split(' ')[0])
     .join(' / ') || '–'
 }
 
@@ -458,15 +533,15 @@ function renderPartidas(lista) {
     const parts = m.participantes || []
     const podeAcao = m.status === 'agendado'
     const acoes = podeAcao
-      ? `<button class="btn-xs primary" onclick="abrirModalPlacar(${m.id})">Placar</button>
-         <button class="btn-xs warn"    onclick="abrirModalWO(${m.id})">W.O.</button>
-         <button class="btn-xs danger"  onclick="cancelarPartida(${m.id})">Cancelar</button>`
+      ? `<button class="btn-xs sec"    onclick="abrirModalPlacar(${m.id})">Placar</button>
+         <button class="btn-xs sec"    onclick="abrirModalWO(${m.id})">W.O.</button>
+         <button class="btn-xs danger" onclick="cancelarPartida(${m.id})">Cancelar</button>`
       : '–'
     return `
       <tr>
         <td>${m.id}</td>
         <td style="white-space:nowrap">${fmtDH(m.data_hora)}</td>
-        <td>${m.tipo === 'simples' ? 'S' : 'D'}</td>
+        <td style="white-space:nowrap">${m.tipo === 'simples' ? 'Simples' : 'Duplas'}${m.avulso ? ' <span class="badge e-neutro">Avulso</span>' : ''}</td>
         <td>${escHtml(nomesSide(parts, 'A'))}</td>
         <td>${escHtml(nomesSide(parts, 'B'))}</td>
         <td>${statusBadge(m.status)}</td>
@@ -566,7 +641,7 @@ async function confirmarWO(lado) {
 }
 
 async function cancelarPartida(matchId) {
-  if (!confirm(`Cancelar partida #${matchId}?`)) return
+  if (!(await confirmar('Cancelar a partida?', `A partida nº ${matchId} sai da agenda e o horário fica livre.`, { acao: 'Cancelar partida', perigo: true, voltar: 'Manter' }))) return
   try {
     await api(`/matches/${matchId}/cancelar`, { method: 'POST' })
     toast('Partida cancelada')
@@ -577,7 +652,7 @@ async function cancelarPartida(matchId) {
 }
 
 async function recalcularClassificacao() {
-  if (!confirm('Recalcular classificação A/B/C/D de todos os jogadores?')) return
+  if (!(await confirmar('Recalcular os níveis?', 'A classificação A, B, C e D de todos os jogadores é refeita a partir do rating atual.', { acao: 'Recalcular' }))) return
   try {
     const r = await api('/matches/recalcular-classificacao', { method: 'POST' })
     toast(`Classificação recalculada (${r.elegíveis ?? r.elegiveis ?? '?'} jogadores)`)
@@ -609,8 +684,8 @@ function renderSeasons(lista) {
     const top3 = (s.ranking_final || []).slice(0, 3)
     const rankHtml = top3.length
       ? `<div class="ranking-top">
-           <span>Top 3 finais:</span>
-           <ol>${top3.map(r => `<li>${escHtml(r.nome)} – ${r.pontos} pts</li>`).join('')}</ol>
+           <span>Pódio</span>
+           <ol>${top3.map(r => `<li>${escHtml(r.nome)}, ${r.pontos} pontos</li>`).join('')}</ol>
          </div>`
       : ''
     const acoes = isAtiva
@@ -620,8 +695,8 @@ function renderSeasons(lista) {
       <div class="season-card ${s.status}">
         <div class="s-header">
           <div>
-            <div class="s-title">Temporada #${s.id} ${seasonBadge(s.status)}</div>
-            <div class="s-dates">${fmtD(s.data_inicio)} → ${fmtD(s.data_fim)}</div>
+            <div class="s-title">Temporada ${s.id} ${seasonBadge(s.status)}</div>
+            <div class="s-dates">De ${fmtD(s.data_inicio)} a ${fmtD(s.data_fim)}</div>
           </div>
           <div>${acoes}</div>
         </div>
@@ -632,7 +707,7 @@ function renderSeasons(lista) {
 }
 
 async function encerrarTemporada(seasonId) {
-  if (!confirm('Encerrar temporada? Esta ação irá salvar o ranking final e zerar os pontos de todos os jogadores.')) return
+  if (!(await confirmar('Encerrar a temporada?', 'O ranking final é salvo e os pontos de todos os jogadores voltam a zero. Não dá para desfazer.', { acao: 'Encerrar temporada', perigo: true }))) return
   try {
     await api(`/seasons/${seasonId}/encerrar`, { method: 'POST' })
     toast('Temporada encerrada e ranking salvo')
@@ -689,7 +764,7 @@ async function executarMatchmaking() {
       <div class="mm-row"><span>Slots sem jogadores</span><strong class="mm-val">${r.slots_sem_jogadores}</strong></div>
     `
     el.classList.add('show')
-    toast(`Matchmaking concluído: ${r.convites_enviados} convite(s) enviado(s)`)
+    toast(r.convites_enviados ? _plural(r.convites_enviados, 'convite enviado', 'convites enviados') : 'Nenhum convite enviado')
     await loadInvitations()
   } catch (err) {
     toast(err.message, true)
@@ -715,8 +790,8 @@ function renderInvitations(lista) {
   tb.innerHTML = lista.map(inv => {
     const jogadores = (inv.jogadores || [])
       .map(jp => {
-        const statusMap = { pendente: '⏳', confirmado: '✓', recusado: '✗', expirado: '–', cancelado: '–' }
-        return `${playerNome(jp.player_id)} ${statusMap[jp.status] || ''}`
+        const statusMap = { pendente: 'aguardando', confirmado: 'confirmou', recusado: 'recusou', expirado: 'expirou', cancelado: 'cancelado' }
+        return `${playerNome(jp.player_id)} (${statusMap[jp.status] || jp.status})`
       })
       .join(', ')
     return `
@@ -737,6 +812,7 @@ let _subs = []
 let _precos = { mensal: 89.90, trimestral: 239.90, semestral: 449.90, anual: 839.90 }
 
 const SUB_STATUS_MAP = {
+  pendente:     ['b-pendente',  'Aguardando'],
   ativa:        ['b-ativa',     'Ativa'],
   pausada:      ['b-pendente',  'Pausada'],
   expirada:     ['b-expirado',  'Expirada'],
@@ -806,7 +882,7 @@ function renderAssinaturas(list) {
     return
   }
   tbody.innerHTML = list.map(s => `
-    <tr${s.pausa_solicitada ? ' style="background:rgba(224,160,64,.07)"' : ''}>
+    <tr${s.pausa_solicitada ? ' style="background:color-mix(in srgb, var(--atencao) 9%, transparent)"' : ''}>
       <td>
         <strong>${escHtml(s.player_nome || '–')}</strong>
         <div style="font-size:0.72rem;color:var(--clr-text-muted)">${escHtml(s.player_email || '')}</div>
@@ -814,7 +890,7 @@ function renderAssinaturas(list) {
       <td>${PLANO_LABEL[s.plano] || s.plano}</td>
       <td>
         ${subBadge(s.status)}
-        ${s.pausa_solicitada ? '<span class="badge b-pendente" style="margin-left:3px">⏸ Pausa</span>' : ''}
+        ${s.pausa_solicitada ? '<span class="badge e-alerta" style="margin-left:4px">Pausa pedida</span>' : ''}
         ${s.status === 'pausada' && s.data_retorno_prevista
           ? `<div style="font-size:0.68rem;color:var(--clr-text-muted);margin-top:2px">retorno: ${fmtD(s.data_retorno_prevista)}</div>` : ''}
       </td>
@@ -830,7 +906,7 @@ function renderAssinaturas(list) {
     </tr>`).join('')
 }
 
-// ── Modal Nova Assinatura ─────────────────────────────────────────────────────
+// ── Modal Nova assinatura ─────────────────────────────────────────────────────
 
 async function abrirModalNovaAssinatura() {
   // popula select de jogadores
@@ -897,7 +973,7 @@ async function salvarAssinatura(e) {
       parcelas,
     }
     const res = await api('/subscriptions', { method: 'POST', body: JSON.stringify(body) })
-    toast('✅ Assinatura criada!')
+    toast('Assinatura criada')
     btn.style.display = 'none'
     if (res.pix_copia_e_cola) {
       document.getElementById('sub-pix-code').value = res.pix_copia_e_cola
@@ -910,7 +986,7 @@ async function salvarAssinatura(e) {
   } catch (err) {
     showErr('sub-err', err.message)
   } finally {
-    btn.disabled = false; btn.textContent = 'Criar e Gerar PIX'
+    btn.disabled = false; btn.textContent = 'Criar e gerar PIX'
   }
 }
 
@@ -932,7 +1008,7 @@ function abrirModalSubStatus(id) {
     const dias = dataInicio && dataRetorno
       ? Math.ceil((new Date(dataRetorno) - new Date(dataInicio)) / 86400000)
       : ''
-    motivoEl.textContent = `Motivo: "${s.pausa_motivo}"${dias ? ` · ${dataInicio} → ${dataRetorno} (${dias} dias)` : ''}`
+    motivoEl.textContent = `Motivo: ${s.pausa_motivo}.${dias ? ` De ${dataInicio} a ${dataRetorno}, ${dias} dias.` : ''}`
     infoEl.style.display = ''
     document.getElementById('sub-novo-status').value = 'pausada'
     document.getElementById('sub-data-pausa').value = dataInicio
@@ -982,7 +1058,7 @@ async function confirmarSubStatus() {
         notas: notas || null,
       }),
     })
-    toast('✅ Status atualizado')
+    toast('Status atualizado')
     fecharModalSubStatus()
     await loadAssinaturas()
   } catch (err) {
@@ -1005,7 +1081,7 @@ async function verPixSub(subId, gatewayId) {
           <textarea id="ver-pix-code" readonly style="flex:1;background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:0.35rem;color:var(--clr-text);font-size:0.72rem;padding:0.4rem;resize:none;height:60px;font-family:monospace">${escHtml(res.pix_copia_e_cola)}</textarea>
           <button class="btn-xs primary" onclick="copiarPix('ver-pix-code')">Copiar</button>
         </div>
-        ${res.payment_link ? `<p style="margin-top:0.5rem;font-size:0.8rem"><a href="${escHtml(res.payment_link)}" target="_blank" style="color:var(--clr-accent)">Abrir link de cobrança ↗</a></p>` : ''}
+        ${res.payment_link ? `<p style="margin-top:0.5rem;font-size:0.8rem"><a href="${escHtml(res.payment_link)}" target="_blank" >Abrir a cobrança</a></p>` : ''}
       `
     } else {
       body.innerHTML = '<p style="color:var(--clr-text-muted);font-size:0.85rem">Nenhum PIX pendente encontrado para este jogador.</p>'
@@ -1018,7 +1094,7 @@ async function verPixSub(subId, gatewayId) {
 function copiarPix(inputId) {
   const el = document.getElementById(inputId)
   if (!el) return
-  navigator.clipboard.writeText(el.value).then(() => toast('✅ PIX copiado!'))
+  navigator.clipboard.writeText(el.value).then(() => toast('Código PIX copiado'))
 }
 
 // ── Security util ─────────────────────────────────────────────────────────────
@@ -1037,11 +1113,11 @@ function escHtml(str) {
 
 function _cupomStatus(c) {
   const agora = new Date()
-  if (!c.ativo) return { txt: 'Inativo', cor: '#888' }
-  if (c.validade_inicio && new Date(c.validade_inicio) > agora) return { txt: 'Agendado', cor: 'var(--aviso)' }
-  if (c.validade_fim && new Date(c.validade_fim) < agora) return { txt: 'Expirado', cor: 'var(--perigo)' }
-  if (c.max_usos != null && c.usos >= c.max_usos) return { txt: 'Esgotado', cor: 'var(--perigo)' }
-  return { txt: 'Ativo', cor: 'var(--ok)' }
+  if (!c.ativo) return { txt: 'Inativo', cls: 'e-neutro' }
+  if (c.validade_inicio && new Date(c.validade_inicio) > agora) return { txt: 'Agendado', cls: 'e-tint' }
+  if (c.validade_fim && new Date(c.validade_fim) < agora) return { txt: 'Expirado', cls: 'e-neutro' }
+  if (c.max_usos != null && c.usos >= c.max_usos) return { txt: 'Esgotado', cls: 'e-neutro' }
+  return { txt: 'Ativo', cls: 'e-bom' }
 }
 
 async function loadCupons() {
@@ -1061,7 +1137,7 @@ async function loadCupons() {
         <td>${c.percentual}%</td>
         <td>${prazo}</td>
         <td>${usos}</td>
-        <td><span style="color:${st.cor};font-weight:600">${st.txt}</span></td>
+        <td><span class="badge ${st.cls}">${st.txt}</span></td>
         <td style="white-space:nowrap;text-align:right">
           <button class="btn-xs sec" onclick="toggleCupom(${c.id}, ${!c.ativo})">${c.ativo ? 'Desativar' : 'Ativar'}</button>
           <button class="btn-xs bnc" onclick="excluirCupom(${c.id}, '${escHtml(c.codigo)}')">Excluir</button>
@@ -1109,7 +1185,7 @@ async function toggleCupom(id, ativo) {
 }
 
 async function excluirCupom(id, codigo) {
-  if (!confirm(`Excluir o cupom ${codigo}? Pagamentos que já o usaram não são afetados.`)) return
+  if (!(await confirmar(`Excluir o cupom ${codigo}?`, 'Pagamentos que já o usaram não mudam.', { acao: 'Excluir', perigo: true }))) return
   try {
     await api(`/admin/cupons/${id}`, { method: 'DELETE' })
     toast('Cupom excluído')
@@ -1165,9 +1241,9 @@ function _atualizarInfoPrecos(cfg) {
     const el = document.getElementById(`cfg-${key}-info`)
     if (!el) continue
     if (meses > 1) {
-      el.textContent = `= R$ ${fmtR$(total / meses)}/mês · ${meses}× parcelas`
+      el.textContent = `R$ ${fmtR$(total / meses)} por mês em ${meses} parcelas`
     } else {
-      el.textContent = `= R$ ${fmtR$(total)} à vista`
+      el.textContent = `R$ ${fmtR$(total)} à vista`
     }
   }
 }
@@ -1200,15 +1276,15 @@ async function loadEmailStatus() {
     const s = await api('/admin/email/status')
     if (!s.configurado) {
       el.innerHTML = `<span class="cfg-off-badge">SMTP não configurado</span>
-        <div style="opacity:.65;margin-top:.4rem">
+        <div style="color:var(--tinta-2);margin-top:.4rem">
           Defina SMTP_HOST, SMTP_USER e SMTP_PASS no <code>.env</code> do servidor.
         </div>`
       return
     }
     const alias = s.usa_alias
-      ? `<div style="opacity:.65;margin-top:.3rem">
+      ? `<div style="color:var(--tinta-2);margin-top:.3rem">
            Enviando como <strong>${escHtml(s.remetente)}</strong> usando a conta
-           <strong>${escHtml(s.usuario)}</strong> — o provedor precisa autorizar este alias.
+           <strong>${escHtml(s.usuario)}</strong>. O provedor precisa autorizar este alias.
          </div>`
       : ''
     el.innerHTML = `
@@ -1231,10 +1307,10 @@ async function testarEmail() {
       method: 'POST',
       body: JSON.stringify({ destinatario: dest }),
     })
-    out.innerHTML = `<span style="color:var(--ok)">✅ Enviado para ${escHtml(r.enviado_para)}
+    out.innerHTML = `<span style="color:var(--ok)">Enviado para ${escHtml(r.enviado_para)}
       como ${escHtml(r.remetente)}. Confira a caixa de entrada (e o spam).</span>`
   } catch (err) {
-    out.innerHTML = `<span style="color:var(--perigo)">❌ Falhou: ${escHtml(err.message)}</span>`
+    out.innerHTML = `<span style="color:var(--perigo)">Não foi enviado: ${escHtml(err.message)}</span>`
   }
 }
 
@@ -1293,7 +1369,7 @@ async function salvarConfiguracoes(e) {
     _renderTabelaParcelas(cfg)
     const avisados = resp?.lista_espera_avisada || 0
     toast(avisados > 0
-      ? `Configurações salvas · ${avisados} pessoa(s) da lista de espera avisada(s) da abertura`
+      ? `Configurações salvas. ${_plural(avisados, 'pessoa da lista de espera foi avisada', 'pessoas da lista de espera foram avisadas')} da abertura.`
       : 'Configurações salvas')
   } catch (err) {
     showErr('cfg-erro', err.message)
@@ -1317,68 +1393,74 @@ async function salvarConfiguracoes(e) {
   })
 })
 
-// ── Locações de Quadra ───────────────────────────────────────────────────────
+// ── Locações da quadra ───────────────────────────────────────────────────────
+
+const _LOC_METODO = { pix: 'no PIX', cartao: 'no cartão', boleto: 'no boleto' }
+
+/** Uma etiqueta só, com a situação que importa: a reserva e o pagamento juntos */
+function _locSituacao(l) {
+  if (l.status === 'cancelada') return ['e-neutro', 'Cancelada']
+  if (l.pagamento_status === 'pago') return ['e-bom', `Paga ${_LOC_METODO[l.pagamento_metodo] || ''}`.trim()]
+  if (l.pagamento_status === 'estornado') return ['e-neutro', 'Estornada']
+  if (l.pagamento_status === 'falhou') return ['e-critico', 'Pagamento falhou']
+  if (l.status === 'aguardando_pagamento' || l.pagamento_status === 'pendente') return ['e-alerta', 'Aguardando pagamento']
+  return ['e-tint', 'Confirmada']
+}
+
+function _locLinha(l, futura) {
+  const opc = { timeZone: 'America/Sao_Paulo' }
+  const ini = new Date(l.data_hora_inicio)
+  const fim = new Date(l.data_hora_fim)
+  const outroAno = ini.getFullYear() !== new Date().getFullYear()
+  const dia = ini.toLocaleDateString('pt-BR', { ...opc, weekday: 'short', day: 'numeric', month: 'short', ...(outroAno ? { year: 'numeric' } : {}) })
+  const hora = d => d.toLocaleTimeString('pt-BR', { ...opc, hour: '2-digit', minute: '2-digit' })
+  const [cls, situacao] = _locSituacao(l)
+  // Cancelar uma locação passada não devolve horário nenhum; só faz sentido
+  // nas próximas ou numa passada que nunca foi paga
+  const cancelavel = l.status !== 'cancelada' && (futura || l.pagamento_status !== 'pago')
+  return `<div class="locacao-card${l.status === 'cancelada' ? ' cancelada' : ''}">
+    <div class="lc-data">
+      <div class="lc-dia">${escHtml(dia.charAt(0).toUpperCase() + dia.slice(1))}</div>
+      <div class="lc-hora">${hora(ini)} às ${hora(fim)}</div>
+    </div>
+    <div class="lc-jogador">
+      <div class="lc-nome">${escHtml(l.jogador_nome) || 'Sem nome'}</div>
+      ${l.jogador_email ? `<div class="lc-email">${escHtml(l.jogador_email)}</div>` : ''}
+    </div>
+    <div class="lc-situacao"><span class="badge ${cls}">${escHtml(situacao)}</span></div>
+    <div class="lc-valor">${_brl(l.valor)}</div>
+    <div class="lc-actions">${cancelavel ? `<button class="btn-xs danger" onclick="cancelarLocacao(${l.id})">Cancelar</button>` : ''}</div>
+  </div>`
+}
 
 async function loadLocacoes() {
   const lista = document.getElementById('lista-locacoes')
-  lista.innerHTML = '<p style="opacity:.5;text-align:center;padding:1rem">Carregando…</p>'
+  lista.innerHTML = '<p class="empty">Carregando…</p>'
   try {
     const locacoes = await api('/admin/locacoes')
     if (!locacoes.length) {
-      lista.innerHTML = '<p style="opacity:.5;text-align:center;padding:1rem">Nenhuma locação registrada.</p>'
+      lista.innerHTML = '<p class="empty">Nenhuma locação ainda. Elas aparecem aqui quando alguém aluga a quadra pelo app.</p>'
       return
     }
-
-    const _stMap = {
-      confirmada:            { cls: 'b-confirmado', label: 'Confirmada' },
-      aguardando_pagamento:  { cls: 'b-aguardando', label: 'Ag. Pagamento' },
-      cancelada:             { cls: 'b-cancelado',  label: 'Cancelada' },
-    }
-    const _pgMap = {
-      pago:    { cls: 'b-confirmado', label: 'Pago' },
-      pendente:{ cls: 'b-pendente',   label: 'Pendente' },
-      falhou:  { cls: 'b-falhou',     label: 'Falhou' },
-    }
-
-    lista.innerHTML = locacoes.map(l => {
-      const ini   = new Date(l.data_hora_inicio)
-      const fim   = new Date(l.data_hora_fim)
-      const dia   = ini.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-      const hIni  = ini.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      const hFim  = fim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-
-      const st  = _stMap[l.status]  || { cls: 'bnc', label: l.status }
-      const pg  = l.pagamento_status ? (_pgMap[l.pagamento_status] || { cls: 'bnc', label: l.pagamento_status }) : null
-      const pgMetodo = l.pagamento_metodo ? `<small style="opacity:.6"> · ${l.pagamento_metodo}</small>` : ''
-
-      const cancelBtn = l.status !== 'cancelada'
-        ? `<button class="btn-xs" style="background:var(--clr-danger,var(--perigo));color:#fff;white-space:nowrap" onclick="cancelarLocacao(${l.id})">Cancelar</button>`
-        : ''
-
-      return `<div class="locacao-card">
-        <div class="lc-data">
-          <div class="lc-dia">${dia}</div>
-          <div class="lc-hora">${hIni} – ${hFim}</div>
-        </div>
-        <div class="lc-jogador">
-          <div class="lc-nome">${l.jogador_nome || '—'}</div>
-          <div class="lc-email">${l.jogador_email || ''}</div>
-        </div>
-        <div class="lc-valor">R$ ${Number(l.valor).toFixed(2).replace('.', ',')}</div>
-        <div class="lc-badges">
-          <span class="badge ${st.cls}">${st.label}</span>
-          ${pg ? `<span class="badge ${pg.cls}">${pg.label}${pgMetodo}</span>` : '<span class="badge bnc">Sem pgto</span>'}
-        </div>
-        <div class="lc-actions">${cancelBtn}</div>
+    const agora = Date.now()
+    const proximas = locacoes.filter(l => new Date(l.data_hora_fim) > agora)
+      .sort((a, b) => new Date(a.data_hora_inicio) - new Date(b.data_hora_inicio))
+    const anteriores = locacoes.filter(l => new Date(l.data_hora_fim) <= agora)
+      .sort((a, b) => new Date(b.data_hora_inicio) - new Date(a.data_hora_inicio))
+    const grupo = (titulo, itens, futura, vazio) => `
+      <div class="lc-grupo">
+        <div class="card-cabeca"><h3 class="card-titulo">${titulo}</h3><span class="card-nota">${itens.length || ''}</span></div>
+        <div class="card lc-lista">${itens.length ? itens.map(l => _locLinha(l, futura)).join('') : `<p class="empty">${vazio}</p>`}</div>
       </div>`
-    }).join('')
+    lista.innerHTML = grupo('Próximas', proximas, true, 'Nenhuma locação marcada daqui para a frente.')
+      + (anteriores.length ? grupo('Anteriores', anteriores, false, '') : '')
   } catch (e) {
-    lista.innerHTML = `<p style="color:var(--clr-danger,red);padding:.5rem">Erro ao carregar: ${e.message}</p>`
+    lista.innerHTML = `<p class="empty" style="color:var(--critico)">Não foi possível carregar as locações: ${escHtml(e.message)}</p>`
   }
 }
 
 async function cancelarLocacao(id) {
-  if (!confirm('Cancelar esta locação de quadra?')) return
+  if (!(await confirmar('Cancelar a locação?', 'O horário volta para a agenda.', { acao: 'Cancelar locação', perigo: true, voltar: 'Manter' }))) return
   try {
     await api(`/admin/locacoes/${id}/cancelar`, { method: 'PATCH' })
     toast('Locação cancelada.')
@@ -1395,11 +1477,11 @@ const DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Dom
 async function loadSlotsRanking() {
   const tbody = document.getElementById('tbody-slots-ranking')
   if (!tbody) return
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5;padding:1rem">Carregando…</td></tr>'
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--tinta-3);padding:1rem">Carregando…</td></tr>'
   try {
     const slots = await api('/admin/slots-ranking')
     if (!slots.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;opacity:.5;padding:1rem">Nenhum horário cadastrado.</td></tr>'
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--tinta-3);padding:1rem">Nenhum horário cadastrado.</td></tr>'
       return
     }
     tbody.innerHTML = slots.map(s => `
@@ -1408,9 +1490,7 @@ async function loadSlotsRanking() {
         <td>${s.hora_inicio.slice(0,5)}</td>
         <td>${s.hora_fim.slice(0,5)}</td>
         <td>
-          <span style="font-size:.78rem;padding:.2rem .5rem;border-radius:.35rem;background:${s.ativo ? 'rgba(111,207,151,.15)' : 'rgba(240,80,80,.12)'};color:${s.ativo ? 'var(--ok)' : 'var(--perigo)'}">
-            ${s.ativo ? 'Ativo' : 'Inativo'}
-          </span>
+          <span class="badge ${s.ativo ? 'e-bom' : 'e-neutro'}">${s.ativo ? 'Ativo' : 'Inativo'}</span>
         </td>
         <td style="display:flex;gap:.4rem">
           <button class="btn-xs" onclick='abrirModalSlotRanking(${JSON.stringify(s)})'>Editar</button>
@@ -1427,7 +1507,7 @@ let _srEditId = null
 
 function abrirModalSlotRanking(slot = null) {
   _srEditId = slot ? slot.id : null
-  document.getElementById('sr-modal-titulo').textContent = slot ? 'Editar Horário de Ranking' : 'Adicionar Horário de Ranking'
+  document.getElementById('sr-modal-titulo').textContent = slot ? 'Editar horário do ranking' : 'Adicionar horário do ranking'
   document.getElementById('sr-dia').value    = slot ? slot.dia_semana : 0
   document.getElementById('sr-inicio').value = slot ? slot.hora_inicio.slice(0, 5) : '07:00'
   document.getElementById('sr-fim').value    = slot ? slot.hora_fim.slice(0, 5)    : '09:00'
@@ -1460,7 +1540,7 @@ async function salvarSlotRanking() {
 }
 
 async function toggleSlotRanking(id, ativo) {
-  if (!confirm(ativo ? 'Desativar este horário de ranking?' : 'Ativar este horário de ranking?')) return
+  if (!(await confirmar(ativo ? 'Desativar este horário do ranking?' : 'Ativar este horário do ranking?', '', { acao: ativo ? 'Desativar' : 'Ativar', perigo: ativo }))) return
   try {
     await api(`/admin/slots-ranking/${id}/toggle`, { method: 'PATCH' })
     loadSlotsRanking()
@@ -1468,7 +1548,7 @@ async function toggleSlotRanking(id, ativo) {
 }
 
 async function deletarSlotRanking(id) {
-  if (!confirm('Excluir este horário de ranking?')) return
+  if (!(await confirmar('Excluir este horário do ranking?', '', { acao: 'Excluir', perigo: true }))) return
   try {
     await api(`/admin/slots-ranking/${id}`, { method: 'DELETE' })
     loadSlotsRanking()
@@ -1486,7 +1566,7 @@ async function loadHorariosEspeciais() {
   try {
     const items = await api('/admin/horarios-especiais')
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;opacity:.5;padding:.75rem">Nenhum dia especial cadastrado.</td></tr>'
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--tinta-3);padding:.75rem">Nenhum dia especial cadastrado.</td></tr>'
       return
     }
     tbody.innerHTML = items.map(he => {
@@ -1511,7 +1591,7 @@ async function loadHorariosEspeciais() {
 
 function abrirModalHorarioEspecial(he = null) {
   _heEditId = he ? he.id : null
-  document.getElementById('he-modal-titulo').textContent = he ? 'Editar Dia Especial' : 'Adicionar Dia Especial'
+  document.getElementById('he-modal-titulo').textContent = he ? 'Editar dia especial' : 'Adicionar dia especial'
   document.getElementById('he-data').value      = he ? he.data : ''
   document.getElementById('he-descricao').value = he ? he.descricao : ''
   document.getElementById('he-fechado').checked = he ? he.fechado : false
@@ -1564,7 +1644,7 @@ async function salvarHorarioEspecial() {
 }
 
 async function deletarHorarioEspecial(id) {
-  if (!confirm('Excluir este dia especial?')) return
+  if (!(await confirmar('Excluir este dia especial?', 'O dia volta ao horário normal da semana.', { acao: 'Excluir', perigo: true }))) return
   try {
     await api(`/admin/horarios-especiais/${id}`, { method: 'DELETE' })
     toast('Dia especial excluído.')
@@ -1576,70 +1656,79 @@ async function deletarHorarioEspecial(id) {
 
 // ── Lista de Espera ───────────────────────────────────────────────────────────
 
+function _fmtTelefone(t) {
+  const d = String(t || '').replace(/\D/g, '')
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return t || ''
+}
+
 async function loadListaEspera() {
   const wrap = document.getElementById('le-tabela-wrap')
   const badge = document.getElementById('le-vagas-badge')
   const aviso = document.getElementById('le-aviso-vagas')
-  wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Carregando…</p>'
+  wrap.innerHTML = '<p class="empty">Carregando…</p>'
   try {
     const r = await api('/admin/lista-espera')
     const { fila, vagas } = r
 
-    badge.textContent = `${vagas.ocupadas}/${vagas.limite} vagas ocupadas · ${vagas.disponiveis} disponível(is)`
+    badge.textContent = `${vagas.ocupadas} de ${vagas.limite} vagas ocupadas`
 
     if (vagas.disponiveis > 0 && fila.length > 0) {
       aviso.style.display = 'block'
-      aviso.textContent = `Há ${vagas.disponiveis} vaga(s) disponível(is) e ${fila.length} pessoa(s) na fila. Convoque manualmente ou aguarde a convocação automática.`
+      aviso.textContent = `${vagas.disponiveis === 1 ? 'Há 1 vaga livre' : `Há ${vagas.disponiveis} vagas livres`} e ${_plural(fila.length, 'pessoa', 'pessoas')} na fila. Convoque agora ou aguarde a convocação automática.`
     } else {
       aviso.style.display = 'none'
     }
 
     if (!fila.length) {
-      wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Nenhuma pessoa na lista de espera.</p>'
+      wrap.innerHTML = '<p class="empty">Ninguém na lista de espera.</p>'
       return
     }
 
+    const quando = iso => {
+      const d = new Date(iso)
+      const ano = d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}
+      return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', ...ano, hour: '2-digit', minute: '2-digit' }).replace(',', ' às')
+    }
     const rows = fila.map(e => {
-      const statusLabel = { aguardando: 'Aguardando', convocado: 'Convocado' }[e.status] || e.status
-      const statusColor = e.status === 'convocado' ? 'var(--aviso)' : 'var(--ok)'
-      const dtInscricao = new Date(e.data_inscricao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-      const dtExpira = e.data_expiracao_convocacao
-        ? new Date(e.data_expiracao_convocacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-        : '—'
+      const convocado = e.status === 'convocado'
       return `<tr>
-        <td style="text-align:center;font-weight:700;font-size:1.1rem">#${e.posicao}</td>
-        <td>${e.player_nome}</td>
-        <td style="color:var(--clr-text-muted);font-size:.85rem">${e.player_email}</td>
-        <td style="color:var(--clr-text-muted);font-size:.85rem">${e.player_telefone || '—'}</td>
-        <td style="color:${statusColor};font-weight:600">${statusLabel}</td>
-        <td style="font-size:.82rem">${dtInscricao}</td>
-        <td style="font-size:.82rem">${e.status === 'convocado' ? dtExpira : '—'}</td>
+        <td class="le-posicao">${e.posicao}</td>
         <td>
-          <div style="display:flex;gap:.4rem">
-            ${e.status === 'aguardando' ? `<button class="btn-xs primary" onclick="leConvocar(${e.id})" title="Convocar agora">Convocar</button>` : ''}
-            <button class="btn-xs danger" onclick="leRemover(${e.id})" title="Remover da lista">Remover</button>
-          </div>
+          <strong>${escHtml(e.player_nome)}</strong>
+          <div style="font-size:var(--t-nota);color:var(--tinta-2)">${escHtml(e.player_email)}</div>
+        </td>
+        <td style="white-space:nowrap;color:var(--tinta-2)">${escHtml(_fmtTelefone(e.player_telefone)) || '–'}</td>
+        <td>
+          <span class="badge ${convocado ? 'e-alerta' : 'e-neutro'}">${convocado ? 'Convocado' : 'Na fila'}</span>
+          ${convocado && e.data_expiracao_convocacao ? `<div style="font-size:var(--t-nota);color:var(--tinta-2);white-space:nowrap">Confirma até ${quando(e.data_expiracao_convocacao)}</div>` : ''}
+        </td>
+        <td style="white-space:nowrap">${quando(e.data_inscricao)}</td>
+        <td style="white-space:nowrap">
+          ${e.status === 'aguardando' ? `<button class="btn-xs sec" onclick="leConvocar(${e.id})">Convocar</button>` : ''}
+          <button class="btn-xs danger" onclick="leRemover(${e.id})">Remover</button>
         </td>
       </tr>`
     }).join('')
 
-    wrap.innerHTML = `<table class="admin-table" style="min-width:900px">
+    wrap.innerHTML = `<div class="admin-table-wrap"><table class="admin-table">
       <thead><tr>
-        <th>#</th><th>Nome</th><th>E-mail</th><th>Telefone</th>
-        <th>Status</th><th>Inscrito em</th><th>Convocação expira</th><th>Ações</th>
+        <th>Nº</th><th>Jogador</th><th>Telefone</th>
+        <th>Situação</th><th>Entrou em</th><th>Ações</th>
       </tr></thead>
       <tbody>${rows}</tbody>
-    </table>`
+    </table></div>`
   } catch (e) {
-    wrap.innerHTML = `<p style="color:var(--perigo);text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
+    wrap.innerHTML = `<p class="empty" style="color:var(--critico)">Não foi possível carregar a lista: ${escHtml(e.message)}</p>`
   }
 }
 
 async function leConvocar(id) {
-  if (!confirm('Convocar este jogador agora? Ele receberá e-mail com 48h para confirmar.')) return
+  if (!(await confirmar('Convocar este jogador?', 'Ele recebe um e-mail e tem 48 horas para confirmar a vaga.', { acao: 'Convocar' }))) return
   try {
     await api(`/admin/lista-espera/${id}/convocar`, { method: 'POST' })
-    showToast('Jogador convocado! E-mail enviado.', 'success')
+    showToast('Convocação enviada por e-mail', 'success')
     loadListaEspera()
   } catch (e) {
     showToast('Erro: ' + e.message, 'error')
@@ -1647,7 +1736,7 @@ async function leConvocar(id) {
 }
 
 async function leRemover(id) {
-  if (!confirm('Remover este jogador da lista de espera?')) return
+  if (!(await confirmar('Remover da lista de espera?', '', { acao: 'Remover', perigo: true }))) return
   try {
     await api(`/admin/lista-espera/${id}`, { method: 'DELETE' })
     showToast('Removido da lista de espera.', 'success')
@@ -1675,41 +1764,21 @@ async function loadContrato() {
 function _renderContrato() {
   const wrap = document.getElementById('contrato-clausulas-wrap')
   if (!_contratoClausulas.length) {
-    wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Nenhuma cláusula cadastrada. Clique em "+ Adicionar Cláusula".</p>'
+    wrap.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:2rem">Nenhuma cláusula cadastrada. Clique em "+ Adicionar cláusula".</p>'
     return
   }
   wrap.innerHTML = _contratoClausulas.map((c, i) => `
-    <div class="contrato-clausula-card" data-idx="${i}" style="
-      background:var(--clr-surface);border:1px solid var(--clr-border);
-      border-radius:8px;padding:1rem;margin-bottom:.75rem;
-    ">
-      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
-        <span style="font-size:.75rem;color:var(--clr-text-muted);min-width:2.5rem">#${i + 1}</span>
-        <input
-          class="ct-titulo"
-          value="${_escHtml(c.titulo)}"
-          style="flex:1;background:rgba(255,255,255,0.07);border:1px solid var(--clr-border);
-                 border-radius:4px;padding:.35rem .6rem;color:var(--clr-text);font-size:.9rem;font-weight:600"
-          placeholder="Título da cláusula"
-        >
-        <label style="display:flex;align-items:center;gap:.3rem;font-size:.8rem;cursor:pointer;white-space:nowrap">
-          <input type="checkbox" class="ct-ativo" ${c.ativo ? 'checked' : ''} style="cursor:pointer">
-          Ativa
-        </label>
-        <div style="display:flex;gap:.25rem">
-          <button class="btn-xs sec" onclick="contratoMover(${i},-1)" title="Subir" ${i === 0 ? 'disabled' : ''}>▲</button>
-          <button class="btn-xs sec" onclick="contratoMover(${i},1)" title="Descer" ${i === _contratoClausulas.length - 1 ? 'disabled' : ''}>▼</button>
-          <button class="btn-xs danger" onclick="contratoRemover(${i})" title="Remover">✕</button>
+    <div class="contrato-clausula-card" data-idx="${i}">
+      <div class="ct-cabeca">
+        <input class="ct-titulo" value="${_escHtml(c.titulo)}" placeholder="Título da cláusula" aria-label="Título da cláusula ${i + 1}">
+        <label class="form-check"><input type="checkbox" class="ct-ativo" ${c.ativo ? 'checked' : ''}> Ativa</label>
+        <div class="ct-acoes">
+          <button class="btn-xs sec" onclick="contratoMover(${i},-1)" title="Subir" aria-label="Subir a cláusula" ${i === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button class="btn-xs sec" onclick="contratoMover(${i},1)" title="Descer" aria-label="Descer a cláusula" ${i === _contratoClausulas.length - 1 ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+          <button class="btn-xs danger" onclick="contratoRemover(${i})">Remover</button>
         </div>
       </div>
-      <textarea
-        class="ct-texto"
-        rows="5"
-        style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--clr-border);
-               border-radius:4px;padding:.5rem .6rem;color:var(--clr-text);font-size:.85rem;
-               resize:vertical;line-height:1.5"
-        placeholder="Texto da cláusula…"
-      >${_escHtml(c.texto)}</textarea>
+      <textarea class="ct-texto" rows="5" placeholder="Texto da cláusula" aria-label="Texto da cláusula ${i + 1}">${_escHtml(c.texto)}</textarea>
     </div>
   `).join('')
 }
@@ -1735,8 +1804,8 @@ function contratoMover(idx, dir) {
   _renderContrato()
 }
 
-function contratoRemover(idx) {
-  if (!confirm('Remover esta cláusula?')) return
+async function contratoRemover(idx) {
+  if (!(await confirmar('Remover esta cláusula?', '', { acao: 'Remover', perigo: true }))) return
   _contratoClausulas = _coletarClausulas()
   _contratoClausulas.splice(idx, 1)
   _renderContrato()
@@ -1756,7 +1825,7 @@ async function salvarContrato() {
   if (!clausulas.length) { showToast('Adicione ao menos uma cláusula.', 'error'); return }
   try {
     const r = await api('/admin/contrato/clausulas', { method: 'PUT', body: JSON.stringify(clausulas) })
-    showToast(`Contrato salvo! ${r.total} cláusula(s).`, 'success')
+    showToast(`Contrato salvo com ${_plural(r.total, 'cláusula', 'cláusulas')}`, 'success')
     await loadContrato()
   } catch (e) {
     showToast('Erro ao salvar: ' + e.message, 'error')
@@ -1966,12 +2035,12 @@ async function loadAcessoConfig() {
     const badge = document.getElementById('acesso-agente-status')
     if (!c.agente_visto_em) {
       badge.className = 'badge bnc'
-      badge.textContent = 'agente: nunca conectou'
+      badge.textContent = 'Agente nunca conectou'
     } else {
       const atrasoMin = (Date.now() - new Date(c.agente_visto_em)) / 60000
       const online = atrasoMin < 2
       badge.className = online ? 'badge ba' : 'badge bc'
-      badge.textContent = online ? 'agente: online' : `agente: sem contato (${fmtDH(c.agente_visto_em)})`
+      badge.textContent = online ? 'Agente conectado' : `Agente sem contato desde ${fmtDH(c.agente_visto_em)}`
     }
   } catch (err) {
     showErr('acesso-cfg-erro', err.message)
@@ -1991,7 +2060,7 @@ async function salvarAcessoConfig() {
     })
     document.getElementById('acesso-cfg-erro').style.display = 'none'
     toast(r.janelas_criadas
-      ? `Regras salvas. ${r.janelas_criadas} liberação(ões) criada(s) para reservas já marcadas.`
+      ? `Regras salvas. ${_plural(r.janelas_criadas, 'liberação criada', 'liberações criadas')} para reservas já marcadas.`
       : 'Regras salvas.')
     loadAcessoCredenciais()
   } catch (err) {
@@ -2000,7 +2069,7 @@ async function salvarAcessoConfig() {
 }
 
 async function gerarTokenAgente() {
-  if (!confirm('Gerar um token novo derruba o agente atual até você atualizar a configuração dele na quadra. Continuar?')) return
+  if (!(await confirmar('Gerar um token novo?', 'O agente da quadra para de funcionar até você atualizar a configuração dele com o token novo.', { acao: 'Gerar token', perigo: true }))) return
   try {
     const r = await api('/admin/acesso/token', { method: 'POST' })
     document.getElementById('acesso-token').value = r.agente_token
@@ -2097,7 +2166,7 @@ async function salvarDispositivo() {
 }
 
 async function excluirDispositivo(id) {
-  if (!confirm('Excluir este leitor? O agente deixa de sincronizá-lo.')) return
+  if (!(await confirmar('Excluir este leitor?', 'O agente da quadra deixa de sincronizá-lo.', { acao: 'Excluir', perigo: true }))) return
   try {
     await api(`/admin/acesso/dispositivos/${id}`, { method: 'DELETE' })
     toast('Leitor excluído.')
@@ -2108,7 +2177,7 @@ async function excluirDispositivo(id) {
 }
 
 async function abrirPortao(id) {
-  if (!confirm('Abrir o portão agora?')) return
+  if (!(await confirmar('Abrir o portão agora?', 'Ele abre em alguns segundos, quando o agente da quadra receber o comando.', { acao: 'Abrir' }))) return
   try {
     await api(`/admin/acesso/dispositivos/${id}/abrir`, { method: 'POST' })
     // A abertura entra numa fila: o servidor não alcança o leitor, quem
@@ -2181,6 +2250,260 @@ async function loadAcessoEventos() {
   } catch (err) {
     corpo.innerHTML = `<tr><td colspan="5" class="empty">${escHtml(err.message)}</td></tr>`
   }
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('[role="button"][onclick]')) {
+    e.preventDefault()
+    e.target.click()
+  }
+})
+
+// ── Barra de ferramentas que encolhe ao rolar ────────────────────────────────
+// O título grande da tela encolhe e a barra ganha o material quando o
+// conteúdo passa por baixo dela — o título grande da Apple, no Mac.
+document.querySelector('.admin-main')?.addEventListener('scroll', e => {
+  e.currentTarget.classList.toggle('rolada', e.currentTarget.scrollTop > 12)
+}, { passive: true })
+
+// ── Financeiro ───────────────────────────────────────────────────────────────
+// O dinheiro do clube com a linguagem do Apple Card: o recebido em destaque,
+// de onde veio numa barra só, a atividade do ano e as transações agrupadas
+// por dia. Regras de data e fuso: app/services/financeiro_service.py.
+
+const _fin = { ano: null, mes: null, filtro: 'todos', busca: '', transacoes: [] }
+const _FIN_CAT = {
+  plano:   { rotulo: 'Planos',         icone: '<path d="M4 7h16v12H4z"/><path d="M4 11h16"/><path d="M8 3v4M16 3v4"/>' },
+  locacao: { rotulo: 'Locações',       icone: '<rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="M12 6v12M3 9h18M3 15h18"/>' },
+  avulso:  { rotulo: 'Jogos avulsos',  icone: '<circle cx="12" cy="12" r="8"/><path d="M6.6 6.4c2.2 1.5 3.4 3.3 3.4 5.6s-1.2 4.1-3.4 5.6M17.4 6.4c-2.2 1.5-3.4 3.3-3.4 5.6s1.2 4.1 3.4 5.6"/>' },
+  outro:   { rotulo: 'Outros',         icone: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>' },
+}
+const _FIN_METODO = { pix: 'PIX', cartao: 'Cartão', boleto: 'Boleto' }
+const _FIN_STATUS = {
+  pago:      '',
+  pendente:  '<span class="badge e-alerta">Pendente</span>',
+  estornado: '<span class="badge e-neutro">Estornado</span>',
+  falhou:    '<span class="badge e-critico">Não pago</span>',
+}
+
+const _brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+/** Valor com os centavos menores, como os saldos do Apple Card */
+function _brlDestaque(v) {
+  const [inteiro, centavos] = _brl(v).split(',')
+  return `${escHtml(inteiro)}<span class="centavos">,${escHtml(centavos)}</span>`
+}
+const _iconeCat = (cat, extra = '') => `<span class="transacao-icone cat-${cat}${extra}">`
+  + `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${(_FIN_CAT[cat] || _FIN_CAT.outro).icone}</svg></span>`
+
+function _finRotuloMes(ano, mes) {
+  const t = new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+async function loadFinanceiro() {
+  if (!_fin.ano) {
+    const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+    _fin.ano = hoje.getFullYear()
+    _fin.mes = hoje.getMonth() + 1
+  }
+  document.getElementById('fin-mes-rotulo').textContent = _finRotuloMes(_fin.ano, _fin.mes)
+  const agora = new Date()
+  const ehAtual = _fin.ano === agora.getFullYear() && _fin.mes === agora.getMonth() + 1
+  document.getElementById('fin-proximo').disabled = ehAtual
+  await Promise.all([_finCarregarResumo(), _finCarregarTransacoes()])
+}
+
+function finMudarMes(delta) {
+  let m = _fin.mes + delta, a = _fin.ano
+  if (m < 1) { m = 12; a-- }
+  if (m > 12) { m = 1; a++ }
+  _fin.ano = a
+  _fin.mes = m
+  loadFinanceiro()
+}
+
+async function _finCarregarResumo() {
+  try {
+    const r = await api(`/admin/financeiro/resumo?ano=${_fin.ano}&mes=${_fin.mes}`)
+
+    document.getElementById('fin-recebido').innerHTML = _brlDestaque(r.recebido)
+    const ant = r.recebido_mes_anterior
+    let variacao = ''
+    if (ant > 0) {
+      const pct = Math.round(((r.recebido - ant) / ant) * 100)
+      const sobe = pct >= 0
+      const base = r.em_andamento ? 'ao mesmo período do mês anterior' : 'ao mês anterior'
+      variacao = `<span class="fin-variacao ${sobe ? 'sobe' : 'desce'}">${sobe ? '▲' : '▼'} ${Math.abs(pct)}%</span> em relação ${base}. `
+    }
+    document.getElementById('fin-recebido-detalhe').innerHTML =
+      `${variacao}${r.pagamentos} ${r.pagamentos === 1 ? 'pagamento' : 'pagamentos'}`
+      + (r.descontos ? `, ${_brl(r.descontos)} em cupons` : '') + '.'
+
+    document.getElementById('fin-areceber').innerHTML = _brlDestaque(r.a_receber)
+    document.getElementById('fin-areceber-detalhe').textContent = r.pendentes
+      ? `${r.pendentes} ${r.pendentes === 1 ? 'cobrança aberta' : 'cobranças abertas'}, de qualquer mês.`
+      : 'Nenhuma cobrança aberta.'
+
+    document.getElementById('fin-atraso').innerHTML = _brlDestaque(r.em_atraso)
+    document.getElementById('fin-card-atraso').classList.toggle('atraso', r.em_atraso > 0)
+    document.getElementById('fin-atraso-detalhe').textContent = r.atrasados
+      ? `${r.atrasados} ${r.atrasados === 1 ? 'cobrança passou' : 'cobranças passaram'} da data.`
+      : 'Nada vencido.'
+
+    // De onde veio: uma barra só, segmentos proporcionais
+    const total = Object.values(r.composicao).reduce((a, b) => a + b, 0)
+    const cats = ['plano', 'locacao', 'avulso']
+    const barra = document.getElementById('fin-barra')
+    barra.innerHTML = total
+      ? cats.filter(c => r.composicao[c] > 0)
+          .map(c => `<span class="cat-${c}" style="flex-grow:${r.composicao[c]}" title="${_FIN_CAT[c].rotulo}: ${_brl(r.composicao[c])}"></span>`).join('')
+      : ''
+    barra.setAttribute('aria-label', total
+      ? cats.map(c => `${_FIN_CAT[c].rotulo} ${_brl(r.composicao[c])}`).join(', ')
+      : 'Nada recebido no mês')
+    document.getElementById('fin-legenda').innerHTML = cats.map(c => `
+      <div class="fin-legenda-linha">
+        <span class="fin-ponto cat-${c}"></span>
+        <span>${_FIN_CAT[c].rotulo}</span>
+        <span class="fin-legenda-valor">${_brl(r.composicao[c])}</span>
+        <span class="fin-legenda-pct">${total ? Math.round((r.composicao[c] / total) * 100) : 0}%</span>
+      </div>`).join('')
+    const pix = r.por_metodo.pix || 0
+    document.getElementById('fin-composicao-nota').textContent = total
+      ? `${Math.round((pix / total) * 100)}% via PIX`
+      : ''
+
+    // Atividade: doze barras, o mês escolhido no tint
+    const max = Math.max(...r.serie.map(s => s.recebido), 1)
+    document.getElementById('fin-grafico').innerHTML = r.serie.map(s => {
+      const atual = s.ano === _fin.ano && s.mes === _fin.mes
+      const curto = new Date(s.ano, s.mes - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+      const h = Math.max(2, Math.round((s.recebido / max) * 100))
+      return `<button type="button" class="fin-coluna${atual ? ' atual' : ''}" onclick="finIrPara(${s.ano}, ${s.mes})"
+                title="${_finRotuloMes(s.ano, s.mes)}: ${_brl(s.recebido)}" aria-label="${_finRotuloMes(s.ano, s.mes)}, ${_brl(s.recebido)}">
+                <span class="fin-pilar" style="height:${h}%"></span>
+                <span class="fin-mes-curto">${curto}</span>
+              </button>`
+    }).join('')
+  } catch (e) {
+    toast(e.message, true)
+  }
+}
+
+function finIrPara(ano, mes) {
+  _fin.ano = ano
+  _fin.mes = mes
+  loadFinanceiro()
+}
+
+async function _finCarregarTransacoes() {
+  const lista = document.getElementById('fin-lista')
+  try {
+    const q = new URLSearchParams({ ano: _fin.ano, mes: _fin.mes, filtro: _fin.filtro, busca: _fin.busca })
+    _fin.transacoes = await api(`/admin/financeiro/transacoes?${q}`)
+    _finRenderTransacoes()
+  } catch (e) {
+    lista.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`
+  }
+}
+
+function _finRenderTransacoes() {
+  const lista = document.getElementById('fin-lista')
+  const itens = _fin.transacoes
+  document.getElementById('fin-contagem').textContent =
+    itens.length ? `${itens.length} ${itens.length === 1 ? 'transação' : 'transações'}` : ''
+  if (!itens.length) {
+    const vazio = {
+      todos: 'Nenhuma transação neste mês.',
+      recebidos: 'Nada recebido neste mês.',
+      pendentes: 'Nenhuma cobrança em aberto.',
+      estornos: 'Nenhum estorno ou cobrança não paga neste mês.',
+    }[_fin.filtro]
+    lista.innerHTML = `<p class="empty">${_fin.busca ? 'Nada encontrado para essa busca.' : vazio}</p>`
+    return
+  }
+
+  // Agrupadas por dia, como no Wallet: Hoje, Ontem, depois o dia por extenso
+  const fuso = { timeZone: 'America/Sao_Paulo' }
+  const chave = d => new Date(d).toLocaleDateString('sv-SE', fuso)
+  const hoje = chave(new Date())
+  const ontem = chave(new Date(Date.now() - 86400000))
+  const rotuloDia = d => {
+    const k = chave(d)
+    if (k === hoje) return 'Hoje'
+    if (k === ontem) return 'Ontem'
+    const t = new Date(d).toLocaleDateString('pt-BR', { ...fuso, weekday: 'long', day: 'numeric', month: 'long' })
+    return t.charAt(0).toUpperCase() + t.slice(1)
+  }
+
+  let html = ''
+  let diaAtual = null
+  for (const t of itens) {
+    const k = chave(t.data)
+    if (k !== diaAtual) {
+      diaAtual = k
+      html += `<div class="fin-dia">${escHtml(rotuloDia(t.data))}</div>`
+    }
+    const hora = new Date(t.data).toLocaleTimeString('pt-BR', { ...fuso, hour: '2-digit', minute: '2-digit' })
+    const sub = t.status === 'pago'
+      ? `${_FIN_METODO[t.metodo] || t.metodo}, ${hora}`
+      : (t.status === 'pendente' ? `${_FIN_METODO[t.metodo] || t.metodo}, aguardando` : _FIN_METODO[t.metodo] || t.metodo)
+    html += `
+      <button type="button" class="transacao" onclick="abrirTransacao(${t.id})">
+        ${_iconeCat(t.categoria)}
+        <span>
+          <span class="transacao-titulo">${escHtml(t.pessoa || t.titulo)}</span>
+          <span class="transacao-sub">${escHtml(t.titulo)}, ${escHtml(sub)}</span>
+        </span>
+        <span class="transacao-direita">
+          <span class="transacao-valor${t.status === 'estornado' || t.status === 'falhou' ? ' riscado' : ''}">${_brl(t.valor)}</span>
+          ${_FIN_STATUS[t.status] || ''}
+        </span>
+      </button>`
+  }
+  lista.innerHTML = html
+}
+
+function finFiltrar(filtro) {
+  _fin.filtro = filtro
+  document.querySelectorAll('#fin-filtro button').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.filtro === filtro ? 'true' : 'false'))
+  _finCarregarTransacoes()
+}
+
+let _finBuscaTimer = null
+function finBuscar() {
+  clearTimeout(_finBuscaTimer)
+  _finBuscaTimer = setTimeout(() => {
+    _fin.busca = document.getElementById('fin-busca').value.trim()
+    _finCarregarTransacoes()
+  }, 250)
+}
+
+/** Detalhe de uma transação, como no Wallet: o valor grande no topo. */
+function abrirTransacao(id) {
+  const t = _fin.transacoes.find(x => x.id === id)
+  if (!t) return
+  const fuso = { timeZone: 'America/Sao_Paulo' }
+  const quando = d => new Date(d).toLocaleString('pt-BR', { ...fuso, day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const situacao = { pago: 'Pago', pendente: 'Aguardando pagamento', estornado: 'Estornado', falhou: 'Não pago' }[t.status] || t.status
+  const linha = (rotulo, valor) => valor ? `<div><dt>${rotulo}</dt><dd>${valor}</dd></div>` : ''
+  document.getElementById('transacao-titulo').textContent = t.titulo
+  document.getElementById('transacao-corpo').innerHTML = `
+    <div class="fin-detalhe-topo">
+      ${_iconeCat(t.categoria)}
+      <div class="fin-detalhe-valor${t.status === 'estornado' || t.status === 'falhou' ? ' transacao-valor riscado' : ''}">${_brlDestaque(t.valor)}</div>
+      <p class="fin-detalhe-pessoa">${escHtml(t.pessoa || '—')}</p>
+    </div>
+    <dl class="lista-dados">
+      ${linha('Situação', escHtml(situacao))}
+      ${linha('Forma de pagamento', escHtml(_FIN_METODO[t.metodo] || t.metodo))}
+      ${linha(t.pago_em ? 'Pago em' : 'Referente a', escHtml(quando(t.pago_em || t.data)))}
+      ${linha('Cupom', t.cupom ? escHtml(t.cupom) : '')}
+      ${linha('Desconto', t.desconto ? escHtml(_brl(t.desconto)) : '')}
+      ${linha('Código', `nº ${t.id}`)}
+    </dl>`
+  document.getElementById('modal-transacao').classList.add('open')
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
