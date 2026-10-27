@@ -94,17 +94,29 @@
     <div class="login-box">
       <h1 class="login-titulo">Entrar</h1>
       <form id="form-login" autocomplete="on">
-        <div class="campo">
-          <label for="inp-email">E-mail</label>
-          <input id="inp-email" type="email" name="email" autocomplete="email" inputmode="email"
-                 autocapitalize="none" spellcheck="false" placeholder="seu@email.com" required />
+        <div id="campos-senha">
+          <div class="campo">
+            <label for="inp-email">E-mail</label>
+            <input id="inp-email" type="email" name="email" autocomplete="email" inputmode="email"
+                   autocapitalize="none" spellcheck="false" placeholder="seu@email.com" required />
+          </div>
+          <div class="campo">
+            <label for="inp-senha">Senha</label>
+            <input id="inp-senha" type="password" name="password" autocomplete="current-password" required />
+          </div>
         </div>
-        <div class="campo">
-          <label for="inp-senha">Senha</label>
-          <input id="inp-senha" type="password" name="password" autocomplete="current-password" required />
+        <!-- Segunda etapa, só para administradores: o código enviado por e-mail -->
+        <div id="campo-codigo" hidden>
+          <p class="login-codigo-ajuda" id="login-codigo-ajuda"></p>
+          <div class="campo">
+            <label for="inp-codigo">Código recebido por e-mail</label>
+            <input id="inp-codigo" type="text" inputmode="numeric" autocomplete="one-time-code"
+                   maxlength="6" placeholder="000000" />
+          </div>
         </div>
         <p id="login-erro" class="erro" hidden></p>
         <button type="submit" class="btn btn-primario btn-largo">Entrar</button>
+        <button type="button" id="btn-voltar-senha" class="btn btn-texto btn-largo" onclick="_mostrarEtapaCodigo(null)" hidden>Voltar</button>
         <a class="login-esqueci" href="/redefinir-senha">Esqueci minha senha</a>
       </form>
     </div>

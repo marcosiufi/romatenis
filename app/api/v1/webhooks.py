@@ -7,6 +7,8 @@ POST /matchmaking/executar    — dispara matchmaking para uma data (admin)
 GET  /matchmaking/convites    — lista convites ativos (admin)
 """
 
+import secrets
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.core.auth import get_current_admin
@@ -27,7 +29,13 @@ def _mm_svc(db=Depends(get_db)) -> MatchmakingService:
 
 
 def _validar_n8n(x_n8n_secret: str | None = Header(default=None, alias="X-N8N-Secret")) -> None:
-    if settings.N8N_SECRET and x_n8n_secret != settings.N8N_SECRET:
+    # Sem segredo configurado, produção recusa: antes aceitava qualquer
+    # chamada, e qualquer um respondia convites em nome dos jogadores.
+    if not settings.N8N_SECRET:
+        if settings.producao:
+            raise HTTPException(503, "Webhook do N8N não configurado (N8N_SECRET).")
+        return
+    if not x_n8n_secret or not secrets.compare_digest(x_n8n_secret, settings.N8N_SECRET):
         raise HTTPException(401, "Token N8N inválido")
 
 

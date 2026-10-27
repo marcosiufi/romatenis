@@ -295,30 +295,69 @@ function showLogin() {
 }
 
 // ── Login ────────────────────────────────────────────────────────────────────
+// Administrador entra em duas etapas: senha e um código de 6 dígitos que chega
+// por e-mail. O aparelho em que o código foi confirmado fica dispensado por
+// 30 dias (dispositivo_token). Associado comum entra direto.
+let _desafioLogin = null;
+
+function _mostrarEtapaCodigo(enviadoPara) {
+  const pedindo = !!enviadoPara;
+  document.getElementById("campos-senha").hidden = pedindo;
+  document.getElementById("campo-codigo").hidden = !pedindo;
+  document.getElementById("btn-voltar-senha").hidden = !pedindo;
+  document.getElementById("login-codigo-ajuda").textContent = pedindo
+    ? `Enviamos um código de 6 dígitos para ${enviadoPara}. Ele vale por 10 minutos.`
+    : "";
+  document.getElementById("login-erro").hidden = true;
+  if (pedindo) {
+    const campo = document.getElementById("inp-codigo");
+    campo.value = "";
+    setTimeout(() => campo.focus(), 50);
+  } else {
+    _desafioLogin = null;
+  }
+}
+
 document.getElementById("form-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   const erroEl = document.getElementById("login-erro");
   const btn    = e.target.querySelector("button[type=submit]");
+  const pedindoCodigo = !document.getElementById("campo-codigo").hidden;
   erroEl.hidden = true;
   btn.disabled  = true;
   btn.textContent = "Entrando…";
 
   try {
-    const res = await fetch(API + "/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: document.getElementById("inp-email").value,
-        senha: document.getElementById("inp-senha").value,
-      }),
-    });
+    const res = pedindoCodigo
+      ? await fetch(API + "/auth/login/codigo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            desafio: _desafioLogin,
+            codigo: document.getElementById("inp-codigo").value.replace(/\D/g, ""),
+          }),
+        })
+      : await fetch(API + "/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: document.getElementById("inp-email").value,
+            senha: document.getElementById("inp-senha").value,
+            dispositivo_token: localStorage.getItem("dispositivo_token") || null,
+          }),
+        });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Erro ao entrar");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || "Erro ao entrar");
+
+    if (data.requer_codigo) {
+      _desafioLogin = data.desafio;
+      _mostrarEtapaCodigo(data.enviado_para);
+      return;
     }
-
-    Auth.save(await res.json());
+    if (data.dispositivo_token) localStorage.setItem("dispositivo_token", data.dispositivo_token);
+    Auth.save(data);
+    _mostrarEtapaCodigo(null);
     showApp();
   } catch (err) {
     erroEl.textContent = err.message;
@@ -940,9 +979,13 @@ async function confirmarAlterarSenha() {
   const confirma = document.getElementById("senha-confirma").value;
   if (!atual || !nova) { erro.textContent = "Preencha todos os campos."; erro.hidden = false; return; }
   if (nova.length < 6)  { erro.textContent = "A nova senha deve ter pelo menos 6 caracteres."; erro.hidden = false; return; }
+  if (nova.length > 72) { erro.textContent = "A senha pode ter no máximo 72 caracteres."; erro.hidden = false; return; }
   if (nova !== confirma) { erro.textContent = "As senhas não conferem."; erro.hidden = false; return; }
   try {
-    await apiFetch("/auth/alterar-senha", { method: "POST", body: JSON.stringify({ senha_atual: atual, nova_senha: nova }) });
+    // Trocar a senha derruba toda sessão antiga; a resposta traz os tokens
+    // novos desta, senão o app cairia no login logo em seguida
+    const res = await apiFetch("/auth/alterar-senha", { method: "POST", body: JSON.stringify({ senha_atual: atual, nova_senha: nova }) });
+    if (res?.access_token) Auth.save(res);
     fecharAlterarSenha();
     avisar("Senha alterada");
   } catch (e) {

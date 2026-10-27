@@ -1526,3 +1526,11 @@ body:has(.folha-fundo:not([hidden])) { overflow: hidden; }
   .login-marca { flex: 1; min-height: 100dvh; justify-content: center; }
   .login-box { align-self: center; flex: 0 0 440px; }
 }
+
+/* Segunda etapa do login do administrador: a explicação do código */
+.login-codigo-ajuda {
+  margin-bottom: var(--e3);
+  font-size: var(--t-sub);
+  line-height: 1.4;
+  color: var(--tinta-2);
+}

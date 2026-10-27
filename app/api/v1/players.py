@@ -1,19 +1,23 @@
 import os
-from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import or_, and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_admin, get_current_player, hash_password
 from app.core.database import get_db
+from app.core.erros import commit_ou_409
+from app.core.imagens import (
+    TAMANHO_MAX_FOTO,
+    apagar_foto_antiga,
+    extensao_da_imagem,
+    nome_de_foto,
+)
 from app.models.player import Player, StatusJogador
 from app.schemas.player import PlayerCreate, PlayerOut, PlayerRankingOut, PlayerUpdate
 
 _UPLOAD_DIR = "/app/uploads/avatars"
-_ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 
 router = APIRouter(prefix="/players", tags=["players"])
 
@@ -69,7 +73,7 @@ async def create_player(
         cep=body.cep,
     )
     db.add(player)
-    await db.commit()
+    await commit_ou_409(db)
     await db.refresh(player)
     return player
 
@@ -85,24 +89,34 @@ async def upload_foto(
     player: Annotated[Player, Depends(get_current_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    ext = os.path.splitext(foto.filename or "")[1].lower()
-    if ext not in _ALLOWED_EXTS:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Formato inválido. Use JPG, PNG ou WebP.",
-        )
-    content = await foto.read()
-    if len(content) > _MAX_BYTES:
+    """Foto do perfil. Vale também para o reconhecimento facial do portão."""
+    conteudo = await foto.read()
+    if len(conteudo) > TAMANHO_MAX_FOTO:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="Arquivo muito grande. Máximo 5 MB.",
         )
+    # O tipo vem do conteúdo, não do nome que o navegador mandou
+    ext = extensao_da_imagem(conteudo)
+    if ext is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Formato inválido. Use JPG, PNG ou WebP.",
+        )
+
     os.makedirs(_UPLOAD_DIR, exist_ok=True)
-    filename = f"{player.id}{ext}"
-    with open(os.path.join(_UPLOAD_DIR, filename), "wb") as f:
-        f.write(content)
-    player.foto_url = f"/uploads/avatars/{filename}"
+    nome = nome_de_foto(str(player.id), ext)
+    with open(os.path.join(_UPLOAD_DIR, nome), "wb") as f:
+        f.write(conteudo)
+    apagar_foto_antiga(player.foto_url, _UPLOAD_DIR)
+    player.foto_url = f"/uploads/avatars/{nome}"
     await db.commit()
+
+    # A credencial do portão espelha a foto do perfil; sem isto a selfie nova
+    # só chegaria ao leitor na próxima reserva.
+    from app.services.acesso_service import AcessoService
+    await AcessoService(db).atualizar_foto_do_player(player)
+
     await db.refresh(player)
     return player
 
@@ -115,7 +129,7 @@ async def update_me(
 ):
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(player, field, value)
-    await db.commit()
+    await commit_ou_409(db)
     await db.refresh(player)
     return player
 
@@ -151,6 +165,6 @@ async def update_player(
 
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(player, field, value)
-    await db.commit()
+    await commit_ou_409(db)
     await db.refresh(player)
     return player

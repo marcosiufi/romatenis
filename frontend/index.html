@@ -977,6 +977,7 @@ document.getElementById('pl-btn-login').addEventListener('click', async () => {
     const r = await fetch('/api/v1/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, senha }) });
     const d = await r.json();
     if (!r.ok) { erEl.textContent = d.detail || 'E-mail ou senha incorretos.'; erEl.hidden = false; return; }
+    if (d.requer_codigo) { erEl.textContent = 'Conta de administrador: entre pelo app (Área do Sócio) para confirmar o código.'; erEl.hidden = false; return; }
     localStorage.setItem('access_token', d.access_token);
     localStorage.setItem('refresh_token', d.refresh_token);
     plPasso('plano');
@@ -1324,6 +1325,7 @@ document.getElementById('bm-btn-login').addEventListener('click', async () => {
     const r = await fetch('/api/v1/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, senha}) });
     const d = await r.json();
     if (!r.ok) { erEl.textContent = d.detail || 'E-mail ou senha incorretos.'; erEl.hidden = false; return; }
+    if (d.requer_codigo) { erEl.textContent = 'Conta de administrador: entre pelo app (Área do Sócio) para confirmar o código.'; erEl.hidden = false; return; }
     localStorage.setItem('access_token', d.access_token);
     localStorage.setItem('refresh_token', d.refresh_token);
     bkPasso('confirmar');

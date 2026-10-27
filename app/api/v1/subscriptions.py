@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from app.core.auth import get_current_admin, get_current_player
@@ -102,6 +104,27 @@ async def verificar_expiracoes(
 ):
     n = await svc.verificar_expiracoes()
     return {"expiradas": n}
+
+
+@router.get("/{sub_id}/pix", response_model=SubscriptionCreateOut | None)
+async def pix_da_assinatura(
+    sub_id: int,
+    _admin: Player = Depends(get_current_admin),
+    svc: SubscriptionService = Depends(_svc),
+):
+    """Cobrança em aberto de uma assinatura, para o admin reenviar o PIX ao jogador.
+
+    O painel usava /pix-pendente, que devolve a cobrança de quem está logado —
+    ou seja, do próprio admin, nunca do jogador escolhido.
+    """
+    res = await svc.get_pix_da_assinatura(sub_id)
+    if not res:
+        return None
+    out = SubscriptionCreateOut.model_validate(res.subscription)
+    out.payment_link = res.payment_link
+    out.pix_qrcode_base64 = res.pix_qrcode_base64
+    out.pix_copia_e_cola = res.pix_copia_e_cola
+    return out
 
 
 # ── Preços padrão (público, usado pelo frontend) ───────────────────────────────
@@ -284,12 +307,26 @@ async def webhook(
     svc: SubscriptionService = Depends(_svc),
     asaas_access_token: str | None = Header(default=None, alias="asaas-access-token"),
 ):
-    if settings.ASAAS_WEBHOOK_TOKEN and asaas_access_token != settings.ASAAS_WEBHOOK_TOKEN:
+    # Sem o segredo configurado, produção recusa. Antes a rota aceitava
+    # qualquer chamada nesse caso — bastava um POST para marcar uma cobrança
+    # como paga. O serviço ainda confere a cobrança no Asaas antes de confiar.
+    esperado = settings.ASAAS_WEBHOOK_TOKEN
+    if not esperado:
+        if settings.producao:
+            raise HTTPException(503, "Webhook do Asaas não configurado (ASAAS_WEBHOOK_TOKEN).")
+    elif not asaas_access_token or not secrets.compare_digest(asaas_access_token, esperado):
         raise HTTPException(401, "Token de webhook inválido")
 
-    body = await request.json()
-    event: str = body.get("event", "")
-    payment_data: dict = body.get("payment", {})
+    try:
+        body = await request.json()
+    except ValueError:
+        raise HTTPException(400, "Corpo inválido")
+    if not isinstance(body, dict):
+        raise HTTPException(400, "Corpo inválido")
+    event = str(body.get("event") or "")
+    payment_data = body.get("payment") or {}
+    if not isinstance(payment_data, dict):
+        payment_data = {}
 
     await svc.processar_webhook(event, payment_data)
     return {"received": True}

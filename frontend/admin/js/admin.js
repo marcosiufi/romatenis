@@ -2,6 +2,9 @@
 
 const API = '/api/v1'
 let _token = localStorage.getItem('token')
+// Refresh: o acesso vale 30 min; sem renovar, o painel começava a falhar em
+// silêncio depois de meia hora
+let _refresh = localStorage.getItem('admin_refresh')
 let _players = []   // cache para lookup de nomes
 let _matches = []   // cache para filtro client-side
 let _seasons = []
@@ -133,14 +136,53 @@ function showErr(id, msg) {
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
-async function api(path, opts = {}) {
+async function api(path, opts = {}, tentarRenovar = true) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
   if (_token) headers['Authorization'] = `Bearer ${_token}`
   const res = await fetch(API + path, { ...opts, headers })
+  // Sessão vencida: renova uma vez e repete; se não der, volta ao login com
+  // aviso. Login e refresh ficam de fora: o 401 deles é a resposta em si.
+  const semRenovar = path.startsWith('/auth/login') || path.startsWith('/auth/refresh')
+  if (res.status === 401 && tentarRenovar && !semRenovar) {
+    if (_refresh && await renovarSessao()) return api(path, opts, false)
+    encerrarSessao('Sua sessão expirou. Entre de novo.')
+    throw new Error('Sessão expirada')
+  }
   if (res.status === 204) return null
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.detail || `Erro ${res.status}`)
   return data
+}
+
+async function renovarSessao() {
+  try {
+    const r = await fetch(API + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: _refresh }),
+    })
+    if (!r.ok) return false
+    guardarSessao(await r.json())
+    return true
+  } catch {
+    return false
+  }
+}
+
+function guardarSessao(d) {
+  _token = d.access_token
+  _refresh = d.refresh_token
+  localStorage.setItem('token', _token)
+  localStorage.setItem('admin_refresh', _refresh)
+}
+
+function encerrarSessao(mensagem) {
+  localStorage.removeItem('token')
+  localStorage.removeItem('admin_refresh')
+  _token = null
+  _refresh = null
+  showLogin()
+  if (mensagem) showErr('login-erro', mensagem)
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -150,18 +192,16 @@ async function init() {
   try {
     const me = await api('/auth/me')
     if (!me.is_admin) {
-      _token = null
-      localStorage.removeItem('token')
-      return showLogin()
+      encerrarSessao('Esta conta não é de administrador.')
+      return
     }
     document.getElementById('admin-nome').textContent = me.nome
     const inicial = document.getElementById('admin-inicial')
     if (inicial) inicial.textContent = (me.nome || '?').trim().charAt(0).toUpperCase()
     document.getElementById('tela-login').style.display = 'none'
     document.getElementById('admin-app').style.display = ''
-    // Set default matchmaking date to today
-    const today = new Date().toISOString().slice(0, 10)
-    document.getElementById('mm-data').value = today
+    // Data padrão do matchmaking: hoje, no fuso da quadra
+    document.getElementById('mm-data').value = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
     await loadDashboard()
   } catch {
     showLogin()
@@ -174,27 +214,63 @@ function showLogin() {
 }
 
 function logout() {
-  localStorage.removeItem('token')
-  _token = null
-  showLogin()
+  encerrarSessao()
+}
+
+// Login em duas etapas: senha e um código de 6 dígitos que chega por e-mail.
+// O aparelho em que o código foi confirmado fica dispensado por 30 dias.
+let _desafioLogin = null
+
+function mostrarEtapaCodigo(enviadoPara) {
+  const pedindo = !!enviadoPara
+  document.getElementById('campos-senha').style.display = pedindo ? 'none' : ''
+  document.getElementById('campo-codigo').style.display = pedindo ? '' : 'none'
+  document.getElementById('btn-voltar-senha').style.display = pedindo ? '' : 'none'
+  document.getElementById('login-ajuda').textContent = pedindo
+    ? `Enviamos um código de 6 dígitos para ${enviadoPara}. Ele vale por 10 minutos.`
+    : ''
+  showErr('login-erro', '')
+  if (pedindo) {
+    const campo = document.getElementById('inp-codigo')
+    campo.value = ''
+    setTimeout(() => campo.focus(), 50)
+  } else {
+    _desafioLogin = null
+  }
 }
 
 document.getElementById('form-login').addEventListener('submit', async e => {
   e.preventDefault()
   showErr('login-erro', '')
   const btn = e.submitter
+  const pedindoCodigo = document.getElementById('campo-codigo').style.display !== 'none'
   btn.disabled = true
   btn.textContent = 'Entrando…'
   try {
-    const data = await api('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: document.getElementById('inp-email').value,
-        senha: document.getElementById('inp-senha').value,
-      }),
-    })
-    _token = data.access_token
-    localStorage.setItem('token', _token)
+    const data = pedindoCodigo
+      ? await api('/auth/login/codigo', {
+          method: 'POST',
+          body: JSON.stringify({
+            desafio: _desafioLogin,
+            codigo: document.getElementById('inp-codigo').value.replace(/\D/g, ''),
+          }),
+        })
+      : await api('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: document.getElementById('inp-email').value,
+            senha: document.getElementById('inp-senha').value,
+            dispositivo_token: localStorage.getItem('admin_dispositivo') || null,
+          }),
+        })
+    if (data.requer_codigo) {
+      _desafioLogin = data.desafio
+      mostrarEtapaCodigo(data.enviado_para)
+      return
+    }
+    if (data.dispositivo_token) localStorage.setItem('admin_dispositivo', data.dispositivo_token)
+    guardarSessao(data)
+    mostrarEtapaCodigo(null)
     await init()
   } catch (err) {
     showErr('login-erro', err.message || 'Credenciais inválidas')
@@ -900,7 +976,7 @@ function renderAssinaturas(list) {
       <td>
         <button class="btn-xs sec" onclick="abrirModalSubStatus(${s.id})">Status</button>
         ${s.gateway_subscription_id
-          ? `<button class="btn-xs primary" onclick="verPixSub(${s.id}, '${s.gateway_subscription_id}')">PIX</button>`
+          ? `<button class="btn-xs primary" onclick="verPixSub(${s.id})">PIX</button>`
           : ''}
       </td>
     </tr>`).join('')
@@ -1068,12 +1144,14 @@ async function confirmarSubStatus() {
 
 // ── Ver PIX ───────────────────────────────────────────────────────────────────
 
-async function verPixSub(subId, gatewayId) {
+async function verPixSub(subId) {
   const body = document.getElementById('ver-pix-body')
   body.innerHTML = '<p style="color:var(--clr-text-muted);font-size:0.85rem">Buscando…</p>'
   document.getElementById('modal-ver-pix').classList.add('open')
   try {
-    const res = await api('/subscriptions/pix-pendente')
+    // A cobrança da assinatura escolhida — /pix-pendente devolvia a de quem
+    // está logado, ou seja, do próprio admin
+    const res = await api(`/subscriptions/${subId}/pix`)
     if (res && res.pix_copia_e_cola) {
       body.innerHTML = `
         <p style="font-size:0.82rem;color:var(--clr-text-muted);margin-bottom:0.5rem">Copia-e-cola PIX:</p>
@@ -1474,12 +1552,21 @@ async function cancelarLocacao(id) {
 
 const DIAS_SEMANA = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo']
 
+// Caches das listas: os botões de editar passam só o id e a função busca o
+// registro aqui. Antes o objeto inteiro ia em JSON dentro do onclick — uma
+// aspa simples numa descrição, ou numa mensagem de erro vinda do leitor,
+// quebrava o atributo e virava script no painel.
+let _slotsRanking = []
+let _horariosEspeciais = []
+let _dispositivos = []
+
 async function loadSlotsRanking() {
   const tbody = document.getElementById('tbody-slots-ranking')
   if (!tbody) return
   tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--tinta-3);padding:1rem">Carregando…</td></tr>'
   try {
     const slots = await api('/admin/slots-ranking')
+    _slotsRanking = slots
     if (!slots.length) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--tinta-3);padding:1rem">Nenhum horário cadastrado.</td></tr>'
       return
@@ -1493,7 +1580,7 @@ async function loadSlotsRanking() {
           <span class="badge ${s.ativo ? 'e-bom' : 'e-neutro'}">${s.ativo ? 'Ativo' : 'Inativo'}</span>
         </td>
         <td style="display:flex;gap:.4rem">
-          <button class="btn-xs" onclick='abrirModalSlotRanking(${JSON.stringify(s)})'>Editar</button>
+          <button class="btn-xs" onclick="abrirModalSlotRanking(${s.id})">Editar</button>
           <button class="btn-xs" onclick="toggleSlotRanking(${s.id},${s.ativo})" title="${s.ativo ? 'Desativar' : 'Ativar'}">${s.ativo ? 'Pausar' : 'Ativar'}</button>
           <button class="btn-xs danger" onclick="deletarSlotRanking(${s.id})">Excluir</button>
         </td>
@@ -1505,7 +1592,8 @@ async function loadSlotsRanking() {
 
 let _srEditId = null
 
-function abrirModalSlotRanking(slot = null) {
+function abrirModalSlotRanking(slotId = null) {
+  const slot = slotId ? _slotsRanking.find(s => s.id === slotId) : null
   _srEditId = slot ? slot.id : null
   document.getElementById('sr-modal-titulo').textContent = slot ? 'Editar horário do ranking' : 'Adicionar horário do ranking'
   document.getElementById('sr-dia').value    = slot ? slot.dia_semana : 0
@@ -1565,6 +1653,7 @@ async function loadHorariosEspeciais() {
   if (!tbody) return
   try {
     const items = await api('/admin/horarios-especiais')
+    _horariosEspeciais = items
     if (!items.length) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--tinta-3);padding:.75rem">Nenhum dia especial cadastrado.</td></tr>'
       return
@@ -1579,17 +1668,18 @@ async function loadHorariosEspeciais() {
         <td>${escHtml(he.descricao)}</td>
         <td>${horario}</td>
         <td style="display:flex;gap:.3rem">
-          <button class="btn-xs" onclick='abrirModalHorarioEspecial(${JSON.stringify(he)})'>Editar</button>
+          <button class="btn-xs" onclick="abrirModalHorarioEspecial(${he.id})">Editar</button>
           <button class="btn-xs danger" onclick="deletarHorarioEspecial(${he.id})">Excluir</button>
         </td>
       </tr>`
     }).join('')
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--clr-danger,red);padding:.5rem">${e.message}</td></tr>`
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--critico);padding:.5rem">${escHtml(e.message)}</td></tr>`
   }
 }
 
-function abrirModalHorarioEspecial(he = null) {
+function abrirModalHorarioEspecial(heId = null) {
+  const he = heId ? _horariosEspeciais.find(h => h.id === heId) : null
   _heEditId = he ? he.id : null
   document.getElementById('he-modal-titulo').textContent = he ? 'Editar dia especial' : 'Adicionar dia especial'
   document.getElementById('he-data').value      = he ? he.data : ''
@@ -1757,7 +1847,7 @@ async function loadContrato() {
     _contratoClausulas = await api('/admin/contrato/clausulas')
     _renderContrato()
   } catch (e) {
-    wrap.innerHTML = `<p style="color:var(--perigo);text-align:center;padding:2rem">Erro ao carregar: ${e.message}</p>`
+    wrap.innerHTML = `<p style="color:var(--perigo);text-align:center;padding:2rem">Erro ao carregar: ${escHtml(e.message)}</p>`
   }
 }
 
@@ -1844,7 +1934,7 @@ async function loadHorarios() {
     _horarios = await api('/admin/horarios-semana')
     _renderHorarios()
   } catch (e) {
-    wrap.innerHTML = `<p style="color:var(--clr-danger)">Erro: ${e.message}</p>`
+    wrap.innerHTML = `<p style="color:var(--critico)">Erro: ${escHtml(e.message)}</p>`
   }
 }
 
@@ -2091,6 +2181,7 @@ async function loadAcessoDispositivos() {
   const corpo = document.getElementById('acesso-dispositivos')
   try {
     const linhas = await api('/admin/acesso/dispositivos')
+    _dispositivos = linhas
     if (!linhas.length) {
       corpo.innerHTML = '<tr><td colspan="6" class="empty">Nenhum leitor cadastrado.</td></tr>'
       return
@@ -2107,7 +2198,7 @@ async function loadAcessoDispositivos() {
         <td>${estado}${d.ultimo_erro ? `<div class="cfg-hint">${escHtml(d.ultimo_erro)}</div>` : ''}</td>
         <td>${d.ultimo_contato_em ? fmtDH(d.ultimo_contato_em) : '—'}</td>
         <td>
-          <button class="btn-xs sec" onclick='abrirModalDispositivo(${JSON.stringify(d)})'>Editar</button>
+          <button class="btn-xs sec" onclick="abrirModalDispositivo(${d.id})">Editar</button>
           <button class="btn-xs warn" onclick="abrirPortao(${d.id})">Abrir</button>
           <button class="btn-xs danger" onclick="excluirDispositivo(${d.id})">Excluir</button>
         </td>
@@ -2118,7 +2209,8 @@ async function loadAcessoDispositivos() {
   }
 }
 
-function abrirModalDispositivo(d = null) {
+function abrirModalDispositivo(dispId = null) {
+  const d = dispId ? _dispositivos.find(x => x.id === dispId) : null
   document.getElementById('modal-dispositivo-titulo').textContent = d ? 'Editar leitor' : 'Novo leitor'
   document.getElementById('disp-id').value      = d ? d.id : ''
   document.getElementById('disp-nome').value    = d ? d.nome : ''

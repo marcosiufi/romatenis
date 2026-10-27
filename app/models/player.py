@@ -80,8 +80,17 @@ class Player(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Redefinição de senha: guarda o hash do token do link, não o token
     reset_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
     reset_token_expiracao: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Segundo fator do admin: só o hash do código enviado por e-mail, que vale
+    # CODIGO_LOGIN_MINUTOS; as tentativas erradas são contadas (app/api/v1/auth.py)
+    codigo_login_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    codigo_login_expira: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    codigo_login_tentativas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     data_cadastro: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

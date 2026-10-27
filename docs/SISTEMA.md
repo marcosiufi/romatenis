@@ -371,12 +371,12 @@ Prefixo geral: `/api/v1`
 
 | Router | Rotas |
 |---|---|
-| `auth` | `/login` `/refresh` `/me` `/esqueci-senha` `/validar-reset` `/redefinir-senha` `/alterar-senha` |
+| `auth` | `/login` `/login/codigo` (2º fator do admin) `/refresh` `/me` `/esqueci-senha` `/validar-reset` `/redefinir-senha` `/alterar-senha` (devolve tokens novos) |
 | `public` | `/disponibilidade` `/cadastro` `/reserva` `/empresa` `/temporadas` `/horarios-semana` |
 | `players` | listar/criar · `/me` · `/me/foto` · `PATCH /me` · `/{id}` |
-| `bookings` | `/slots` `/ranking` `/jogo-avulso` `/locacao` `/uso-semanal` `DELETE /{id}` `/feriados` |
+| `bookings` | `/slots` `/ranking` `/jogo-avulso` `/locacao` (admin) `/uso-semanal` `DELETE /{id}` `/feriados` |
 | `matches` | listar · `/{id}/placar` `/{id}/wo` `/{id}/cancelar` (admin) `/{id}/cancelar-jogador` `/recalcular-classificacao` |
-| `subscriptions` | `/contratar` `/renovar` `/precos` `/minhas` `/minha-ativa` `/pix-pendente` `/meus-pagamentos` `/solicitar-pausa` `/lista-espera*` `/vagas-ranking` `/webhook` |
+| `subscriptions` | `/contratar` `/renovar` `/precos` `/minhas` `/minha-ativa` `/pix-pendente` `/{id}/pix` (admin) `/meus-pagamentos` `/solicitar-pausa` `/lista-espera*` `/vagas-ranking` `/webhook` |
 | `seasons` | listar · `/ativa` · criar · `/{id}/encerrar` |
 | `cupons` | `POST /validar` (autenticado — preview do desconto) |
 | `admin` | `/dashboard` `/players` `/configuracoes` `/cupons*` `/email/status` `/email/testar` `/slots-ranking*` `/horarios-especiais*` `/horarios-semana` `/lista-espera*` `/contrato/clausulas` `/empresa` `/financeiro/resumo` `/financeiro/transacoes` `/acesso*` |
@@ -392,6 +392,15 @@ comercial (toggles + mensagens) e prazo de cancelamento.
 O `Dockerfile` faz `COPY . .`, então **o frontend é embutido na imagem**. O
 Docker reaproveita a camada em cache e um `docker compose build` comum **não
 recopia arquivos alterados** — o container continua servindo a versão antiga.
+
+O container roda **sem root** (uid 10001). A pasta `uploads` é montada do
+host e precisa pertencer a esse usuário, senão nenhuma foto é gravada:
+
+```bash
+chown -R 10001:10001 /opt/romatenis/uploads
+```
+
+Uma vez só; o deploy comum não mexe nisso.
 
 ### Comando padrão (frontend, backend, ou ambos)
 
@@ -447,6 +456,16 @@ docker compose exec api python scripts/seed_admin.py   # cria o primeiro admin
 - **Eager loading:** `selectinload` — lazy load quebra em async
 - **XSS:** dados do usuário passam por `esc()` (app) / `escHtml()` (admin) antes de `innerHTML`
 - **CPF:** validado por dígitos verificadores no backend (`app/core/validators.py`) e no frontend
+- **Campo único duplicado** (e-mail, telefone, CPF): grave com
+  `commit_ou_409(db)` (`app/core/erros.py`), que devolve 409 com mensagem em
+  vez de estourar 500
+- **Rota pública ou de login:** acrescente `dependencies=[Depends(por_ip(...))]`
+  (`app/core/limite.py`) — ver seção 21.3
+- **Upload de imagem:** tipo pelos primeiros bytes e nome com sufixo aleatório
+  (`app/core/imagens.py`); a pasta `/uploads` é servida sem login
+- **Texto do usuário em e-mail:** passe por `_e()` (html.escape) no template
+- **Log:** nunca o payload inteiro de webhook nem resposta de API externa —
+  trazem nome, e-mail, telefone
 - **JS sem ponto e vírgula:** `admin.js` não usa `;`. Linha que começa com `[` ou
   `(` gruda na de cima — `const x = …` seguido de `['a','b'].forEach(…)` vira
   um índice e quebra em silêncio. Foi o que travou o "Novo jogador" (seção 20.6).
@@ -488,6 +507,9 @@ mantém a paleta própria, só no escuro.
 | **Escape XSS** | Varredura completa feita na auditoria — sem pendências (seção 15) |
 | **CSP** | Não há `Content-Security-Policy`; exigiria remover `onclick` inline |
 | **Reputação de e-mail** | Domínio novo — mensagens podem cair em spam até criar histórico |
+| **Backup do banco** | Não há rotina automática de `pg_dump`. Um disco perdido leva cadastros, pagamentos e contratos (seção 21.8) |
+| **Dados de convidados** | CPF, WhatsApp e nascimento de quem joga avulso ficam guardados sem prazo. LGPD pede finalidade e descarte; falta rotina de limpeza |
+| **Cancelar locação paga (admin)** | Cancela a reserva mas não estorna no Asaas; o estorno é manual lá |
 
 ---
 
@@ -1182,4 +1204,123 @@ As capturas de tela do painel de navegador congelam animações quando o painel
 está oculto — uma folha aparece parada no quadro inicial. Confira posição e
 cor pelo DOM (`getBoundingClientRect`, `getComputedStyle`) antes de concluir que
 algo quebrou, e fure o cache (`fetch(url, {cache: 'reload'})`) ao recarregar.
+
+---
+
+## 21. Auditoria de segurança — 27/10/2026
+
+Leitura completa do sistema (infra, backend, frontend, agente) à procura de
+falhas de segurança, bugs e detalhes. Branch `seguranca/auditoria`. O que
+estava certo e ficou como estava: ORM em tudo (sem SQL cru), escape de HTML
+consistente no app e no admin, autorização por dono/admin em todas as rotas,
+bcrypt, comparação em tempo constante do token do agente, constraint contra
+reserva dupla, idempotência do webhook do Asaas.
+
+### 21.1 Webhooks: recusar sem segredo e conferir na fonte
+
+Asaas, Autentique e N8N aceitavam qualquer chamada quando o segredo não estava
+no `.env` ("útil em dev"). Em produção isso era um POST para marcar uma
+cobrança como paga ou um contrato como assinado. Agora:
+
+- em produção, sem o segredo a rota responde 503 e nada é processado;
+  em `ENVIRONMENT=development` continua aceitando sem segredo;
+- a comparação do segredo é em tempo constante;
+- **o Asaas é consultado antes de confirmar** (`GET /payments/{id}`): o status
+  que vale é o que a API deles devolve, não o que chegou no POST. Sem resposta
+  do Asaas o webhook devolve erro e eles reenviam depois. Sem chave de API
+  (ambiente local) vale o payload.
+
+### 21.2 Sessões e segundo fator
+
+- Tokens (JWT) carregam `sv`, uma marca da senha atual. **Trocar a senha
+  derruba toda sessão**, inclusive o refresh de 7 dias. `/auth/alterar-senha`
+  devolve tokens novos para a sessão que trocou. No primeiro deploy todo mundo
+  entra de novo uma vez (os tokens antigos não têm `sv`).
+- `python-jose` saiu (CVE-2024-33663/33664); entrou `PyJWT`.
+- **Admin entra em duas etapas**: senha, depois um código de 6 dígitos enviado
+  por e-mail, válido por 10 min, 5 tentativas. Só o hash do código fica no
+  banco (migration 0032). O aparelho em que o código foi confirmado recebe um
+  `dispositivo_token` (30 dias) que dispensa o código. A regra vale em qualquer
+  tela (app, admin, site), porque o token de admin é o mesmo. Em
+  desenvolvimento o código também sai no log do container. Se o SMTP falhar
+  em produção, o login responde 503 dizendo isso — o admin não fica esperando
+  um e-mail que não vem; corrige-se o `.env` e tenta de novo.
+- `SECRET_KEY`: produção não sobe com a chave padrão nem com menos de 16
+  caracteres; avisa abaixo de 32. Não troque a chave à toa: ela cifra as
+  senhas dos leitores (`app/core/cripto.py`).
+- Token de redefinição de senha guardado como hash.
+- Senha: continua mínimo 6 (decisão do admin), máximo 72 (limite do bcrypt).
+
+### 21.3 Limite de tentativas
+
+`app/core/limite.py`: janela deslizante em memória, por processo. Login 10/min
+por IP e 20 a cada 15 min por conta; código 10 a cada 5 min; "esqueci a
+senha" 5 a cada 15 min por IP e 3/h por e-mail; cadastro público 5/h por IP;
+cupom 30/min; selfie 30/min; disponibilidade 60/min. Acima disso, 429 com
+`Retry-After`. O IP real vem do Caddy: o uvicorn sobe com `--proxy-headers`
+(Dockerfile); sem isso todo acesso pareceria vir do proxy e o limite travaria
+todo mundo junto.
+
+### 21.4 Fotos
+
+`/uploads/avatars/12.jpg` e `/uploads/acesso/RT000012.jpg` eram públicos e
+enumeráveis. Agora o nome leva 24 hex aleatórios (`app/core/imagens.py`), a
+foto anterior é apagada na troca, o tipo sai dos primeiros bytes do arquivo
+(não do nome) e a resposta vai com `Cache-Control: private`. As fotos antigas
+são renomeadas uma vez por `scripts/proteger_fotos.py` (idempotente). A foto
+trocada no perfil atualiza a credencial do portão na hora, não só na próxima
+reserva.
+
+O link de selfie do convidado só vale enquanto ele tem jogo por vir — um link
+antigo não cadastra outro rosto para o próximo jogo.
+
+### 21.5 Cabeçalhos, container e dependências
+
+- API devolve CSP (`script-src 'self' 'unsafe-inline'`: nenhum script de outro
+  domínio carrega; o inline é exigido pelos `onclick`), `nosniff`,
+  `frame-ancestors 'none'`, `Referrer-Policy`, `Permissions-Policy`. Caddy
+  acrescenta HSTS, remove `Server` e limita o corpo a 12 MB.
+- Container roda como `roma` (uid 10001) — ver o `chown` na seção 11.
+- Dependências atualizadas (fastapi 0.116, starlette 0.47, python-multipart
+  0.0.20, httpx 0.28, sqlalchemy 2.0.43, pydantic 2.11, bcrypt 4.3).
+
+### 21.6 Bugs corrigidos no caminho
+
+| Onde | Problema | Correção |
+|---|---|---|
+| `POST /bookings/locacao` | qualquer conta reservava a quadra como confirmada, sem pagar; nenhuma tela usava | só admin (registro manual) |
+| Agendador | `expirar_renovacao` nunca rodava: jogador ficava "renovação" para sempre | entrou no ciclo horário |
+| Agendador | dois workers rodavam os laços em paralelo: avisos e convocações em dobro | trava `pg_try_advisory_xact_lock` por ciclo |
+| Partidas | admin cancelava a partida e a reserva seguia ocupando a agenda e o portão | reserva cancelada e janela revogada |
+| Partidas | jogador cancelava e a janela do portão seguia ativa | revogada |
+| Portão | locação e jogo avulso nunca ganhavam janela (só o ranking sincronizava) | sincroniza na criação, na confirmação do pagamento e na expiração |
+| Assinaturas (admin) | "Ver PIX" consultava `/pix-pendente`, a cobrança do admin logado | `GET /subscriptions/{id}/pix` |
+| Assinaturas | contratar de novo com cobrança aberta gerava outra no Asaas | bloqueado por 24 h |
+| Jogadores (admin) | status "Suspenso" não existe; salvar dava erro | opções reais (ativo, contrato, pagamento, renovação, inativo) |
+| Perfil / admin | e-mail, CPF ou telefone repetido virava erro 500 | 409 com mensagem (`commit_ou_409`) |
+| Reserva | oponente inexistente dava 500; inativo entrava em partida | valida existência, contrato e assinatura de todos |
+| Configurações | horários aceitavam abertura ≥ fechamento e hora 25 | validação |
+| Contrato | reenvio manual pelo admin ia com cláusula mínima e cabeçalho fixo | mesmas cláusulas e empresa do envio automático (`clausulas_e_empresa`) |
+| E-mails | nome, motivo da pausa, erro da Autentique entravam no HTML sem escape | `_e()` nos templates |
+| Logs | payload inteiro do webhook e resposta da Autentique (nome, telefone) | só ids e status |
+| Código | CPF do responsável fixo no modelo e no gerador de PDF | só no banco (tela Empresa) |
+| Admin | mensagem de erro do leitor ia em JSON dentro de `onclick` (XSS por quem controla um leitor na rede) | botões passam o id; a função busca no cache |
+| Admin | token de 30 min sem renovação: ações falhavam em silêncio | refresh guardado e renovado no 401; aviso ao expirar |
+| Service worker | cache primeiro: todo deploy exigia subir `CACHE_NAME` | rede primeiro, cache só offline |
+
+### 21.7 Deploy desta auditoria
+
+1. `chown -R 10001:10001 /opt/romatenis/uploads` (uma vez).
+2. Deploy com migration (seção 11).
+3. `docker compose exec -T api python scripts/proteger_fotos.py` (uma vez).
+4. Todo mundo entra de novo; o admin recebe o código por e-mail no primeiro
+   login de cada aparelho.
+
+### 21.8 O que ficou para depois
+
+- **Backup**: `pg_dump` diário para fora do servidor. Hoje não há.
+- **Retenção de dados de convidados** (LGPD).
+- **Tokens em `localStorage`**: um XSS levaria a sessão. Não foi encontrado
+  XSS e a CSP bloqueia script externo; cookie `HttpOnly` seria o passo
+  seguinte, com proteção CSRF junto.
 

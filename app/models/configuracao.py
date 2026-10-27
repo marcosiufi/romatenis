@@ -108,7 +108,8 @@ class Configuracao(Base):
     razao_social: Mapped[str] = mapped_column(String(300), nullable=False, default="Rosangela Pioli Siufi")
     nome_fantasia: Mapped[str] = mapped_column(String(300), nullable=False, default="Roma Tênis")
     cnpj: Mapped[str] = mapped_column(String(30), nullable=False, default="29.616.848/0001-21")
-    cpf_responsavel: Mapped[str] = mapped_column(String(20), nullable=False, default="05405791814")
+    # Preenchido na tela Empresa do painel; não fica no código-fonte
+    cpf_responsavel: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     end_logradouro: Mapped[str] = mapped_column(String(300), nullable=False, default="Rua Minoru Mizutani")
     end_numero: Mapped[str] = mapped_column(String(20), nullable=False, default="99")
     end_complemento: Mapped[str] = mapped_column(String(100), nullable=False, default="")

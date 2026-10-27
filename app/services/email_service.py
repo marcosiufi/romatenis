@@ -4,7 +4,7 @@ import asyncio
 import logging
 import re
 import smtplib
-from html import unescape
+from html import escape as _e, unescape
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -193,6 +193,8 @@ async def send_email_estrito(to_email: str, subject: str, html: str) -> None:
 
 async def enviar_boas_vindas(nome: str, email: str, link_app: str) -> None:
     """Enviado no cadastro, antes de qualquer contratação."""
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>! 👋</p>
     <p style="color:#555;line-height:1.6">
@@ -221,6 +223,8 @@ async def enviar_boas_vindas(nome: str, email: str, link_app: str) -> None:
 
 async def enviar_abertura_inscricoes(nome: str, email: str, link: str) -> None:
     """Avisa quem está na lista de espera que as contratações abriram."""
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <div style="background:#eaf7ee;border-left:4px solid #4ab870;padding:16px 20px;margin:18px 0;border-radius:4px">
@@ -247,6 +251,11 @@ async def enviar_lembrete_partida(
     nome: str, email: str, quando: str, adversarios: str, tipo: str,
 ) -> None:
     """Lembrete algumas horas antes da partida agendada."""
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
+    quando = _e(quando)
+    adversarios = _e(adversarios)
+    tipo = _e(tipo)
     adv = (
         f'<tr><td><strong>Contra</strong></td><td>{adversarios}</td></tr>'
         if adversarios else ""
@@ -274,6 +283,10 @@ async def enviar_lembrete_partida(
     )
 
 async def enviar_aviso_vencimento(nome: str, email: str, plano: str, dias: int, data_exp: str, link_renovacao: str) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
+    plano = _e(plano)
+    data_exp = _e(data_exp)
     urgencia = "⚠️ HOJE" if dias <= 1 else f"em {dias} dias"
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
@@ -292,6 +305,10 @@ async def enviar_aviso_vencimento(nome: str, email: str, plano: str, dias: int, 
 
 
 async def enviar_confirmacao_pagamento(nome: str, email: str, plano: str, data_exp: str) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
+    plano = _e(plano)
+    data_exp = _e(data_exp)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <p style="color:#555;line-height:1.6">✅ Pagamento confirmado! Sua assinatura <strong>{plano}</strong>
@@ -311,6 +328,8 @@ async def enviar_contrato_pendente(nome: str, email: str, whatsapp: str = "") ->
     A assinatura acontece pelo link que a Autentique envia por WhatsApp — este
     e-mail apenas avisa e direciona para lá, sem link próprio de assinatura.
     """
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     fmt = _fmt_whatsapp(whatsapp)
     numero = (
         f'<p style="color:#555;line-height:1.6;margin-top:.5rem">'
@@ -357,6 +376,11 @@ async def alertar_admin_falha_contrato(
     Sem contrato o jogador fica pago porém bloqueado, e a falha é silenciosa —
     daí o alerta ativo em vez de só registrar no log.
     """
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    jogador_nome = _e(jogador_nome)
+    jogador_email = _e(jogador_email)
+    jogador_telefone = _e(jogador_telefone or '')
+    erro = _e(erro)
     tel = _fmt_whatsapp(jogador_telefone) or jogador_telefone or "—"
     corpo = f"""
     <p style="color:#333;font-size:1rem">Falha no envio automático de contrato</p>
@@ -385,6 +409,8 @@ async def alertar_admin_falha_contrato(
 
 
 async def enviar_contrato_assinado(nome: str, email: str) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <p style="color:#555;line-height:1.6">
@@ -399,6 +425,8 @@ async def enviar_contrato_assinado(nome: str, email: str) -> None:
 
 
 async def enviar_reset_senha(nome: str, email: str, link_reset: str) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <p style="color:#555;line-height:1.6">Recebemos uma solicitação para redefinir a senha da sua conta Roma Tênis.</p>
@@ -414,6 +442,8 @@ async def enviar_reset_senha(nome: str, email: str, link_reset: str) -> None:
 
 
 async def enviar_convocacao_lista_espera(nome: str, email: str, horas: int, link: str) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <p style="color:#555;line-height:1.6">
@@ -436,6 +466,8 @@ async def enviar_convocacao_lista_espera(nome: str, email: str, horas: int, link
 
 
 async def enviar_confirmacao_lista_espera(nome: str, email: str, posicao: int) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
     <p style="color:#555;line-height:1.6">
@@ -453,7 +485,41 @@ async def enviar_confirmacao_lista_espera(nome: str, email: str, posicao: int) -
     )
 
 
+async def enviar_codigo_login(nome: str, email: str, codigo: str, minutos: int) -> None:
+    """Segundo fator do admin: o código vai por e-mail e vale poucos minutos."""
+    nome = _e(nome)
+    digitos = " ".join(codigo)
+    corpo = f"""
+    <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>
+    <p style="color:#555;line-height:1.6">
+      Alguém acabou de entrar no painel do Roma Tênis com a sua senha. Para
+      confirmar que é você, digite este código:
+    </p>
+    <p style="text-align:center;margin:24px 0">
+      <span style="display:inline-block;font-family:'Courier New',monospace;font-size:2rem;font-weight:700;letter-spacing:.35em;background:#f7f3ee;color:#1a3320;padding:14px 22px;border-radius:8px">{digitos}</span>
+    </p>
+    <p style="color:#555;line-height:1.6">
+      Ele vale por <strong>{minutos} minutos</strong> e só funciona uma vez.
+    </p>
+    <div style="background:#fdf6e8;border:1px solid #e0a040;padding:14px 18px;margin:20px 0;border-radius:6px">
+      <p style="color:#7a5a1e;margin:0;line-height:1.6;font-size:.92rem">
+        Não foi você? Alguém sabe a sua senha. Troque-a agora pelo app
+        (Perfil, Alterar senha): isso derruba qualquer sessão aberta.
+      </p>
+    </div>"""
+    # Estrito: se o e-mail não sair, o login precisa saber (o admin ficaria
+    # esperando um código que nunca chega)
+    await send_email_estrito(
+        email,
+        f"{codigo} é o seu código de acesso ao painel",
+        _html_base("Código de acesso", corpo),
+    )
+
+
 async def enviar_aviso_pausa(nome: str, email: str, data_retorno: str | None) -> None:
+    # Texto livre vira HTML inerte: nome, motivo e afins são do usuário
+    nome = _e(nome)
+    data_retorno = _e(data_retorno or '')
     retorno = f"com retorno previsto em <strong>{data_retorno}</strong>" if data_retorno else ""
     corpo = f"""
     <p style="color:#333;font-size:1rem">Olá, <strong>{nome}</strong>!</p>

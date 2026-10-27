@@ -5,11 +5,14 @@ Autentique envia POST com JSON quando um documento é assinado/finalizado.
 Payload esperado:
   { "event": "document.finished", "data": { "id": "<document_uuid>", ... } }
 
-Segurança: valida o header X-Autentique-Token contra AUTENTIQUE_WEBHOOK_SECRET.
-Se o secret não estiver configurado, aceita qualquer requisição (útil em dev).
+Segurança: valida o header X-Autentique-Token (ou ?token=) contra
+AUTENTIQUE_WEBHOOK_SECRET. Em produção, sem o secret configurado a rota é
+recusada — aberta, qualquer um marcaria o contrato de qualquer jogador como
+assinado. Só em desenvolvimento aceita sem segredo.
 """
 
 import logging
+import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -34,13 +37,22 @@ async def autentique_webhook(
 ):
     # Valida token via query param (?token=...) ou header X-Autentique-Token
     secret = settings.AUTENTIQUE_WEBHOOK_SECRET
-    if secret:
-        received = token or x_autentique_token
-        if received != secret:
+    if not secret:
+        if settings.producao:
+            raise HTTPException(503, "Webhook da Autentique não configurado (AUTENTIQUE_WEBHOOK_SECRET).")
+    else:
+        received = token or x_autentique_token or ""
+        if not secrets.compare_digest(received, secret):
             raise HTTPException(403, "Token inválido")
 
-    payload = await request.json()
-    logger.info("Autentique webhook payload completo: %s", payload)
+    try:
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(400, "Corpo inválido")
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Corpo inválido")
+    # O payload traz nome, e-mail e telefone do signatário: não vai para o log
+    logger.info("Autentique webhook recebido")
 
     # Autentique envia: {"event": {"id": "...", "data": {"id": "<doc_id>", ...}}}
     # O tipo do evento é implícito (só assinamos document.finished neste endpoint)
@@ -62,7 +74,7 @@ async def autentique_webhook(
 
     logger.info("Autentique webhook: doc_id=%s", doc_id)
     if not doc_id:
-        logger.warning("Autentique webhook sem document id: %s", payload)
+        logger.warning("Autentique webhook sem document id (chaves: %s)", sorted(payload.keys()))
         return {"ok": True, "msg": "sem document id"}
 
     async for db in get_db():
@@ -104,7 +116,7 @@ async def autentique_webhook(
 
         await db.commit()
 
-        logger.info("Contrato assinado: player_id=%s nome=%s", player.id, player.nome)
+        logger.info("Contrato assinado: player_id=%s", player.id)
 
         # Notifica o jogador por e-mail
         try:

@@ -115,6 +115,24 @@ Credenciais (Asaas, Autentique, SMTP, senha do admin) ficam **apenas** no `.env`
 do servidor. Nunca exibir, copiar ou registrar esses valores — nem em commits,
 nem em documentação, nem na conversa.
 
+Regras que saíram da auditoria de 27/10/2026 (seção 21 de `docs/SISTEMA.md`):
+
+- **Webhook** novo recusa sem segredo em produção e confere na API de origem
+  antes de mudar estado; comparação com `secrets.compare_digest`.
+- **Rota pública ou de login** leva `dependencies=[Depends(por_ip(...))]`
+  (`app/core/limite.py`).
+- **Campo único** (e-mail, telefone, CPF): grave com `commit_ou_409(db)`.
+- **Upload de imagem**: tipo pelos bytes e nome aleatório (`app/core/imagens.py`).
+  `/uploads` é público; nome previsível é enumeração de rostos.
+- **Texto do usuário em e-mail** passa por `_e()`; em `innerHTML`, por
+  `esc()`/`escHtml()`; nunca objeto em JSON dentro de `onclick` — passe o id.
+- **Log** sem payload de webhook nem corpo de resposta externa (trazem PII).
+- Tokens carregam a marca da senha (`sv`): trocar a senha derruba as sessões.
+  Admin entra em duas etapas (código por e-mail); em desenvolvimento o código
+  sai no log do container.
+- O container roda sem root: a pasta `uploads` do host precisa de
+  `chown -R 10001:10001`.
+
 ## Ao concluir uma mudança
 
 1. Atualize a seção correspondente em `docs/SISTEMA.md` (regra nova, modelo novo,

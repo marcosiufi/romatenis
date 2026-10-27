@@ -2,11 +2,12 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import func, select
 
 from app.core.auth import get_current_admin
 from app.core.database import get_db
+from app.core.erros import commit_ou_409
 from app.models.lista_espera import ListaEspera, StatusListaEspera
 from app.models.contrato import ContratoClausula
 from app.models.horario_dia_semana import HorarioDiaSemana
@@ -21,7 +22,12 @@ from app.models.season import Season, StatusTemporada
 from app.models.subscription import StatusAssinatura, Subscription
 from app.models.cupom import Cupom
 from app.schemas.cupom import CupomCreate, CupomOut, CupomUpdate
-from app.schemas.player import PlayerOut
+from app.schemas.player import (
+    PlayerOut,
+    normalizar_cpf_opcional,
+    normalizar_telefone,
+    normalizar_uf,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 FUSO_BR = ZoneInfo("America/Sao_Paulo")
@@ -149,27 +155,42 @@ async def list_all_players(
 
 
 class AdminPlayerPatch(BaseModel):
-    nome: str | None = None
-    telefone: str | None = None
-    email: EmailStr | None = None
+    nome: str | None = Field(default=None, min_length=2, max_length=150)
+    telefone: str | None = Field(default=None, max_length=20)
+    email: EmailStr | None = Field(default=None, max_length=255)
     aceita_convites_sistema: bool | None = None
     nivel: NivelJogador | None = None
     is_admin: bool | None = None
     # Dados pessoais
-    cpf: str | None = None
+    cpf: str | None = Field(default=None, max_length=14)
     data_nascimento: date | None = None
-    apelido: str | None = None
+    apelido: str | None = Field(default=None, max_length=50)
     # Endereço
-    rua: str | None = None
-    numero: str | None = None
-    complemento: str | None = None
-    bairro: str | None = None
-    cidade: str | None = None
-    estado: str | None = None
-    pais: str | None = None
-    cep: str | None = None
+    rua: str | None = Field(default=None, max_length=200)
+    numero: str | None = Field(default=None, max_length=20)
+    complemento: str | None = Field(default=None, max_length=100)
+    bairro: str | None = Field(default=None, max_length=100)
+    cidade: str | None = Field(default=None, max_length=100)
+    estado: str | None = Field(default=None, max_length=2)
+    pais: str | None = Field(default=None, max_length=50)
+    cep: str | None = Field(default=None, max_length=9)
     # Status de atividade
     status: StatusJogador | None = None
+
+    @field_validator("telefone")
+    @classmethod
+    def _telefone(cls, v: str | None) -> str | None:
+        return normalizar_telefone(v) if v else None
+
+    @field_validator("cpf")
+    @classmethod
+    def _cpf(cls, v: str | None) -> str | None:
+        return normalizar_cpf_opcional(v)
+
+    @field_validator("estado")
+    @classmethod
+    def _estado(cls, v: str | None) -> str | None:
+        return normalizar_uf(v)
 
 
 @router.patch("/players/{player_id}", response_model=PlayerOut)
@@ -193,7 +214,7 @@ async def update_player(
         data["status"] = novo_status.value
     for field, value in data.items():
         setattr(player, field, value)
-    await db.commit()
+    await commit_ou_409(db)
     await db.refresh(player)
     return player
 
@@ -201,12 +222,12 @@ async def update_player(
 # ── Configurações (preços) ────────────────────────────────────────────────────
 
 class ConfiguracaoIn(BaseModel):
-    preco_mensal: float
-    preco_trimestral: float
-    preco_semestral: float
-    preco_anual: float
-    preco_locacao_hora: float
-    preco_jogo_avulso: float
+    preco_mensal: float = Field(ge=0)
+    preco_trimestral: float = Field(ge=0)
+    preco_semestral: float = Field(ge=0)
+    preco_anual: float = Field(ge=0)
+    preco_locacao_hora: float = Field(ge=0)
+    preco_jogo_avulso: float = Field(ge=0)
     # Disponibilidade comercial
     contratacao_planos_ativa: bool
     reservas_ativas: bool
@@ -426,12 +447,14 @@ async def enviar_contrato(
     db=Depends(get_db),
 ):
     """Gera e envia o Termo de Adesão via Autentique para o jogador (WhatsApp)."""
-    from app.services.autentique_client import AutentiqueClient, AutentiqueError
+    from app.services.autentique_client import AutentiqueClient, AutentiqueError, clausulas_e_empresa
 
     player = await db.get(Player, player_id)
     if not player:
         raise HTTPException(404, "Jogador não encontrado")
 
+    # Mesmas cláusulas e cabeçalho do envio automático
+    clausulas, empresa = await clausulas_e_empresa(db)
     client = AutentiqueClient()
     try:
         doc_id, link = await client.enviar_contrato(
@@ -439,6 +462,8 @@ async def enviar_contrato(
             email=player.email,
             cpf=player.cpf,
             telefone=player.telefone,
+            clausulas=clausulas,
+            empresa=empresa,
         )
     except AutentiqueError as exc:
         raise HTTPException(502, f"Erro Autentique: {exc}")
@@ -641,10 +666,20 @@ async def cancelar_locacao(
 
 class HorarioEspecialIn(BaseModel):
     data: date
-    descricao: str
+    descricao: str = Field(min_length=1, max_length=100)
     fechado: bool = False
-    hora_abertura: int | None = None
-    hora_fechamento: int | None = None
+    hora_abertura: int | None = Field(default=None, ge=0, le=23)
+    hora_fechamento: int | None = Field(default=None, ge=1, le=24)
+
+    @model_validator(mode="after")
+    def _janela_coerente(self) -> "HorarioEspecialIn":
+        if (
+            self.hora_abertura is not None
+            and self.hora_fechamento is not None
+            and self.hora_abertura >= self.hora_fechamento
+        ):
+            raise ValueError("A abertura deve ser antes do fechamento.")
+        return self
 
 
 class HorarioEspecialOut(BaseModel):
@@ -775,21 +810,22 @@ async def verificar_convocacoes_expiradas(
 # ── Dados da empresa ──────────────────────────────────────────────────────────
 
 class EmpresaIn(BaseModel):
-    razao_social: str
-    nome_fantasia: str
-    cnpj: str
-    cpf_responsavel: str
-    end_logradouro: str
-    end_numero: str
-    end_complemento: str = ""
-    end_bairro: str
-    end_cidade: str
-    end_estado: str
-    end_pais: str
-    end_cep: str
-    whatsapp: str
-    instagram: str
-    email_contato: str
+    # Limites das colunas: um texto maior virava erro 500 em vez de aviso
+    razao_social: str = Field(max_length=300)
+    nome_fantasia: str = Field(max_length=300)
+    cnpj: str = Field(max_length=30)
+    cpf_responsavel: str = Field(max_length=20)
+    end_logradouro: str = Field(max_length=300)
+    end_numero: str = Field(max_length=20)
+    end_complemento: str = Field(default="", max_length=100)
+    end_bairro: str = Field(max_length=200)
+    end_cidade: str = Field(max_length=200)
+    end_estado: str = Field(max_length=2)
+    end_pais: str = Field(max_length=100)
+    end_cep: str = Field(max_length=10)
+    whatsapp: str = Field(max_length=30)
+    instagram: str = Field(max_length=100)
+    email_contato: str = Field(max_length=200)
 
 
 @router.get("/empresa")
@@ -846,8 +882,8 @@ async def put_empresa(
 # ── Contrato ─────────────────────────────────────────────────────────────────
 
 class ClausulaIn(BaseModel):
-    titulo: str
-    texto: str
+    titulo: str = Field(max_length=300)
+    texto: str = Field(max_length=20000)
     ativo: bool = True
 
 
@@ -894,10 +930,16 @@ async def salvar_clausulas(
 # ── Horários por dia da semana ────────────────────────────────────────────────
 
 class HorarioDiaIn(BaseModel):
-    dia_semana: int
+    dia_semana: int = Field(ge=0, le=6)
     aberto: bool
-    hora_abertura: int
-    hora_fechamento: int
+    hora_abertura: int = Field(ge=0, le=23)
+    hora_fechamento: int = Field(ge=1, le=24)
+
+    @model_validator(mode="after")
+    def _janela_coerente(self) -> "HorarioDiaIn":
+        if self.aberto and self.hora_abertura >= self.hora_fechamento:
+            raise ValueError("A abertura deve ser antes do fechamento.")
+        return self
 
 
 @router.get("/horarios-semana")

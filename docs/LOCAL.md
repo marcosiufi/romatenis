@@ -27,6 +27,17 @@ Só existem no banco local, criadas pelo `scripts/seed_local.py`:
 
 O seed recusa rodar fora de `ENVIRONMENT=development`.
 
+## Login do admin (duas etapas)
+
+O admin entra com senha e depois com um código de 6 dígitos. No ambiente local
+não há e-mail: o código sai no log do container.
+
+```bash
+docker compose -f docker-compose.local.yml logs api | grep "Código de login"
+```
+
+Depois do primeiro código, o navegador fica dispensado por 30 dias.
+
 ## Editar e ver
 
 O código é montado como volume: CSS, HTML e JS aparecem no **F5** (sem

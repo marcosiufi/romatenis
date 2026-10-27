@@ -445,6 +445,9 @@ class BookingService:
         )
 
         await self._commit_reserva()
+        # Janelas do portão para membros e convidados (o convidado ainda manda
+        # a selfie pelo link; sem foto o agente não cadastra ninguém)
+        await self._sincronizar_acesso(booking.id)
         return {"booking_id": booking.id, "match_id": match.id, "valor": valor, **cobranca}
 
     async def _cobrar_jogo_avulso(
@@ -539,16 +542,29 @@ class BookingService:
 
 
     async def _sincronizar_acesso(self, booking_id: int) -> None:
-        """Atualiza as janelas de liberação do portão para esta reserva.
+        """Atualiza as janelas de liberação do portão para esta reserva."""
+        from app.services.acesso_service import sincronizar_acesso_sem_erro
+        await sincronizar_acesso_sem_erro(self.db, booking_id)
 
-        Falha aqui não pode derrubar a reserva: o jogo é o produto, o portão é
-        acessório, e o agente reconcilia no ciclo seguinte de qualquer forma.
+    async def _validar_jogadores(self, ids: list[int], quem_reserva: int) -> None:
+        """Todo participante existe e está em dia.
+
+        A regra que vale para quem reserva (contrato assinado, assinatura
+        ativa) vale para quem é chamado: um id inexistente virava erro 500, e
+        um inativo entrava em partida sem poder jogar.
         """
-        try:
-            from app.services.acesso_service import AcessoService
-            await AcessoService(self.db).sincronizar_booking(booking_id)
-        except Exception:  # noqa: BLE001 — acessório não derruba o principal
-            logger.exception("Falha ao sincronizar acesso da reserva %s", booking_id)
+        outros = [pid for pid in ids if pid != quem_reserva]
+        if not outros:
+            return
+        res = await self.db.execute(select(Player).where(Player.id.in_(outros)))
+        por_id = {p.id: p for p in res.scalars().all()}
+        for pid in outros:
+            p = por_id.get(pid)
+            if p is None:
+                raise BookingError("Jogador não encontrado")
+            if not p.contrato_assinado or not await self._tem_assinatura_ativa(pid):
+                nome = p.apelido or p.nome.split()[0]
+                raise BookingError(f"{nome} não está com a assinatura em dia e não pode ser escalado")
 
     # ── Validações privadas ───────────────────────────────────────────────────
 
@@ -627,6 +643,7 @@ class BookingService:
         if len(todos) != len(set(todos)):
             raise BookingError("O mesmo jogador não pode estar em ambos os lados")
 
+        await self._validar_jogadores(todos, player.id)
         for pid in todos:
             await self._verificar_limite_ativo(pid, tipo)
             await self._verificar_limite_semanal(pid, tipo, data_hora)
@@ -685,6 +702,7 @@ class BookingService:
             raise BookingError("Há convidados repetidos (mesmo CPF)")
 
         # Cota semanal: o jogo avulso desconta do saldo de cada membro envolvido
+        await self._validar_jogadores(membros, player.id)
         for pid in membros:
             await self._verificar_limite_ativo(pid, tipo)
             await self._verificar_limite_semanal(pid, tipo, data_hora)

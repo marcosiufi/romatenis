@@ -81,14 +81,20 @@ def _gerar_pdf(
     pdf.cell(0, 10, "ROMA TÊNIS - TERMO DE ADESÃO", new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 9)
+    # Dados da empresa vêm do banco (tela Empresa do painel); nada fixo aqui
     _emp = empresa or {}
-    _razao  = _emp.get("razao_social", "Rosangela Pioli Siufi")
-    _cpf_r  = _emp.get("cpf_responsavel", "05405791814")
-    _cnpj   = _emp.get("cnpj", "29.616.848/0001-21")
-    _fantasia = _emp.get("nome_fantasia", "Roma Tênis")
+    _razao = (_emp.get("razao_social") or "").strip()
+    _cpf_r = (_emp.get("cpf_responsavel") or "").strip()
+    _cnpj = (_emp.get("cnpj") or "").strip()
+    _fantasia = (_emp.get("nome_fantasia") or "Roma Tênis").strip()
+    partes = [
+        f"{_razao} {_cpf_r}".strip(),
+        f"CNPJ: {_cnpj}" if _cnpj else "",
+        f"Nome Fantasia: {_fantasia}",
+    ]
     pdf.cell(
         0, 6,
-        f"{_razao} {_cpf_r}  |  CNPJ: {_cnpj}  |  Nome Fantasia: {_fantasia}",
+        "  |  ".join(p for p in partes if p),
         new_x="LMARGIN", new_y="NEXT", align="C",
     )
     pdf.ln(8)
@@ -217,7 +223,9 @@ class AutentiqueClient:
                 files=multipart,
             )
 
-        logger.info("Autentique response status=%s body=%s", r.status_code, r.text[:800])
+        # O corpo da resposta traz nome, telefone e link do signatário: só o
+        # status vai ao log; o corpo só aparece quando é um erro
+        logger.info("Autentique response status=%s", r.status_code)
 
         if not r.is_success:
             raise AutentiqueError(f"Autentique HTTP {r.status_code}: {r.text[:300]}")
@@ -238,5 +246,33 @@ class AutentiqueClient:
         if sigs:
             link = (sigs[0].get("link") or {}).get("short_link")
 
-        logger.info("Contrato Autentique criado: doc_id=%s signer=%s", doc_id, email)
+        logger.info("Contrato Autentique criado: doc_id=%s", doc_id)
         return doc_id, link
+
+
+async def clausulas_e_empresa(db) -> tuple[list[dict] | None, dict]:
+    """Cláusulas ativas e dados da empresa, como o painel os deixou.
+
+    Usado tanto no envio automático (contratação) quanto no reenvio manual
+    pelo admin — antes o reenvio ia com a cláusula mínima de fallback e um
+    cabeçalho fixo, um contrato diferente do que o jogador contratou.
+    """
+    from sqlalchemy import select
+
+    from app.models.configuracao import Configuracao
+    from app.models.contrato import ContratoClausula
+
+    res = await db.execute(
+        select(ContratoClausula)
+        .where(ContratoClausula.ativo.is_(True))
+        .order_by(ContratoClausula.ordem)
+    )
+    clausulas = [{"titulo": c.titulo, "texto": c.texto} for c in res.scalars()]
+    cfg = await Configuracao.get(db)
+    empresa = {
+        "razao_social": cfg.razao_social,
+        "cpf_responsavel": cfg.cpf_responsavel,
+        "cnpj": cfg.cnpj,
+        "nome_fantasia": cfg.nome_fantasia,
+    }
+    return (clausulas or None), empresa

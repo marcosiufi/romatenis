@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,8 @@ from app.core.auth import (
     hash_password,
 )
 from app.core.database import get_db
+from app.core.erros import commit_ou_409
+from app.core.limite import por_ip
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.configuracao import Configuracao
 from app.models.horario_especial import HorarioEspecial
@@ -26,8 +28,9 @@ from app.models.payment import MetodoPagamento, Payment, StatusPagamento
 from app.models.player import Player, StatusJogador
 from app.models.season import Season, StatusTemporada
 from app.models.slot_ranking import SlotRanking
-from app.schemas.player import TokenResponse
+from app.schemas.player import SENHA_MAX, SENHA_MIN, TokenResponse, normalizar_telefone
 from app.services import cupom_service, email_service
+from app.services.acesso_service import sincronizar_acesso_sem_erro
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -51,7 +54,7 @@ class DisponibilidadeOut(BaseModel):
     slots: list[SlotOut]
 
 
-@router.get("/disponibilidade", response_model=DisponibilidadeOut)
+@router.get("/disponibilidade", response_model=DisponibilidadeOut, dependencies=[Depends(por_ip("disponibilidade", 60, 60))])
 async def disponibilidade(
     data: date = Query(..., description="Data desejada (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
@@ -161,22 +164,29 @@ async def disponibilidade(
 # ── Cadastro público ──────────────────────────────────────────────────────────
 
 class CadastroPublicoIn(BaseModel):
-    nome: str
-    apelido: str
-    email: EmailStr
-    senha: str
-    telefone: str
-    cpf: str
+    # Limites iguais aos das colunas: sem eles um nome de 200 letras virava
+    # erro 500 em vez de aviso
+    nome: str = Field(max_length=150)
+    apelido: str = Field(max_length=50)
+    email: EmailStr = Field(max_length=255)
+    senha: str = Field(min_length=SENHA_MIN, max_length=SENHA_MAX)
+    telefone: str = Field(max_length=20)
+    cpf: str = Field(max_length=14)
     data_nascimento: date
     # endereço
-    cep: str
-    rua: str
-    numero: str
-    bairro: str
-    cidade: str
-    estado: str
-    pais: str = "Brasil"
-    complemento: str | None = None
+    cep: str = Field(max_length=9)
+    rua: str = Field(max_length=200)
+    numero: str = Field(max_length=20)
+    bairro: str = Field(max_length=100)
+    cidade: str = Field(max_length=100)
+    estado: str = Field(max_length=2)
+    pais: str = Field(default="Brasil", max_length=50)
+    complemento: str | None = Field(default=None, max_length=100)
+
+    @field_validator("telefone")
+    @classmethod
+    def telefone_digitos(cls, v: str) -> str:
+        return normalizar_telefone(v)
 
     @field_validator("cpf")
     @classmethod
@@ -210,13 +220,6 @@ class CadastroPublicoIn(BaseModel):
             raise ValueError("Estado deve ser a sigla com 2 letras (ex: SP).")
         return v
 
-    @field_validator("senha")
-    @classmethod
-    def senha_minima(cls, v: str) -> str:
-        if len(v) < 6:
-            raise ValueError("A senha deve ter pelo menos 6 caracteres.")
-        return v
-
     @field_validator("nome", "apelido", "rua", "numero", "bairro", "cidade")
     @classmethod
     def nao_vazio(cls, v: str) -> str:
@@ -226,7 +229,9 @@ class CadastroPublicoIn(BaseModel):
         return v
 
 
-@router.post("/cadastro", response_model=TokenResponse, status_code=201)
+# Cinco contas por hora por IP: suficiente para uma família, longe do que um
+# robô precisa para encher o banco de cadastros falsos
+@router.post("/cadastro", response_model=TokenResponse, status_code=201, dependencies=[Depends(por_ip("cadastro", 5, 3600))])
 async def cadastro_publico(
     body: CadastroPublicoIn,
     db: AsyncSession = Depends(get_db),
@@ -258,7 +263,9 @@ async def cadastro_publico(
         is_admin=False,
     )
     db.add(player)
-    await db.commit()
+    # Dois cadastros simultâneos com o mesmo e-mail passam pelas checagens
+    # acima; a constraint do banco pega o segundo
+    await commit_ou_409(db, "E-mail, telefone ou CPF já cadastrado.")
     await db.refresh(player)
 
     # Falha no e-mail não pode impedir o cadastro já gravado
@@ -270,8 +277,8 @@ async def cadastro_publico(
         logger.error("Falha ao enviar boas-vindas para %s: %s", player.email, exc)
 
     return TokenResponse(
-        access_token=create_access_token(player.id, player.is_admin),
-        refresh_token=create_refresh_token(player.id),
+        access_token=create_access_token(player),
+        refresh_token=create_refresh_token(player),
     )
 
 
@@ -485,6 +492,8 @@ async def reservar(
         pass  # Se Asaas falhar, mantém a reserva sem pagamento online
 
     await db.commit()
+    # Janela do portão para quem alugou (o agente só libera na hora do jogo)
+    await sincronizar_acesso_sem_erro(db, booking.id)
 
     return PixOut(
         booking_id=booking.id,

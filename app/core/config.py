@@ -1,4 +1,10 @@
+import logging
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+_CHAVE_DEV = "dev-secret-key"
 
 
 class Settings(BaseSettings):
@@ -9,11 +15,16 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str = "postgresql+asyncpg://ranking:ranking@localhost:5432/ranking_tenis"
-    SECRET_KEY: str = "dev-secret-key"
+    SECRET_KEY: str = _CHAVE_DEV
     ENVIRONMENT: str = "development"
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Segundo fator do admin: validade do código enviado por e-mail e por
+    # quanto tempo um aparelho em que o código foi confirmado fica dispensado
+    CODIGO_LOGIN_MINUTOS: int = 10
+    DISPOSITIVO_CONFIAVEL_DIAS: int = 30
 
     DOMAIN: str = "https://romatenis.com.br"
 
@@ -60,6 +71,34 @@ class Settings(BaseSettings):
     # Autentique (contratos digitais)
     AUTENTIQUE_API_KEY: str = ""
     AUTENTIQUE_WEBHOOK_SECRET: str = ""
+
+    @property
+    def producao(self) -> bool:
+        """Tudo que não é `development` é tratado como produção."""
+        return self.ENVIRONMENT != "development"
+
+    def conferir(self) -> None:
+        """Recusa subir em produção com o segredo de desenvolvimento.
+
+        Com a chave padrão qualquer pessoa forja um token de admin. Antes o
+        sistema subia assim mesmo se o .env estivesse incompleto. A chave
+        também deriva a cifra das senhas dos leitores (app.core.cripto): por
+        isso só avisa quando é curta, em vez de recusar — trocá-la obriga a
+        recadastrar essas senhas.
+        """
+        if not self.producao:
+            return
+        if self.SECRET_KEY == _CHAVE_DEV or len(self.SECRET_KEY) < 16:
+            raise RuntimeError(
+                "SECRET_KEY ausente ou fraca no .env. O sistema não sobe em "
+                "produção com a chave de desenvolvimento."
+            )
+        if len(self.SECRET_KEY) < 32:
+            logger.warning(
+                "SECRET_KEY tem menos de 32 caracteres. Gere uma mais longa "
+                "(python -c \"import secrets; print(secrets.token_urlsafe(48))\") "
+                "e recadastre as senhas dos leitores no painel depois da troca."
+            )
 
 
 settings = Settings()

@@ -14,6 +14,7 @@ Fluxo de confirmação (webhook Asaas → POST /subscriptions/webhook):
   - PAYMENT_REFUNDED → Payment ESTORNADO, Subscription CANCELADA.
 """
 
+import html
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.database import AsyncSession
 from app.models.booking import Booking, StatusReserva
 from app.models.lista_espera import ListaEspera, StatusListaEspera
@@ -120,6 +122,13 @@ class SubscriptionService:
 
         if await self._get_ativa(player_id):
             raise SubscriptionError("Jogador já possui assinatura ativa")
+        # Cada chamada gera uma cobrança nova no Asaas; sem esta guarda um
+        # clique repetido (ou um script) enchia a conta de cobranças abertas
+        if await self._cobranca_pendente_recente(player_id):
+            raise SubscriptionError(
+                "Já existe uma cobrança em aberto gerada há menos de 24 horas. "
+                "Pague-a pelo perfil ou aguarde ela vencer para gerar outra."
+            )
 
         meses = PLANO_MESES[plano]
         valor_base = round(valor_mensal * meses, 2)
@@ -214,35 +223,16 @@ class SubscriptionService:
         # Auto-envio de contrato e atualização de status
         now_utc = datetime.now(timezone.utc)
         if not player.contrato_assinado:
-            from app.services.autentique_client import AutentiqueClient, AutentiqueError
-            from app.models.contrato import ContratoClausula
-            from app.models.configuracao import Configuracao
+            from app.services.autentique_client import AutentiqueClient, AutentiqueError, clausulas_e_empresa
             client = AutentiqueClient()
-            # Carrega cláusulas editáveis do banco
-            _res = await self.db.execute(
-                select(ContratoClausula)
-                .where(ContratoClausula.ativo == True)
-                .order_by(ContratoClausula.ordem)
-            )
-            _clausulas = [
-                {"titulo": c.titulo, "texto": c.texto}
-                for c in _res.scalars()
-            ]
-            # Carrega dados da empresa para o cabeçalho do PDF
-            _cfg = await Configuracao.get(self.db)
-            _empresa = {
-                "razao_social":    _cfg.razao_social,
-                "cpf_responsavel": _cfg.cpf_responsavel,
-                "cnpj":            _cfg.cnpj,
-                "nome_fantasia":   _cfg.nome_fantasia,
-            }
+            _clausulas, _empresa = await clausulas_e_empresa(self.db)
             try:
                 doc_id, link = await client.enviar_contrato(
                     nome=player.nome,
                     email=player.email,
                     cpf=player.cpf,
                     telefone=player.telefone,
-                    clausulas=_clausulas or None,
+                    clausulas=_clausulas,
                     empresa=_empresa,
                 )
                 player.contrato_autentique_id = doc_id
@@ -378,17 +368,19 @@ class SubscriptionService:
         sub.data_retorno_prevista = data_retorno_dt
         await self.db.commit()
 
+        # Nome, e-mail e motivo são texto do usuário: escapados, senão viram
+        # HTML dentro do e-mail que chega ao admin
         corpo = f"""
-        <p>O jogador <strong>{player.nome}</strong> ({player.email}) solicitou pausa na assinatura.</p>
+        <p>O jogador <strong>{html.escape(player.nome)}</strong> ({html.escape(player.email)}) solicitou pausa na assinatura.</p>
         <p><strong>Plano:</strong> {sub.plano.value} &nbsp; <strong>Vence:</strong> {sub.data_expiracao.strftime('%d/%m/%Y')}</p>
-        <p><strong>Motivo:</strong> {motivo}</p>
+        <p><strong>Motivo:</strong> {html.escape(motivo.strip())}</p>
         <p><strong>Período solicitado:</strong> {data_inicio_dt.strftime('%d/%m/%Y')} → {data_retorno_dt.strftime('%d/%m/%Y')} ({dias_pausa} dias)</p>
         <p>Acesse o painel admin para aprovar a pausa.</p>"""
 
         if cfg.SMTP_USER:
             await em.send_email(
                 cfg.SMTP_USER,
-                f"⏸ Solicitação de pausa — {player.nome}",
+                f"Solicitação de pausa: {player.nome}",
                 em._html_base("Solicitação de Pausa", corpo),
             )
 
@@ -403,8 +395,25 @@ class SubscriptionService:
                 Payment.gateway_id.is_not(None),
             )
             .order_by(Payment.id.desc())
+            .limit(1)
         )
-        payment = result.scalar_one_or_none()
+        return await self._cobranca_de(result.scalar_one_or_none())
+
+    async def get_pix_da_assinatura(self, sub_id: int) -> "AssinaturaResult | None":
+        """Cobrança pendente de uma assinatura específica (painel do admin)."""
+        result = await self.db.execute(
+            select(Payment)
+            .where(
+                Payment.subscription_id == sub_id,
+                Payment.status == StatusPagamento.PENDENTE,
+                Payment.gateway_id.is_not(None),
+            )
+            .order_by(Payment.id.desc())
+            .limit(1)
+        )
+        return await self._cobranca_de(result.scalar_one_or_none())
+
+    async def _cobranca_de(self, payment: Payment | None) -> "AssinaturaResult | None":
         if not payment or not payment.gateway_id:
             return None
 
@@ -489,7 +498,7 @@ class SubscriptionService:
 
     async def processar_webhook(self, event: str, payment_data: dict) -> None:
         gateway_id = payment_data.get("id")
-        if not gateway_id:
+        if not gateway_id or not isinstance(gateway_id, str):
             return
 
         result = await self.db.execute(
@@ -499,11 +508,23 @@ class SubscriptionService:
         if not payment:
             return
 
-        asaas_status = payment_data.get("status", "")
-        e_pagamento = (
-            event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED")
-            or asaas_status in ("RECEIVED", "CONFIRMED")
-        )
+        if settings.asaas_api_key:
+            # O que vale é o que o Asaas responde, não o que chegou no POST:
+            # mesmo com o token do webhook correto, a confirmação sai da fonte.
+            # Sem resposta do Asaas, o erro volta ao webhook e eles reenviam.
+            try:
+                cobranca = await self._asaas.get_cobranca(gateway_id)
+            except Exception as exc:
+                raise RuntimeError(f"Não foi possível conferir a cobrança {gateway_id} no Asaas: {exc}") from exc
+            asaas_status = str(cobranca.get("status", ""))
+            e_pagamento = asaas_status in ("RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH")
+        else:
+            # Sem chave do Asaas (ambiente local) não há a quem perguntar
+            asaas_status = str(payment_data.get("status", ""))
+            e_pagamento = (
+                event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED")
+                or asaas_status in ("RECEIVED", "CONFIRMED")
+            )
 
         # Idempotência: o Asaas reenvia eventos e manda RECEIVED e CONFIRMED
         # para a mesma cobrança. Sem esta guarda, o e-mail de confirmação sai
@@ -518,6 +539,9 @@ class SubscriptionService:
                 booking = await self.db.get(Booking, payment.booking_id)
                 if booking and booking.status == StatusReserva.AGUARDANDO_PAGAMENTO:
                     booking.status = StatusReserva.CONFIRMADA
+                    # Reserva paga: garante a janela do portão
+                    from app.services.acesso_service import sincronizar_acesso_sem_erro
+                    await sincronizar_acesso_sem_erro(self.db, booking.id)
             if payment.subscription_id:
                 sub = await self.db.get(Subscription, payment.subscription_id, options=[selectinload(Subscription.player)])
                 if sub and sub.player:
@@ -629,6 +653,8 @@ class SubscriptionService:
                 )
             )
             for sub in result.scalars().all():
+                if sub.player is None:
+                    continue
                 data_str = sub.data_expiracao.astimezone(FUSO_BR).strftime("%d/%m/%Y")
                 link = f"{cfg.DOMAIN}/"
                 await email_service.enviar_aviso_vencimento(
@@ -919,6 +945,21 @@ class SubscriptionService:
         ) or 0
 
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    async def _cobranca_pendente_recente(self, player_id: int) -> bool:
+        limite = datetime.now(timezone.utc) - timedelta(hours=24)
+        result = await self.db.execute(
+            select(Payment.id)
+            .join(Subscription, Payment.subscription_id == Subscription.id)
+            .where(
+                Subscription.player_id == player_id,
+                Subscription.status == StatusAssinatura.PENDENTE,
+                Subscription.data_inicio_ciclo >= limite,
+                Payment.status == StatusPagamento.PENDENTE,
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
 
     async def _get_ativa(self, player_id: int) -> Subscription | None:
         result = await self.db.execute(

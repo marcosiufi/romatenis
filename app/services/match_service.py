@@ -277,14 +277,11 @@ class MatchService:
             match.status = StatusPartida.CANCELADO_SEM_PLACAR
 
         # Libera o slot na agenda em ambos os casos
-        booking = await self.db.scalar(
-            select(Booking).where(Booking.match_id == match_id)
-        )
-        if booking:
-            booking.status = StatusReserva.CANCELADA
+        booking = await self._liberar_reserva(match_id)
 
         await self.db.commit()
         await self.db.refresh(match)
+        await self._revogar_acesso(booking)
         return match
 
     async def cancelar_sem_placar(self, match_id: int, player: Player) -> Match:
@@ -298,9 +295,26 @@ class MatchService:
             raise MatchError(f"Partida com status '{match.status.value}' não pode ser cancelada sem placar")
 
         match.status = StatusPartida.CANCELADO_SEM_PLACAR
+        # Antes a reserva seguia confirmada: o horário continuava ocupado na
+        # agenda e o portão continuava liberando os jogadores
+        booking = await self._liberar_reserva(match_id)
         await self.db.commit()
         await self.db.refresh(match)
+        await self._revogar_acesso(booking)
         return match
+
+    async def _liberar_reserva(self, match_id: int) -> Booking | None:
+        booking = await self.db.scalar(select(Booking).where(Booking.match_id == match_id))
+        if booking and booking.status != StatusReserva.CANCELADA:
+            booking.status = StatusReserva.CANCELADA
+        return booking
+
+    async def _revogar_acesso(self, booking: Booking | None) -> None:
+        """Partida cancelada perde a janela do portão."""
+        if booking is None:
+            return
+        from app.services.acesso_service import sincronizar_acesso_sem_erro
+        await sincronizar_acesso_sem_erro(self.db, booking.id)
 
     async def recalcular_classificacao(self) -> int:
         """Reclassifica A/B/C/D por percentil. Retorna número de jogadores elegíveis."""

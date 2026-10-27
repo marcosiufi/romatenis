@@ -12,6 +12,7 @@ Três origens de pessoa desembocam numa mesma `CredencialAcesso`:
 - **cliente de locação avulsa** — idem, preso à reserva, porque não tem conta.
 """
 import hashlib
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.imagens import apagar_foto_antiga, nome_de_foto
 from app.models.acesso import (
     ComandoAcesso,
     CredencialAcesso,
@@ -34,6 +36,8 @@ from app.models.acesso import (
 from app.models.booking import Booking, StatusReserva, TipoReserva
 from app.models.configuracao import Configuracao
 from app.models.match import Match
+
+logger = logging.getLogger(__name__)
 
 # Diretório físico servido em /uploads — o agente baixa as fotos por HTTP.
 _DIR_UPLOADS = "uploads"
@@ -146,21 +150,60 @@ class AcessoService:
             cred.foto_url = foto_url
             cred.status = StatusCredencial.PENDENTE_ENVIO
 
-    async def registrar_selfie(self, token: str, conteudo: bytes, extensao: str) -> CredencialAcesso:
-        """Recebe a selfie de quem não tem login (convidado ou cliente de locação)."""
+    async def dados_do_link(self, token: str) -> CredencialAcesso:
+        """Credencial de um link de selfie, só enquanto ele vale."""
         cred = (
             await self.db.execute(
                 select(CredencialAcesso).where(CredencialAcesso.token_selfie == token)
             )
         ).scalar_one_or_none()
-        if cred is None:
+        if cred is None or not await self._link_valido(cred):
             raise AcessoError("Link inválido ou expirado.")
+        return cred
+
+    async def _link_valido(self, cred: CredencialAcesso) -> bool:
+        """O link vale enquanto houver jogo por vir.
+
+        Depois disso, aceitar a foto não liberaria nada agora — mas cadastraria
+        outro rosto para o próximo jogo dessa pessoa, por quem tivesse guardado
+        o link. Um link antigo não pode fazer isso.
+        """
+        agora = datetime.now(timezone.utc)
+        janela = await self.db.scalar(
+            select(JanelaAcesso.id)
+            .where(
+                JanelaAcesso.credencial_id == cred.id,
+                JanelaAcesso.status == StatusJanela.ATIVA,
+                JanelaAcesso.fim >= agora,
+            )
+            .limit(1)
+        )
+        return janela is not None
+
+    async def atualizar_foto_do_player(self, player) -> None:
+        """Foto do perfil trocada: a credencial do portão, se existir, acompanha."""
+        cred = (
+            await self.db.execute(
+                select(CredencialAcesso).where(CredencialAcesso.player_id == player.id)
+            )
+        ).scalar_one_or_none()
+        if cred is None:
+            return
+        self._aplicar_foto(cred, player.foto_url)
+        await self.db.commit()
+
+    async def registrar_selfie(self, token: str, conteudo: bytes, extensao: str) -> CredencialAcesso:
+        """Recebe a selfie de quem não tem login (convidado ou cliente de locação)."""
+        cred = await self.dados_do_link(token)
 
         destino = os.path.join(_DIR_UPLOADS, "acesso")
         os.makedirs(destino, exist_ok=True)
-        nome_arquivo = f"{cred.id_dispositivo}{extensao}"
+        # Nome com sufixo aleatório: a pasta é servida sem login, e
+        # `RT000012.jpg` deixava enumerar o rosto de todo convidado.
+        nome_arquivo = nome_de_foto(cred.id_dispositivo, extensao)
         with open(os.path.join(destino, nome_arquivo), "wb") as f:
             f.write(conteudo)
+        apagar_foto_antiga(cred.foto_url, destino)
 
         cred.foto_url = f"/uploads/acesso/{nome_arquivo}"
         cred.foto_hash = hashlib.sha256(conteudo).hexdigest()
@@ -377,15 +420,21 @@ class AcessoService:
         for e in eventos:
             if e["chave_externa"] in ja_temos:
                 continue
+            # Um lote pode repetir a mesma chave; a constraint única pegaria o
+            # segundo e derrubaria o relatório inteiro
+            ja_temos.add(e["chave_externa"])
             cred = por_id_dispositivo.get(e.get("id_dispositivo") or "")
+            momento = e["momento"]
+            if isinstance(momento, str):
+                momento = datetime.fromisoformat(momento)
             self.db.add(
                 EventoAcesso(
                     dispositivo_id=e.get("dispositivo_id"),
                     credencial_id=cred.id if cred else None,
                     tipo=TipoEventoAcesso(e["tipo"]),
-                    momento=datetime.fromisoformat(e["momento"]),
-                    nome_lido=e.get("nome_lido"),
-                    motivo=e.get("motivo"),
+                    momento=momento,
+                    nome_lido=(e.get("nome_lido") or "")[:150] or None,
+                    motivo=(e.get("motivo") or "")[:200] or None,
                     chave_externa=e["chave_externa"],
                 )
             )
@@ -457,6 +506,18 @@ class AcessoService:
 
 
 # ── Auxiliares ───────────────────────────────────────────────────────────────
+
+async def sincronizar_acesso_sem_erro(db: AsyncSession, booking_id: int) -> None:
+    """Atualiza as janelas do portão de uma reserva sem deixar erro escapar.
+
+    O jogo é o produto; o portão é acessório, e o agente reconcilia no ciclo
+    seguinte de qualquer forma. Falha aqui vai para o log, não para o usuário.
+    """
+    try:
+        await AcessoService(db).sincronizar_booking(booking_id)
+    except Exception:  # noqa: BLE001 — acessório não derruba o principal
+        logger.exception("Falha ao sincronizar acesso da reserva %s", booking_id)
+
 
 def _id_dispositivo(credencial_id: int) -> str:
     """ID do usuário dentro do leitor: legível na tela do equipamento."""

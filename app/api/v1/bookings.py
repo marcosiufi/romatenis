@@ -115,14 +115,20 @@ async def criar_jogo_avulso(body: BookingCreateJogoAvulso, player: _Player, db: 
         raise _booking_error(e)
 
 
-# ── Criar locação avulsa ──────────────────────────────────────────────────────
+# ── Registrar locação manual (admin) ──────────────────────────────────────────
 
-@router.post("/locacao", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
-async def criar_locacao_avulsa(body: BookingCreateLocacao, player: _Player, db: _DB):
+@router.post("/locacao", response_model=BookingOut, status_code=status.HTTP_201_CREATED, tags=["admin"])
+async def criar_locacao_avulsa(body: BookingCreateLocacao, admin: _Admin, db: _DB):
+    """Locação registrada à mão pelo admin, já confirmada e sem cobrança.
+
+    Só admin: esta rota não gera pagamento, e aberta a qualquer conta permitia
+    ocupar a quadra de graça. Quem aluga pelo app usa POST /public/reserva,
+    que cria a cobrança no Asaas e só confirma depois do pagamento.
+    """
     try:
         booking = await BookingService(db).criar_locacao_avulsa(
             data_hora=body.data_hora,
-            player=player,
+            player=None,
             nome_externo=body.cliente_nome,
             telefone_externo=body.cliente_telefone,
         )

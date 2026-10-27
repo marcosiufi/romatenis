@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.auth import get_current_player
 from app.core.database import get_db
+from app.core.limite import por_ip
 from app.models.player import Player
 from app.schemas.cupom import CupomValidarIn, CupomValidarOut
 from app.services import cupom_service
@@ -9,7 +10,8 @@ from app.services import cupom_service
 router = APIRouter(prefix="/cupons", tags=["cupons"])
 
 
-@router.post("/validar", response_model=CupomValidarOut)
+# Limite por IP: sem ele dava para descobrir códigos de cupom na tentativa
+@router.post("/validar", response_model=CupomValidarOut, dependencies=[Depends(por_ip("cupom", 30, 60))])
 async def validar(
     body: CupomValidarIn,
     _player: Player = Depends(get_current_player),
