@@ -132,6 +132,8 @@ Regras que saíram da auditoria de 27/10/2026 (seção 21 de `docs/SISTEMA.md`):
   sai no log do container.
 - O container roda sem root: a pasta `uploads` do host precisa de
   `chown -R 10001:10001`.
+- Backup diário do banco: `scripts/backup_db.sh` + cron (seção 22). A
+  `BACKUP_SENHA` cifra os arquivos; sem ela nada abre. Nunca a mostre.
 
 ## Ao concluir uma mudança
 

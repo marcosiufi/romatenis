@@ -507,7 +507,6 @@ mantém a paleta própria, só no escuro.
 | **Escape XSS** | Varredura completa feita na auditoria — sem pendências (seção 15) |
 | **CSP** | Não há `Content-Security-Policy`; exigiria remover `onclick` inline |
 | **Reputação de e-mail** | Domínio novo — mensagens podem cair em spam até criar histórico |
-| **Backup do banco** | Não há rotina automática de `pg_dump`. Um disco perdido leva cadastros, pagamentos e contratos (seção 21.8) |
 | **Dados de convidados** | CPF, WhatsApp e nascimento de quem joga avulso ficam guardados sem prazo. LGPD pede finalidade e descarte; falta rotina de limpeza |
 | **Cancelar locação paga (admin)** | Cancela a reserva mas não estorna no Asaas; o estorno é manual lá |
 
@@ -1318,9 +1317,72 @@ antigo não cadastra outro rosto para o próximo jogo.
 
 ### 21.8 O que ficou para depois
 
-- **Backup**: `pg_dump` diário para fora do servidor. Hoje não há.
+- ~~Backup~~: feito na seção 22.
 - **Retenção de dados de convidados** (LGPD).
 - **Tokens em `localStorage`**: um XSS levaria a sessão. Não foi encontrado
   XSS e a CSP bloqueia script externo; cookie `HttpOnly` seria o passo
   seguinte, com proteção CSRF junto.
+
+---
+
+## 22. Backup do banco — 27/10/2026
+
+Todo dia às 03:10 (horário do servidor) o cron roda `scripts/backup_db.sh`:
+
+```
+pg_dump → gzip → cifra AES-256 (BACKUP_SENHA) → 14 cópias em /opt/romatenis/backups → nuvem (rclone), 30 dias lá
+```
+
+O arquivo vai **cifrado** porque o banco tem CPF, endereço e telefone de todo
+associado. Sem `BACKUP_SENHA` ele não abre — e por isso a senha precisa estar
+guardada **fora do servidor** (gerenciador de senhas, papel no cofre): o dia
+em que o backup é necessário é o dia em que o servidor não existe mais.
+
+O script confere o próprio resultado (decifra e procura o cabeçalho do
+`pg_dump`) antes de dar por feito. Qualquer falha manda e-mail para
+`BACKUP_EMAIL` (padrão `SMTP_USER`), pelo SMTP do `.env`; toda segunda-feira
+sai uma prova de vida. Silêncio não é prova de nada: se parar de chegar, olhe
+`/var/log/romatenis-backup.log`.
+
+### 22.1 Instalar no servidor (uma vez)
+
+1. rclone: `curl https://rclone.org/install.sh | bash`
+2. A conta da nuvem (`rclone config`, nome do remote `nuvem`):
+   - `n` (novo), nome `nuvem`, tipo `drive` (Google Drive) ou `onedrive`;
+   - `client_id` e `client_secret`: Enter (vazios); no Google Drive, `scope`
+     `1` (acesso total); no OneDrive, região `1` (global);
+   - "Use web browser to automatically authenticate?": `n` — o servidor não
+     tem navegador. O rclone mostra um comando `rclone authorize "drive"` (ou
+     `"onedrive"`). Rode esse comando **no Windows** (instale antes com
+     `winget install Rclone.Rclone`), entre na conta no navegador, copie o
+     token que o PowerShell imprime e cole no servidor; confirme com `y`.
+   - `rclone mkdir nuvem:RomaTenis/backups && rclone lsd nuvem:RomaTenis`
+3. No `.env`: `BACKUP_SENHA` (gere com
+   `python -c "import secrets; print(secrets.token_urlsafe(32))"` e guarde
+   fora do servidor), `BACKUP_RCLONE_REMOTE=nuvem:RomaTenis/backups`,
+   `BACKUP_EMAIL` (opcional).
+4. Teste à mão: `/opt/romatenis/scripts/backup_db.sh` — deve terminar com
+   `ok romatenis-…sql.gz.enc` e o arquivo aparecer na pasta da nuvem.
+5. Cron: `cp /opt/romatenis/deploy/romatenis-backup.cron /etc/cron.d/romatenis-backup && chmod 644 /etc/cron.d/romatenis-backup`
+
+### 22.2 Restaurar
+
+```bash
+# arquivo na nuvem: baixe antes
+rclone copy nuvem:RomaTenis/backups/romatenis-2026-10-28_0310.sql.gz.enc /opt/romatenis/backups/
+/opt/romatenis/scripts/restaurar_backup.sh /opt/romatenis/backups/romatenis-2026-10-28_0310.sql.gz.enc --confirmo
+```
+
+O script para a API, renomeia o banco atual para `ranking_tenis_antigo`,
+cria um vazio, restaura e sobe a API. O banco anterior fica lá até você
+apagar à mão (o comando aparece no fim). Num servidor novo: clone o repo,
+`.env` com a mesma `BACKUP_SENHA`, `docker compose up -d db`, restaure, depois
+`docker compose up -d`. Não rode `alembic upgrade head` antes de restaurar —
+o dump já traz o esquema e a tabela de versões.
+
+### 22.3 Testar a restauração de vez em quando
+
+Um backup que nunca foi restaurado é uma esperança, não um backup. Uma vez
+por trimestre, na máquina local (`COMPOSE_FILE=docker-compose.local.yml`),
+restaure o arquivo mais recente e abra o painel.
 

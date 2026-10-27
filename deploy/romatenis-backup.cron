@@ -1,0 +1,8 @@
+# Backup diário do banco do Roma Tênis, 03:10 no horário do servidor.
+# Instalar (uma vez):
+#   cp /opt/romatenis/deploy/romatenis-backup.cron /etc/cron.d/romatenis-backup
+#   chmod 644 /etc/cron.d/romatenis-backup
+# O cron roda com PATH mínimo; docker e rclone ficam em /usr/bin.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+10 3 * * * root /opt/romatenis/scripts/backup_db.sh >> /var/log/romatenis-backup.log 2>&1

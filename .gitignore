@@ -25,3 +25,6 @@ Thumbs.db
 # Docker volumes (caso mapeados localmente)
 pg_data/
 n8n_data/
+
+# Backups locais do banco (scripts/backup_db.sh)
+backups/
