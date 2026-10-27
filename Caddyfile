@@ -3,22 +3,6 @@ www.romatenis.com.br {
 }
 
 romatenis.com.br {
-    encode gzip zstd
-
-    # Maior envio legítimo é uma foto de 5 MB; o resto é JSON pequeno.
-    request_body {
-        max_size 12MB
-    }
-
-    header {
-        # Navegador só fala HTTPS com o domínio por um ano, mesmo que alguém
-        # digite http:// ou um link antigo aponte para lá.
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        # Não anuncia o servidor. Os demais cabeçalhos de segurança (CSP,
-        # nosniff, frame-ancestors) saem da própria API, para valerem também
-        # no ambiente local.
-        -Server
-    }
-
     reverse_proxy api:8000
+    encode gzip zstd
 }

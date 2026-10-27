@@ -28,3 +28,9 @@ n8n_data/
 
 # Backups locais do banco (scripts/backup_db.sh)
 backups/
+
+# Dados do servidor que nunca entram no repositorio
+uploads/
+.env.*
+!.env.example
+Caddyfile.bak*

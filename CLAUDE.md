@@ -31,6 +31,12 @@ Se o commit tiver migration, acrescente ao final:
 Ao mexer no frontend, **suba o `CACHE_NAME`** em `frontend/service-worker.js` —
 senão o PWA continua servindo o cache antigo mesmo após o deploy.
 
+**O Caddy do servidor é compartilhado com os sites da SIUFI.** O `Caddyfile`
+em `/opt/romatenis` é mantido à mão lá e não é o do repositório: nunca mande
+um commit que altere `Caddyfile` (o `git pull` do servidor trava) nem use
+`docker compose restart caddy` (derruba todos os sites). Mudança no bloco do
+Roma vai por `deploy/aplicar_caddy_roma.py`. Seção 11 de `docs/SISTEMA.md`.
+
 ## Design
 
 **Leia [`docs/DESIGN.md`](docs/DESIGN.md) antes de mexer em tela.** O sistema

@@ -402,6 +402,22 @@ chown -R 10001:10001 /opt/romatenis/uploads
 
 Uma vez só; o deploy comum não mexe nisso.
 
+### O Caddy é compartilhado com os sites da SIUFI
+
+O `Caddyfile` em `/opt/romatenis` do servidor atende também `contas`,
+`recruta`, `app` e `www.siufi.com.br` (containers de outros projetos na mesma
+rede Docker). Ele é mantido **à mão no servidor** e não é o do repositório —
+o `Caddyfile` versionado aqui é só o bloco do Roma, para um servidor novo.
+Consequências:
+
+- **Nunca** `git checkout -- Caddyfile` nem copiar o do repo por cima: os
+  outros sites saem do ar. Se um `git pull` reclamar do Caddyfile, é porque
+  algum commit mexeu nele — o repo não deve mais fazer isso.
+- Mudança no bloco do Roma vai por `python3 deploy/aplicar_caddy_roma.py`
+  (idempotente, com backup e validação), que recarrega com `caddy reload`.
+  `docker compose restart caddy` derruba todos os sites por alguns segundos;
+  evite.
+
 ### Comando padrão (frontend, backend, ou ambos)
 
 ```bash
@@ -1277,8 +1293,10 @@ antigo não cadastra outro rosto para o próximo jogo.
 
 - API devolve CSP (`script-src 'self' 'unsafe-inline'`: nenhum script de outro
   domínio carrega; o inline é exigido pelos `onclick`), `nosniff`,
-  `frame-ancestors 'none'`, `Referrer-Policy`, `Permissions-Policy`. Caddy
-  acrescenta HSTS, remove `Server` e limita o corpo a 12 MB.
+  `frame-ancestors 'none'`, `Referrer-Policy`, `Permissions-Policy`. No
+  bloco do Roma no Caddy: HSTS, `-Server` e corpo limitado a 12 MB — aplicados
+  no servidor por `deploy/aplicar_caddy_roma.py`, porque o Caddy é
+  compartilhado (seção 11).
 - Container roda como `roma` (uid 10001) — ver o `chown` na seção 11.
 - Dependências atualizadas (fastapi 0.116, starlette 0.47, python-multipart
   0.0.20, httpx 0.28, sqlalchemy 2.0.43, pydantic 2.11, bcrypt 4.3).
@@ -1311,8 +1329,9 @@ antigo não cadastra outro rosto para o próximo jogo.
 
 1. `chown -R 10001:10001 /opt/romatenis/uploads` (uma vez).
 2. Deploy com migration (seção 11).
-3. `docker compose exec -T api python scripts/proteger_fotos.py` (uma vez).
-4. Todo mundo entra de novo; o admin recebe o código por e-mail no primeiro
+3. `python3 deploy/aplicar_caddy_roma.py` (uma vez; Caddy compartilhado).
+4. `docker compose exec -T api python scripts/proteger_fotos.py` (uma vez).
+5. Todo mundo entra de novo; o admin recebe o código por e-mail no primeiro
    login de cada aparelho.
 
 ### 21.8 O que ficou para depois
